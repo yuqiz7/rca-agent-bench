@@ -1,0 +1,158 @@
+# IMPORTANT: pass this file LAST on the command line. Compose merges -f files
+# in order and later files win, so `-f compose.yaml -f compose.override.yaml
+# -f compose.observability.yaml` lets observability's 175M limit override the
+# grafana bump below. Use:
+#   docker compose -f compose.yaml -f compose.observability.yaml \
+#     -f compose.override.yaml up -d
+
+# Local adaptation: the stock 300MB limit for `ad` is calibrated for small CI
+# hosts. On a 16-core machine the JVM's native footprint (GC threads, netty
+# event loops, OTel javaagent metaspace) exceeds it and the container is
+# OOM-killed on loop, blocking frontend/frontend-proxy/load-generator.
+services:
+  ad:
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  # Same class of root cause: the stock 175MB limit is calibrated for small CI
+  # hosts. Grafana's boot-time plugin install (metricsdrilldown, pyroscope,
+  # exploretraces) spikes past it — 5 OOM kills before it stabilized, then sat
+  # at 166MiB/175MiB (95%), leaving no headroom for dashboard queries.
+  grafana:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Same class of root cause: the stock 200M limit is calibrated for small CI
+  # hosts. Prometheus derives GOMEMLIMIT from the cgroup cap (188743680) and
+  # runs GOMAXPROCS=16 ("CPU quota undefined"), so after ~a day of demo metrics
+  # the TSDB WAL replay no longer fits. The container died ~7s into replay, so
+  # the WAL was never checkpointed and every restart replayed it again — a
+  # self-locking loop, 88 restarts, no self-recovery.
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # ── 全栈限额审计（见 p2-rca docs/decisions.md 008 与 docs/resource_audit.md）──
+  # 规则：用量占比 > 50%，或曾 OOM（exit 137），或限额 ≤ 64M 的服务，一律抬到
+  # ≥ 当前用量 4 倍并向上取整到 {256M, 512M, 768M, 1G, 2G} 最近一档。
+  # 已有独立覆盖的 ad / grafana / prometheus 不在此列。checkout 与 astronomy-db
+  # 强制纳入。目的：环境自带的 OOM 会与注入症状混淆，污染场景标准答案（见 004）。
+
+  # astronomy-db: 80M -> 256M  (用量 55.0M / 68.8%, 命中 pct>50+forced)
+  astronomy-db:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # cart: 160M -> 512M  (用量 108.0M / 67.5%, 命中 pct>50)
+  cart:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # checkout: 20M -> 256M  (用量 14.8M / 73.8%, 命中 pct>50+lim<=64M+forced)
+  checkout:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # currency: 20M -> 256M  (用量 8.2M / 41.0%, 命中 lim<=64M)
+  currency:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # email: 100M -> 512M  (用量 67.2M / 67.2%, 命中 pct>50)
+  email:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # flagd: 75M -> 256M  (用量 58.2M / 77.7%, 命中 pct>50)
+  flagd:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # flagd-ui: 200M -> 768M  (用量 175.6M / 87.8%, 命中 pct>50)
+  flagd-ui:
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  # frontend: 250M -> 768M  (用量 178.9M / 71.6%, 命中 pct>50)
+  frontend:
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  # load-generator: 512M -> 2G  (用量 453.2M / 88.5%, 命中 pct>50)
+  load-generator:
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # opensearch: 1024M -> 2G  (用量 925.6M / 90.4%, 命中 pct>50)
+  opensearch:
+    # 注：4x = 3702M 超出 2G 档顶，封顶 2G（规则冲突，已在 008 注明）
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # otel-collector: 400M -> 1G  (用量 200.1M / 50.0%, 命中 pct>50)
+  otel-collector:
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # payment: 140M -> 512M  (用量 117.9M / 84.2%, 命中 pct>50)
+  payment:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # product-catalog: 20M -> 256M  (用量 16.0M / 79.9%, 命中 pct>50+lim<=64M)
+  product-catalog:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # quote: 40M -> 256M  (用量 20.8M / 52.0%, 命中 pct>50+lim<=64M)
+  quote:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # shipping: 20M -> 256M  (用量 9.6M / 48.1%, 命中 lim<=64M)
+  shipping:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # valkey-cart: 20M -> 256M  (用量 4.9M / 24.7%, 命中 lim<=64M)
+  valkey-cart:
+    deploy:
+      resources:
+        limits:
+          memory: 256M

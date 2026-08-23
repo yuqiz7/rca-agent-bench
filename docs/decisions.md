@@ -157,3 +157,31 @@ override 文件干净、可整体回退，但引入了 `-f` 合并顺序陷阱�
 
 **trade-off**
 规则需按端口过滤，实现比整网卡复杂；各服务的服务端口需逐一登记并随 compose 变更维护。
+
+---
+
+## 008 资源覆盖从三项扩展为全栈审计规则
+
+**选了什么**
+把 `compose.override.yaml` 里逐个撞坑加出来的三条覆盖（`ad` / `grafana` / `prometheus`），升级为一条对全部 25 个容器执行的审计规则：
+
+> 用量占比 > 50%，或曾 OOM（退出码 137），或限额 ≤ 64M 的服务，一律抬到 ≥ 当前用量 4 倍，并向上取整到 `{256M, 512M, 768M, 1G, 2G}` 中最近一档。已有覆盖的 `ad` / `grafana` / `prometheus` 不再动；`checkout` 与 `astronomy-db` 强制纳入。
+
+规则命中 16 个服务，连同 `prometheus` 200M → 2G 一并写入覆盖文件。完整审计表见 [resource_audit.md](resource_audit.md)。
+
+**为什么**
+- `prometheus` 在 200M 下把自己锁死了：TSDB WAL 重放需要的内存超过 cgroup 上限，容器活约 7 秒就被 OOM 杀掉，WAL 因此永远不被 checkpoint，下次启动重放同一份 WAL — 88 次重启，不会自愈。Prometheus 从 cgroup 上限自动推出 `GOMEMLIMIT=188743680`，又以 `GOMAXPROCS=16`（日志原文 `CPU quota undefined`）运行，和 002 里 `ad` 的 16 核放大是同一个机制。
+- 更要紧的是：**任何环境自带的 OOM 都会污染场景症状**。004 已经写过单验症状无法排除环境自带故障，而当时举的例子（`ad` 的 OOM 循环）正是这一类。`checkout` 20M、`product-catalog` 20M、`shipping` 20M 这些靶子都在 `target_enum` 里，一旦建库期间自发 OOM，验证脚本会把它当成注入症状，直接产出错卡。逐个撞坑不如一次扫干净。
+
+**放弃了什么**
+- 只修 `prometheus`、其余继续逐个撞坑：已经撞了三次（`ad` → `grafana` → `prometheus`），每次都要停下来诊断，成本高于一次性审计。
+- 给全部服务加 CPU 上限：治本（16 核放大的根源就是没有 CPU quota），但会改变被测系统的运行行为，直接影响后续 `latency` 类的延迟指纹，不可接受。
+- 保留 Prometheus TSDB 历史：抬限额后 WAL 重放 6.42 秒完成，历史实际保住了；但即使保不住也会直接删 — 那段数据里没有任何场景数据，价值为零。
+
+**trade-off**
+内存在本机免费（限额合计 15.3G，实际用量 4.4G，宿主机 62G），代价只是覆盖文件变长、与上游 compose 的差异变大，将来升级 tag 时 rebase 成本上升（见 003）。
+
+`opensearch` 上有一处规则冲突：4 倍 = 3702M 超出 2G 档顶，封顶为 2G，未擅自新增档位，详见 [resource_audit.md](resource_audit.md)。
+
+**附**
+本审计抬的是**基线**限额。`mem_leak` 类做卡时靠卡内临时覆盖压低靶子限额，与基线无关，抬基线不影响该类可做性。
