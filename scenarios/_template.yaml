@@ -1,0 +1,57 @@
+# 故障场景卡模板（schema v0.9，见 docs/fault_schema.md）
+# 用法：复制为 S###.yaml，填写 private 区与 timing；
+#       agent_view.trigger 一字不改；verification / admission 由验证脚本回填。
+
+id: S000                      # 场景编号，S + 三位数字；不得出现在任何运行时环境中
+
+# ── 答案区：agent 不可见 ────────────────────────────────────────────────
+private:
+  target:
+    service:                  # ∈ target_enum（16 项，见 §2）。例：cart
+    class:                    # ∈ crash | latency | dep_timeout | misconfig | mem_leak
+
+  injection:
+    primitive:                # kill_container | delay_outbound_on_service_port
+                              # | drop_inbound_on_service_port | env_override
+                              # | flagd_flag | mem_hog
+    params: {}                # 原语参数。例（latency）：{port: 7070, delay_ms: 800, jitter_ms: 100}
+                              #        例（misconfig）：{key: CART_ADDR, value: "valkey-cart:9999"}
+    apply:                    # 施加命令（宿主机执行，不进 OTel 管线）
+    revert:                   # 撤除命令；须能把系统还原到基线
+
+  ground_truth:
+    service:                  # 判分标准答案（服务），通常同 target.service
+    class:                    # 判分标准答案（类别），通常同 target.class
+    aliases: []               # 服务名归一化别名。例：[cartservice, cart-service, Cart]
+    note:                     # 出题说明与预期级联路径，仅供失败分析
+
+# ── 考生可见区：agent 的全部输入 ──────────────────────────────────────
+agent_view:
+  trigger: "Monitoring detected an anomaly in the system."   # 固定，全场景一字不差，不含服务名
+  window:
+    start:                    # t_inject（ISO8601）
+    end:                      # t_inject + timing.observe_s
+
+# ── 时序：初值，④ 实测指纹后定 ────────────────────────────────────────
+timing:
+  warmup_s: 60
+  observe_s: 120              # mem_leak 类可覆盖为更长
+  cooldown_s: 60
+
+# ── 自检区：由验证脚本填写，见 §5 ─────────────────────────────────────
+verification:
+  runs: []                    # 每轮一条 {ts, injected, symptom, recovered}，均为 bool
+                              # - injected  : 宿主机机械探针，按原语给定
+                              # - symptom   : 针对被注入服务 B 的单条查询过阈值
+                              #               （禁止"系统内任意异常"式查询）
+                              # - recovered : revert 后 cooldown_s 内回落至基线
+  symptom_query:              # 本卡实际使用的 symptom 查询语句
+  symptom_threshold:          # 本卡阈值 N 或 k
+
+# ── 准入：四条全过才进 80 题库，见 §6 ────────────────────────────────
+admission:
+  unique_root_cause:          # bool：一次注入、一个 (service, class)
+  verified_2_runs:            # bool：双层验证 + 恢复连续 2 轮全过
+  canary_clean:               # bool：禁词表扫三后端零命中
+  symptom_locus:              # self | neighbor | remote（依赖图最短距离 0 / 1 / ≥2，自动计算）
+  admitted:                   # bool：四条全过
