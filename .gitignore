@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+
+# 探针的原始请求/返回转储：本地备查用，单轮就有数百 MB（Jaeger 整条 trace
+# 载荷 × 16 个 caller），是生成物不是源码，不进版本库。目录结构保留。
+scripts/out/*
+!scripts/out/.gitkeep
+
+# 原语的 restart 策略暂存：apply 时写、revert 时删，属运行时状态。
+scripts/state/*
+!scripts/state/.gitkeep
