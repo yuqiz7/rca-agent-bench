@@ -107,13 +107,19 @@ services:
         limits:
           memory: 2G
 
-  # opensearch: 1024M -> 2G  (用量 925.6M / 90.4%, 命中 pct>50)
+  # opensearch: 1024M -> 4G  (用量 925.6M / 90.4%, 命中 pct>50)
   opensearch:
-    # 注：4x = 3702M 超出 2G 档顶，封顶 2G（规则冲突，已在 008 注明）
+    # 首轮按 {256M,512M,768M,1G,2G} 封顶到 2G（4x = 3702M 超出档顶）。抬到 2G
+    # 后用量仍涨到 1283M / 62.6%，且随日志索引累积继续涨，故补 4G 档 —— 全栈
+    # 仅本服务命中该档。见 008 与 docs/resource_audit.md。
+    # !override 而非默认合并：compose 对 ports 是追加，不加这个标签会同时留着
+    # 基础文件那条随机宿主机端口的映射。
+    ports: !override
+      - "9200:9200"
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 4G
 
   # otel-collector: 400M -> 1G  (用量 200.1M / 50.0%, 命中 pct>50)
   otel-collector:
@@ -156,3 +162,14 @@ services:
       resources:
         limits:
           memory: 256M
+
+  # ── 端口钉死 ────────────────────────────────────────────────────────────
+  # 基础文件里 jaeger/opensearch 的 ports 只写了容器端口，Docker 每次重建都分配
+  # 一个新的随机宿主机端口（实测 32774 / 32801），探针的 backends.env 会失效。
+  # 钉成固定映射，backends.env 才能是常量。
+  jaeger:
+    # !override 而非默认合并：compose 对 ports 是追加，不加这个标签会同时留着
+    # 基础文件那条随机宿主机端口的映射。4317 是 collector 上报用的 OTLP 端口，
+    # 走容器网络，不需要发布到宿主机。
+    ports: !override
+      - "16686:16686"

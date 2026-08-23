@@ -107,10 +107,19 @@ def collect_traces(base, svc, t0, t1):
     durs = sorted(sp["duration"] / 1000.0 for sp, _, _ in errs)     # us -> ms
 
     def pct(p):
+        """线性插值分位数。
+
+        原来用 round(p/100*(n-1)) 取整下标：n=62 时 round(30.5) 因 Python 的
+        banker's rounding 落到 30，得 4589.8ms；而 n//2 落到 31，得 11693.2ms。
+        crash 的时延分布是双峰的，两个中位下标恰好一个在低峰尾、一个在高峰头，
+        整数下标会静默地二选一。插值后得真中位数 8141.5ms —— 但它落在两峰之间
+        的空谷里，本身没有代表性，看分布桶（pct_under_100ms / pct_over_10s）。
+        """
         if not durs:
             return None
-        i = min(int(round(p / 100.0 * (len(durs) - 1))), len(durs) - 1)
-        return round(durs[i], 2)
+        k = p / 100.0 * (len(durs) - 1)
+        lo, hi = int(k), min(int(k) + 1, len(durs) - 1)
+        return round(durs[lo] + (durs[hi] - durs[lo]) * (k - lo), 2)
 
     msgs = Counter()
     for sp, tags, _ in errs:
@@ -126,14 +135,22 @@ def collect_traces(base, svc, t0, t1):
         if m:
             msgs[str(m)[:200]] += 1
 
+    n = len(durs)
+    buckets = {
+        "pct_under_100ms": round(sum(1 for x in durs if x < 100) / n * 100, 1) if n else None,
+        "pct_over_10s": round(sum(1 for x in durs if x > 10000) / n * 100, 1) if n else None,
+    }
     first_err_ts = min((sp["startTime"] for sp, _, _ in errs), default=None)
+    last_err_ts = max((sp["startTime"] for sp, _, _ in errs), default=None)
     return {
         "caller_error_spans": len(errs),
         "caller_spans_total": len(spans),
         "caller_error_p50_ms": pct(50),
         "caller_error_p95_ms": pct(95),
+        "caller_error_dur_buckets": buckets,
         "error_messages_top3": [{"message": m, "count": c} for m, c in msgs.most_common(3)],
         "first_error_span_unix": first_err_ts / 1e6 if first_err_ts else None,
+        "last_error_span_unix": last_err_ts / 1e6 if last_err_ts else None,
         "callers_queried": len(callers),
         "trace_limit_per_caller": TRACE_LIMIT_PER_CALLER,
         "callers_hitting_limit": hit_limit,
@@ -181,11 +198,31 @@ def collect_metrics(base, svc, t0, t1):
     elif not err:
         note = "no series in window"
 
+    # 心跳：target_info 由 SDK 的 resource 派生，与请求量无关 —— 服务只要还在
+    # 上报遥测它就在，服务一死它就停。对全部靶子一致存在（Go/Java/.NET/Node/
+    # Python 都有），不像各语言自己的 runtime 指标那样挑语言。
+    # 回看窗口起点前 600s，才能在服务已死的情况下找到"最后一次心跳"。
+    # 用 timestamp() 取底层样本的真实时刻，不能用 query_range 的求值时刻：
+    # query_range 会把最后一个已知值按 5 分钟 staleness 重复铺到每个 step 点上，
+    # 服务已死也照样每步都有值，age 恒为 0，测不出"心跳停了"。
+    hb_q = f'timestamp(target_info{{service_name="{svc}"}})'
     url2 = f"{base}/api/v1/query?" + urllib.parse.urlencode(
-        {"query": f'target_info{{service_name="{svc}"}}', "time": t1.timestamp()}
+        {"query": hb_q, "time": t1.timestamp()}
     )
-    d2, _ = fetch(url2, label="prom:target_info")
-    present = bool(d2 and d2.get("status") == "success" and d2["data"]["result"])
+    d2, _ = fetch(url2, label="prom:heartbeat_age")
+    hb_age = None
+    if d2 and d2.get("status") == "success" and d2["data"]["result"]:
+        last_sample = max(float(r["value"][1]) for r in d2["data"]["result"])
+        hb_age = round(t1.timestamp() - last_sample, 1)
+
+    # 窗口内真实样本数：对 timestamp() 做 range 查询后数不同取值的个数
+    url3 = f"{base}/api/v1/query_range?" + urllib.parse.urlencode(
+        {"query": hb_q, "start": t0.timestamp(), "end": t1.timestamp(), "step": 15}
+    )
+    d3, _ = fetch(url3, label="prom:heartbeat_samples")
+    hb_n = 0
+    if d3 and d3.get("status") == "success" and d3["data"]["result"]:
+        hb_n = len({v for series in d3["data"]["result"] for _, v in series["values"]})
     return {
         "req_rate_per_s": rate,
         "metric_used": METRIC,
@@ -195,7 +232,9 @@ def collect_metrics(base, svc, t0, t1):
         "counter_reset": reset,
         "resolution_note": note,
         "promql": q,
-        "target_info_present": present,
+        "heartbeat_metric": "target_info",
+        "heartbeat_age_s": hb_age,
+        "heartbeat_samples_in_window": hb_n,
         "error": err,
     }
 

@@ -78,11 +78,19 @@ recommendation, shipping, valkey-cart
 
 | class | 定义 | 调用方侧预期 | B 自身预期 |
 | --- | --- | --- | --- |
-| `crash`（杀容器） | B 容器不存活 | 连接被拒、span 即时报错（毫秒级） | 指标 / 日志消失 |
+| `crash`（杀容器） | B 容器不存活 | **报错 span 大量出现**；错误文字为**地址不可达类**（实测 `EHOSTUNREACH`，非"连接被拒"） | 日志归零 |
 | `latency`（注入延迟） | B 存活、可达、响应慢，延迟低于调用方超时 | span 变长、错误少 | 正常 |
-| `dep_timeout`（依赖超时） | B 存活但服务端口不可达 | 等到超时才报错（耗时 ≈ 超时值） | 一切正常、请求数降到 0 |
+| `dep_timeout`（依赖服务端口被堵） | B 存活但服务端口丢包 | **span 完全静默**：既无成功也无报错，调用方卡在 TCP 重传里；撤除后积压回放 | 日志归零 |
 | `misconfig`（错误配置） | B 配置被改（compose env / flagd 开关） | 收到错误或错误结果 | 自身 span / 日志有错 |
 | `mem_leak`（内存泄漏） | B 内存持续增长 | 先变慢后报错 | 内存曲线爬升 → OOM 重启 |
+
+> `crash` 与 `dep_timeout` 两行为 2026-08-23 实测结果，见 [fingerprints.md](fingerprints.md)。
+> 两类的分界是**「吵」与「哑」**：`crash` 期调用方 span 73 条且全部报错，`dep_timeout`
+> 期 0 条。**不可用于分辨的字段**（均已实测证否）：调用方时延（`dep_timeout` 无完成
+> span 可测）、上报心跳（服务已死 120 秒时 `heartbeat_age_s` 仍只有 5.4 s，collector
+> 在服务死后继续导出 series）、请求速率（1 分钟 scrape 在 120 秒窗内仅 2 个样本，
+> 差分跨注入边界被污染）、日志行数（两类都归零）。
+> 其余三类（`latency` / `misconfig` / `mem_leak`）的指纹仍为**未实测的预期**。
 
 ### 注入原语映射
 
@@ -153,7 +161,8 @@ recommendation, shipping, valkey-cart
 
 | class | 初值 |
 | --- | --- |
-| `crash` / `dep_timeout` | 调用方对 B 的错误 span 数或错误日志数 > N |
+| `crash` | 调用方对 B 的错误 span 数 > N（`cart` 实测建议 N = 20） |
+| `dep_timeout` | 调用方对 B 的 **span 总数**（`caller_spans_total`）降至 ≈ 0 —— 该类错误 span 恒为 0，用错误数判会永远不通过 |
 | `latency` | 调用 B 的 span p95 > 基线 × k |
 | `misconfig` | B 自身错误 span / 日志 > N |
 | `mem_leak` | B 内存 > 基线 × k |
@@ -163,6 +172,10 @@ recommendation, shipping, valkey-cart
 ### `recovered`
 
 `revert` 后 `cooldown_s` 内，同一 `symptom` 查询回落至基线，且 `injected` 探针反向通过。
+
+判定窗从 **`t_revert + 30s`** 起算，跳过撤除后的错误尾巴（实测两轮分别在
+`t_revert+6.48s` 与 `t_revert+12.42s` 结束）。从 `t_revert` 起算会把尾巴算进来，
+逼着把 N 抬高到尾巴之上，白白牺牲 symptom 的灵敏度。
 
 每卡记录 `runs[]`，每轮含 `{ts, injected, symptom, recovered}`。
 
@@ -198,6 +211,8 @@ recommendation, shipping, valkey-cart
 - [ ] `timing` 三初值（`warmup_s` / `observe_s` / `cooldown_s`）
 - [ ] 各类 `symptom` 阈值 `N` / `k`
 - [ ] 调用方超时值 — 决定 `latency` 类延迟上限与 `dep_timeout` 类 span 耗时预期
-- [ ] 五类指纹表逐类核对
+- [x] `crash` 指纹核对（2026-08-23，见 fingerprints.md）
+- [x] `dep_timeout` 指纹核对（2026-08-23，见 fingerprints.md）
+- [ ] `latency` / `misconfig` / `mem_leak` 三类指纹逐类核对
 - [ ] `mem_leak` 类容器内存指标在 Prometheus 中是否可查
 - [ ] flagd 内置故障开关清单（W2 首日收）
