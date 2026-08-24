@@ -62,6 +62,13 @@ def fetch(url, data=None, headers=None, label=""):
 # ── traces ────────────────────────────────────────────────────────────────
 PEER_KEYS = ("net.peer.name", "server.address", "peer.service")
 
+# 这些靶子是第三方镜像（PostgreSQL / Valkey），没有 SDK、不产生 server span，
+# 因此在 Jaeger 的 /api/services 里也不存在。它们的「调用方边」只能从调用方的
+# client span 的 peer 标签认出来 —— 而 PEER_KEYS 匹配本来就是这么做的，
+# 唯一要绕开的是 callers 列表里没有它们自己（本来也不该有）。
+# 记在这里是为了让「为什么这两个靶子照样有数」这件事有出处（决策 018）。
+NO_SERVER_SPAN_TARGETS = ("valkey-cart", "astronomy-db")
+
 
 def collect_traces(base, svc, t0, t1):
     """调用方打给 svc 的报错 span。
@@ -288,6 +295,31 @@ def collect_metrics(base, svc, t0, t1):
     }
 
 
+# ── 容器内存（决策 018：mem_leak 类需要，misconfig 类作旁证）──────────────
+# 指标名 container_memory_usage_total_bytes，由 collector 的 docker_stats
+# receiver 产出（collection_interval 未设，实测 10s 一个点），标签 container_name。
+# 选它而不是 container_memory_percent_ratio / _file_bytes：前者是比例、后者只是
+# page cache，都不是「用了多少」。_usage_limit_bytes 是上限不是用量。
+MEM_METRIC = "container_memory_usage_total_bytes"
+
+
+def collect_memory(base, svc, t0, t1):
+    q = f'{MEM_METRIC}{{container_name="{svc}"}}'
+    url = f"{base}/api/v1/query_range?" + urllib.parse.urlencode(
+        {"query": q, "start": t0.timestamp(), "end": t1.timestamp(), "step": 10}
+    )
+    data, err = fetch(url, label="prom:container_memory")
+    out = {"metric_used": MEM_METRIC, "first_mib": None, "last_mib": None,
+           "max_mib": None, "samples": 0, "error": err}
+    if data and data.get("status") == "success" and data["data"]["result"]:
+        vals = [float(v) / 1048576.0 for _, v in data["data"]["result"][0]["values"]]
+        if vals:
+            out.update(first_mib=round(vals[0], 1), last_mib=round(vals[-1], 1),
+                       max_mib=round(max(vals), 1), samples=len(vals),
+                       growth_mib=round(vals[-1] - vals[0], 1))
+    return out
+
+
 # ── logs ──────────────────────────────────────────────────────────────────
 def collect_logs(base, svc, t0, t1):
     body = json.dumps({
@@ -340,6 +372,7 @@ def main():
         "traces": collect_traces(env["JAEGER_BASE"], svc, t0, t1),
         "metrics": collect_metrics(env["PROM_BASE"], svc, t0, t1),
         "logs": collect_logs(env["OPENSEARCH_BASE"], svc, t0, t1),
+        "memory": collect_memory(env["PROM_BASE"], svc, t0, t1),
     }
 
     os.makedirs(out_dir, exist_ok=True)

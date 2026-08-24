@@ -186,7 +186,7 @@ scripts/out/<batch-id>/
 | --- | --- |
 | 路径 | `scripts/runner/run_batch.py`（runner 本体）、`scripts/runner/run_batch.sh`（`nohup` 包装） |
 | CLI | `run_batch.py --cycles <文件> [--batch-id ID] [--settle-s 150] [--abort-after-recovered-failures 2] [--out-root DIR]` |
-| 清单格式 | 每行 `primitive service tier [param]`，`#` 开头为注释。`primitive ∈ kill_container\|drop_inbound\|delay_outbound`，`tier ∈ debug\|full`，`param` 仅 `delay_outbound` 用（默认 800）。现成清单：`cycles_debug_cart.txt`、`cycles_full_cart.txt` |
+| 清单格式 | 每行 `primitive service tier [param]`，`#` 开头为注释。`primitive ∈ kill_container\|drop_inbound\|delay_outbound\|set_flag`，`tier ∈ debug\|full`。**第四列 `param`**：`delay_outbound` 用作延迟毫秒数（默认 800）；**`set_flag` 必填 `<flag>=<variant>`**（如 `cartFailure=50%`），类别由 flag 决定（`FLAG_CLASS` 表，决策 018）。现成清单：`cycles_debug_cart.txt`、`cycles_full_cart.txt`、`cycles_debug_flags.txt`、`cycles_full_flags.txt` |
 | 落盘 | `<out-root>/<batch-id>/<NN>_<primitive>_<service>/` 内：`window_baseline.json`、`window_during_immediate.json`、`window_during_harvest.json`、`window_after.json`、`anchors.json`（四锚点 + `settle_s` + `t_harvest` + testbed/本仓库 commit）、`probes.json`（三探针判定与依据数字 + 双快照 + `in_flight_at_revert`）、`evidence.json`（仅 `kill_container`）。批次级：`summary.json` + `summary.md` |
 | 启动 | `./scripts/runner/run_batch.sh <cycles-file> [batch-id]` → 打印 `batch_id` / `pid` / `log`；看进度 `tail -f scripts/out/<batch-id>.log` |
 | 串行保证 | `scripts/state/runner.lock` 存在即拒绝启动；`state/` 有任何原语 state 文件也拒绝启动 |

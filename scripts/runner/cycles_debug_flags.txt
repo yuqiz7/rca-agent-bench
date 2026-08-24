@@ -1,0 +1,4 @@
+# misconfig / mem_leak 通路验证（flagd 通道）
+set_flag cart debug cartFailure=50%
+set_flag recommendation debug recommendationCacheFailure=on
+set_flag email debug emailMemoryLeak=10000x

@@ -90,8 +90,8 @@ recommendation, shipping, valkey-cart
 | `crash`（杀容器）<br>**已定稿（015/016）** | B 容器不存活 | **报错 span 大量出现**；错误文字为**地址不可达类**（实测 `EHOSTUNREACH`，非"连接被拒"） | 日志归零 |
 | `latency`（注入延迟）<br>**已定稿（015/016）** | B 存活、可达、响应慢，延迟低于调用方超时 | span 变长、错误少 | 正常 |
 | `blackhole`（服务端口静默丢包）<br>**已定稿（015/016）**（原名 `dep_timeout`，决策 011 更名） | B 存活但服务端口丢包 | **span 完全静默**：既无成功也无报错，调用方卡在 TCP 重传里，无任何超时错误；撤除后积压回放 | 日志归零 |
-| `misconfig`（错误配置）<br>**原语待建，判据待实测** | B 配置被改（compose env / flagd 开关） | 收到错误或错误结果 | 自身 span / 日志有错 |
-| `mem_leak`（内存泄漏）<br>**原语待建，判据待实测** | B 内存持续增长 | 先变慢后报错 | 内存曲线爬升 → OOM 重启 |
+| `misconfig`（错误配置）<br>**原语 `set_flag` 已建（018），判据待实测** | B 配置被改（compose env / flagd 开关） | 收到错误或错误结果 | 自身 span / 日志有错 |
+| `mem_leak`（内存泄漏）<br>**原语 `set_flag` 已建（018），判据待实测** | B 内存持续增长 | 先变慢后报错 | 内存曲线爬升 → OOM 重启 |
 
 > `crash` 与 `blackhole` 两行为 2026-08-23 实测结果，见 [fingerprints.md](fingerprints.md)。
 > **观测点前提（决策 016）**：吵 / 哑在 **`immediate`**（`t_revert` 即刻）观测点判，
@@ -115,8 +115,8 @@ recommendation, shipping, valkey-cart
 | `kill_container` | `crash` |
 | `delay_outbound_on_service_port` | `latency` |
 | `drop_inbound_on_service_port` | `blackhole` |
-| `env_override` / `flagd_flag` | `misconfig` |
-| flagd 内置泄漏开关 或 `mem_hog` | `mem_leak` |
+| `set_flag`（flagd 通道，决策 018） | `misconfig` |
+| `set_flag`（`emailMemoryLeak` / `recommendationCacheFailure`，决策 018） | `mem_leak` |
 
 ### 注入作用面（硬规则）
 
@@ -182,7 +182,7 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 
 | class | 观测点 | 初值 |
 | --- | --- | --- |
-| `crash` | `harvest` | 调用方对 B 的错误 span 数 **严格 > N**（`cart` 标定 N = 20；代码 `got > CRASH_ERROR_SPANS_MIN`）。报错要等 127s 建连预算耗尽才集中出现，immediate 会看到 0 条 |
+| `crash` | `harvest` | 调用方对 B 的错误 span 数 **严格 > N**，`N = max(5, ceil(0.25 × baseline_rate_per_s × inject_s))`（决策 018；`cart` 算得 N = 27，实测报错 90 通过）。固定 20 只对高流量靶子成立，`email`/`payment`/`checkout` 被调仅 4.4/min，120s 窗内约 9 次调用永远达不到。报错要等 127s 建连预算耗尽才集中出现，immediate 会看到 0 条 |
 | `blackhole` | `immediate` | 调用方对 B 的 **span 总数**（`caller_spans_total`）**低于基线 × 0.10**（且要求基线 > 0，代码 `b > 0 and d < b*0.10`）—— 该类整链静音、错误 span 恒为 0，用错误数判会永远不通过。静音是机制性的且**只在 immediate 成立**：撤除后积压请求同一秒回放，harvest 会看到比基线还多的 span |
 | `latency` | `harvest` | 调用方 → B 的 **`caller_all_dur.p50_ms`** 相对基线**右移 ≥ `delay_ms` × 0.8**，**且报错 span 数不增**（该类只产生「慢」不产生「错」）。`cart` 800ms 入库档实测右移 p50 +800.31ms、报错 0。 |
 | `misconfig` | `harvest` | B 自身错误 span / 日志 > N |
@@ -251,4 +251,4 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 - [x] `latency` 指纹核对（2026-08-24 **入库档** `full3_cart_205013`，见 fingerprints.md）
 - [ ] `misconfig` / `mem_leak` 两类指纹逐类核对
 - [ ] `mem_leak` 类容器内存指标在 Prometheus 中是否可查
-- [ ] flagd 内置故障开关清单（W2 首日收）
+- [x] flagd 内置故障开关清单 —— 15 个，逐个定位到服务代码判断处（决策 018）

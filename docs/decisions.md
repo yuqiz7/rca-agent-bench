@@ -458,3 +458,47 @@ span 只在**结束时**导出，两类故障的可靠信号出现在**不同时
 **W2 首两项**
 1. `misconfig` / `mem_leak` 原语（flagd 通道）建成，并按 012 / 016 跑 `cart` 入库档；
 2. 靶子清单与逐靶阈值标定（含 `flagd` / `frontend-proxy` 的服务端口人工判定，见 [O-P2-4](open_items.md)）。
+
+---
+
+## 018 set_flag 原语与低流量靶子相对阈值（第一部分，2026-08-24）
+
+> `misconfig` / `mem_leak` 的 `symptom` 判据**待实测后补**（第二部分）。本条只写已定的四项。
+
+**选了什么**
+
+**1. 新原语 `scripts/primitives/set_flag.sh`（flagd 通道）。** 接口 `apply|revert|probe <service> <flag>=<variant>`，比前三个原语多一个参数。实现方式经查实而非假设：compose 里 flagd 的 command 是 `start --uri file:./etc/flagd/demo.flagd.json`，宿主机 `src/flagd` 挂到容器 `/etc/flagd`，启动日志有 `Starting filepath sync notifier`；**实测改挂载的 json 后约 6 秒内 OFREP 即返回新 variant，恢复后回原值** —— 故走「改文件 + 自动重载」，不重启容器。求值走 OFREP（容器 8016，宿主机端口由 `docker port` 动态取，compose 未钉死）。脚本内置 flag → 影响服务映射表并在 `apply` 时校验，防止把 flag 记到错的靶子上。
+
+**2. `crash` 的 `N` 由固定 20 改为相对阈值**：`N = max(5, ceil(0.25 × baseline_rate_per_s × inject_s))`。
+
+**3. 两个数据库靶子改从调用方边取信号。** `valkey-cart` 与 `astronomy-db` 是第三方镜像、无 SDK、不产生 server span，在 Jaeger 的 `/api/services` 里根本不存在。它们的 `caller_edges` 从调用方 client span 的 peer 标签匹配 —— 实测 `cart → valkey-cart` 125 条、`product-catalog → astronomy-db` 199 条（60s 窗），有数可用。
+
+**4. `flagd` / `frontend-proxy` 服务端口人工判定**：`flagd` = **8013**（各服务 `FLAGD_PORT` 指向的求值端口；8016 是 OFREP，不作靶口）；`frontend-proxy` = **8080**（`ENVOY_PORT` 主监听；10000 是 Envoy admin，不作靶口）。`service_ports.env` 的两个 `None` 已填，全表 16 项无 `None`。
+
+**为什么**
+- 固定 `N = 20` 只对 `cart` 这类高流量靶子成立。实测被调速率：`frontend` 418/min、`cart` 67/min，但 `email` / `payment` / `checkout` 只有 **4.4/min** —— 120 秒注入窗内总共约 9 次调用，**永远达不到 20**，这三个靶子的 `crash` 卡按旧阈值一张都通不过。相对阈值把 `N` 绑到该靶子自己的基线流量上。
+- `cart` 用新公式重算：基线 53 spans / 60s = 0.8833/s，`N = max(5, ceil(0.25 × 0.8833 × 120)) = 27`，harvest 报错 90 条，**90 > 27 仍通过** —— 已入库的 `cart` 结果不受影响。
+
+**放弃了什么**
+**改 flagd 的 flag 后重启 flagd 容器。** 放弃 —— 实测文件监视可用，重启会中断全部服务的 flag 求值，把单靶子注入变成全系统扰动。
+
+**trade-off**
+`set_flag` 修改的是**上游仓库里的受版本控制文件**（`src/flagd/demo.flagd.json`），不是 `compose.override.yaml`。脚本 `apply` 时备份、`revert` 时恢复，runner 的残留核对增加了一条 `git status --short src/flagd/` 必须为空 —— 三轮批次实测均干净。但这意味着**批次异常中止时该文件可能留脏**，需人工 `git checkout`。
+
+**实测记录（不作判据，供第二部分定判据用）**
+
+入库档 `fullflag_215427`，三周期 `injected` 全通过、无残留、`symptom` / `recovered` 输出「待定」：
+
+| 周期 | 类 | harvest spans / err / p50 | 内存 first→last（max） | 增长 |
+| --- | --- | --- | --- | --- |
+| `cartFailure=50%` | misconfig | 109 / **0** / 2.29ms | 62.3 → 63.9 (63.9) MiB | +1.6 MiB（0.8 MiB/min） |
+| `recommendationCacheFailure=on` | mem_leak | 52 / **0** / 5.55ms | 47.4 → 47.7 (51.9) MiB | **+0.3 MiB（0.1 MiB/min）** |
+| `emailMemoryLeak=10000x` | mem_leak | 8 / **0** / 218.71ms | 58.6 → **230.1** (230.1) MiB | **+171.5 MiB（85.8 MiB/min）** |
+
+三个容器 `RestartCount` 前后均为 0、`OOMKilled=false`。`email` 涨到 230.1 MiB，限额 512M（`resource_audit.md`），占 45%，未触碰。
+
+**三条给第二部分的实测结论**
+
+1. **`misconfig` 的症状不在调用方 span 上。** `cartFailure=50%` 的调用方报错 span 是 **0**，而 `cart` **自身** server span 123 条里有 2 条报错（`FailedPrecondition: Can't access cart storage`）。这与 §5 写的「`misconfig` = B 自身错误 span / 日志 > N」一致 —— 但 `three_signals.py` **目前没有 B 自身 span 的字段**（只有 `caller_edges` 与 `downstream_edges`），第二部分需先补 `self_edges`。
+2. **`cartFailure=50%` 的实际报错率是 1.6%，不是 50%，差 48.4 个百分点。** 原因经代码核实：该 flag 只在 `EmptyCart` 方法内判断（`src/cart/src/services/CartService.cs:74-90`），`GetCart`（90 条）与 `AddItem`（26 条）完全不受影响；`EmptyCart` 本身只被调 7 次，其中 2 次失败 = 28.6%，接近设定的 50%。**变体名里的百分比是「该方法的失败率」，不是「该服务的失败率」** —— 出题时 `ground_truth.note` 必须写清受影响的方法，否则症状量级完全对不上。
+3. **两个 `mem_leak` flag 的强度差三个量级。** `emailMemoryLeak=10000x` 85.8 MiB/min，`recommendationCacheFailure=on` 只有 0.1 MiB/min —— 后者的增长靠 `cached_ids` 列表几何增长（`recommendation_server.py:86-87` 每次 cache miss 追加自身 1/4），但 cache miss 只有 50% 概率触发，且 `recommendation` 被调仅 25.9/min，120 秒窗内攒不出可观增长。该 flag 要做成可判定的 `mem_leak` 卡，需要显著更长的 `observe_s`，或换更高流量的靶子。

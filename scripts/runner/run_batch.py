@@ -10,7 +10,7 @@ scripts/runner/run_batch.sh 包 nohup。
 判定只在 runner 侧发生：agent 永远看不到本文件产出的 probes.json 与
 anchors.json（泄漏隔离，见 fault_schema §4 与决策 015）。
 """
-import argparse, json, os, subprocess, sys, time
+import argparse, json, math, os, subprocess, sys, time
 from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # scripts/
@@ -41,16 +41,33 @@ RECOVER_SKIP_S = 30
 SETTLE_S_DEFAULT = 150
 
 # symptom 阈值，逐条抄自 fault_schema §5，改阈值请先改 §5。
-CRASH_ERROR_SPANS_MIN = 20        # §5: 调用方对 B 的错误 span 数 > N（cart 实测 N = 20）
+# §5 crash：N 由固定 20 改为按靶子基线流量算的相对阈值（决策 018）。
+# N = max(5, ceil(0.25 x baseline_rate_per_s x inject_s))
+# 固定 20 只对 cart（高流量）成立：实测 email / payment / checkout 的被调速率
+# 约 4.4/min，120 秒注入窗内总共才约 9 次调用，永远达不到 20。
+CRASH_N_FLOOR = 5
+CRASH_N_FRAC = 0.25
 BLACKHOLE_SPAN_FRAC = 0.10        # §5: caller_spans_total 低于基线 10%
 LATENCY_SHIFT_FRAC = 0.80         # §5: 耗时分布右移 ≥ delay_ms × 0.8
 # §5 未给各类 recovered 的统一数值判据，此处按"symptom 判定为假 + caller span
 # 数回到基线 50% 以上"实现，待 ⑤ 定稿后回填 §5。
 RECOVER_SPAN_FRAC = 0.50
 
-PRIMS = {"kill_container", "drop_inbound", "delay_outbound"}
+PRIMS = {"kill_container", "drop_inbound", "delay_outbound", "set_flag"}
 CLASS_OF = {"kill_container": "crash", "drop_inbound": "blackhole",
             "delay_outbound": "latency"}
+# set_flag 的类别取决于 flag：走 flagd 通道，同一原语可注 misconfig 或 mem_leak。
+# 归属来源：2026-08-24 对各服务代码中 flag 判断处的逐个复核（决策 018）。
+FLAG_CLASS = {
+    "emailMemoryLeak": "mem_leak",
+    "recommendationCacheFailure": "mem_leak",   # 复核为泄漏而非配置错：见 018
+    "cartFailure": "misconfig", "adFailure": "misconfig",
+    "paymentFailure": "misconfig", "productCatalogFailure": "misconfig",
+    "paymentUnreachable": "misconfig", "failedReadinessProbe": "misconfig",
+    "adHighCpu": "misconfig", "adManualGc": "misconfig",
+    "imageSlowLoad": "misconfig", "intlShippingSlowdown": "misconfig",
+    "kafkaQueueProblems": "misconfig",
+}
 
 
 def now(): return datetime.now(timezone.utc)
@@ -94,7 +111,13 @@ def probe_signals(svc, t0, t1, out_dir, suffix=""):
 
 
 # ── 残留核对：每类各自的方式，runner 不复用单一手法 ────────────────────────
-def residue_clean(prim, svc):
+def residue_clean(prim, svc, param=None):
+    if prim == "set_flag":
+        demo = os.path.join(os.path.dirname(REPO), "opentelemetry-demo")
+        rc, so, _ = sh(["git", "-C", demo, "status", "--short", "src/flagd/"])
+        dirty = so.strip()
+        left = [f for f in os.listdir(STATE_DIR) if f.startswith(f"{svc}.flag")]
+        return (not dirty and not left), f"flagd json dirty={bool(dirty)} state_left={left}"
     if prim == "kill_container":
         rc, so, _ = sh(["docker", "inspect", svc, "--format", "{{.State.Status}}"])
         return (rc == 0 and so.strip() == "running"), f"container status={so.strip()}"
@@ -151,7 +174,8 @@ def tcp_syn_retries(caller_svc):
 # 所以「哑」只在 immediate（t_revert 即刻）成立；撤除后积压请求同一秒全部完成
 # 并回放，harvest 反而看到比基线还多的 span。
 # crash 的报错要等 127s 建连预算耗尽才集中出现，immediate 看到 0 条。
-SYMPTOM_SNAPSHOT = {"crash": "harvest", "blackhole": "immediate", "latency": "harvest"}
+SYMPTOM_SNAPSHOT = {"crash": "harvest", "blackhole": "immediate", "latency": "harvest",
+                    "misconfig": "harvest", "mem_leak": "harvest"}
 
 
 def judge_symptom(cls, base, during, param):
@@ -162,9 +186,15 @@ def judge_symptom(cls, base, during, param):
     bt, dt_ = base["traces"], during["traces"]
     if cls == "crash":
         got = dt_.get("caller_error_spans") or 0
-        return got > CRASH_ERROR_SPANS_MIN, {
+        bsec = base["window"]["seconds"] or 1
+        brate = (bt.get("caller_spans_total") or 0) / bsec
+        inject_s = dt_["window"]["seconds"] if "window" in dt_ else during["window"]["seconds"]
+        n = max(CRASH_N_FLOOR, math.ceil(CRASH_N_FRAC * brate * inject_s))
+        return got > n, {
             "snapshot": SYMPTOM_SNAPSHOT[cls],
-            "rule": f"caller_error_spans > {CRASH_ERROR_SPANS_MIN} (§5)",
+            "rule": f"caller_error_spans > N, N = max({CRASH_N_FLOOR}, "
+                    f"ceil({CRASH_N_FRAC} x baseline_rate x inject_s)) (§5 / 决策 018)",
+            "N": n, "baseline_rate_per_s": round(brate, 4), "inject_s": inject_s,
             "during_error_spans": got, "baseline_error_spans": bt.get("caller_error_spans")}
     if cls == "blackhole":
         b = bt.get("caller_spans_total") or 0
@@ -174,6 +204,19 @@ def judge_symptom(cls, base, during, param):
             "snapshot": SYMPTOM_SNAPSHOT[cls],
             "rule": f"caller_spans_total < baseline x {BLACKHOLE_SPAN_FRAC} (§5)",
             "baseline_spans": b, "during_spans": d, "threshold": round(thr, 2)}
+    if cls in ("misconfig", "mem_leak"):
+        # 判据待决策 018 后半（本轮只落原始数字，不裁决）
+        return None, {"snapshot": SYMPTOM_SNAPSHOT.get(cls, "harvest"),
+                      "rule": "待定：misconfig / mem_leak 的 symptom 规则待决策 018 后半",
+                      "baseline": {"spans": bt.get("caller_spans_total"),
+                                   "error_spans": bt.get("caller_error_spans"),
+                                   "p50_ms": (bt.get("caller_all_dur") or {}).get("p50_ms")},
+                      "during": {"spans": dt_.get("caller_spans_total"),
+                                 "error_spans": dt_.get("caller_error_spans"),
+                                 "p50_ms": (dt_.get("caller_all_dur") or {}).get("p50_ms")},
+                      "baseline_memory": base.get("memory"),
+                      "during_memory": during.get("memory")}
+
     # latency
     bp = (bt.get("caller_all_dur") or {}).get("p50_ms")
     dp = (dt_.get("caller_all_dur") or {}).get("p50_ms")
@@ -198,6 +241,9 @@ def judge_recovered(cls, base, after, param):
     （实测 crash 18 vs 53、blackhole 32 vs 66，两次都是窗长差造成的假失败）。
     """
     sym_still, sd = judge_symptom(cls, base, after, param)
+    if sym_still is None:
+        return None, {"rule": "待定：该类 symptom 规则未定，recovered 同样待定",
+                      "symptom_detail": sd}
     bs = (base["traces"].get("caller_spans_total") or 0)
     as_ = (after["traces"].get("caller_spans_total") or 0)
     bsec = base["window"]["seconds"] or 1
@@ -227,12 +273,17 @@ def git_head(path):
 
 
 def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s):
-    cls = CLASS_OF[prim]
+    cls = (FLAG_CLASS[param.split("=", 1)[0]] if prim == "set_flag" else CLASS_OF[prim])
     tm = TIERS[tier]
     cdir = os.path.join(batch_dir, f"{idx:02d}_{prim}_{svc}")
     os.makedirs(cdir, exist_ok=True)
     script = os.path.join(PRIMITIVES, f"{prim}.sh")
-    pargs = [svc] + ([str(param)] if prim == "delay_outbound" and param else [])
+    if prim == "set_flag":
+        pargs = [svc, str(param)]
+    elif prim == "delay_outbound" and param:
+        pargs = [svc, str(param)]
+    else:
+        pargs = [svc]
 
     res = {"idx": idx, "primitive": prim, "service": svc, "class": cls,
            "tier": tier, "param": param,
@@ -306,7 +357,7 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s):
         evidence["target_ip_after"] = _ip_of(svc)
     rc, so, _ = sh([script, "probe"] + pargs)
     reverted = (parse_kv(so).get("injected") == "false")
-    clean, cdetail = residue_clean(prim, svc)
+    clean, cdetail = residue_clean(prim, svc, param)
     res["residue_clean"] = bool(reverted and clean)
     res["notes"].append(f"probe_after_revert injected={'false' if reverted else 'true'}; {cdetail}")
 
@@ -416,7 +467,15 @@ def parse_cycles(path):
             raise SystemExit(f"unknown primitive {prim!r}")
         if tier not in TIERS:
             raise SystemExit(f"unknown tier {tier!r}")
-        param = parts[3] if len(parts) > 3 else ("800" if prim == "delay_outbound" else None)
+        if prim == "set_flag":
+            if len(parts) < 4 or "=" not in parts[3]:
+                raise SystemExit(f"set_flag 需要第四列 <flag>=<variant>: {ln!r}")
+            param = parts[3]
+            fk = param.split("=", 1)[0]
+            if fk not in FLAG_CLASS:
+                raise SystemExit(f"unknown flag {fk!r}; 不在 FLAG_CLASS 表中")
+        else:
+            param = parts[3] if len(parts) > 3 else ("800" if prim == "delay_outbound" else None)
         out.append((prim, svc, tier, param))
     return out
 
@@ -430,16 +489,21 @@ def write_summary(batch_dir, batch_id, rows, aborted):
     L += ["| # | 原语 | 靶子 | 档 | injected | symptom | recovered | 无残留 | 关键数字 |",
           "| --- | --- | --- | --- | :---: | :---: | :---: | :---: | --- |"]
     def mark(v):
-        return "—" if v is None else ("通过" if v else "**失败**")
-    npass = nfail = nred = 0
+        return "待定" if v is None else ("通过" if v else "**失败**")
+    npass = nfail = nred = npend = 0
     for r in rows:
         d = ((r.get("probes") or {}).get("symptom") or {}).get("detail") or {}
         if r["class"] == "crash":
-            key = f"报错 span {d.get('during_error_spans')}（阈值 >{CRASH_ERROR_SPANS_MIN}）"
+            key = f"报错 span {d.get('during_error_spans')}（阈值 N={d.get('N')}）"
         elif r["class"] == "blackhole":
             key = f"caller span {d.get('during_spans')} / 基线 {d.get('baseline_spans')}"
-        else:
+        elif r["class"] == "latency":
             key = f"p50 右移 {d.get('shift_ms')}ms（需 ≥{d.get('required_shift_ms')}）"
+        else:
+            dm = d.get("during_memory") or {}
+            key = (f"待定｜spans {(d.get('during') or {}).get('spans')} "
+                   f"err {(d.get('during') or {}).get('error_spans')} "
+                   f"mem {dm.get('first_mib')}→{dm.get('last_mib')} MiB")
         if r.get("aborted"):
             key = r["aborted"]
         L.append(f"| {r['idx']} | `{r['primitive']}` | `{r['service']}` | {r['tier']} | "
@@ -447,11 +511,14 @@ def write_summary(batch_dir, batch_id, rows, aborted):
                  f"{mark(r['residue_clean'])} | {key} |")
         if r["recovered"] is False:
             nred += 1
-        if r["injected"] and r["symptom"] and r["recovered"] is not False:
+        if r["symptom"] is None:
+            npend += 1            # 判据待定的类别不计入通过/失败
+        elif r["injected"] and r["symptom"] and r["recovered"] is not False:
             npass += 1
         else:
             nfail += 1
-    L += ["", f"通过 {npass}　失败 {nfail}　recovered 标红 {nred}　共 {len(rows)} 周期"]
+    L += ["", f"通过 {npass}　失败 {nfail}　判据待定 {npend}　recovered 标红 {nred}　"
+              f"共 {len(rows)} 周期"]
     open(os.path.join(batch_dir, "summary.md"), "w").write("\n".join(L) + "\n")
 
 
