@@ -14,7 +14,46 @@
 
 ---
 
+## 指纹对照表 v1.0（定稿，2026-08-24，数据源 `full3_cart_205013`）
+
+三类故障在 `cart` 上的入库档实测。观测点见决策 016：`immediate` = `t_revert` 即刻，
+`harvest` = `t_end + settle`（150s）。数字逐格抄自
+`scripts/out/full3_cart_205013/*/probes.json` 与 `window_baseline.json`。
+
+| 字段 | `crash` | `blackhole` | `latency`（800ms） |
+| --- | --- | --- | --- |
+| 基线 spans / err | 53 / **0** | 45 / **0** | 69 / **0** |
+| 基线 p50 | 2.51 ms | 2.57 ms | 2.36 ms |
+| **immediate** spans / err | **89 / 89** | **0 / 0** | **120 / 0** |
+| **immediate** p50 | 0.52 ms | — | 802.67 ms |
+| **harvest** spans / err | **90 / 90** | **59 / 0** | **123 / 0** |
+| **harvest** p50 | 0.51 ms | **68 627.71 ms** | 802.67 ms |
+| **`in_flight_at_revert`** | **1** | **59** | **3** |
+| symptom 读快照 | `harvest` | `immediate` | `harvest` |
+| `recovered` 基线速率 | 0.8833 /s | 0.75 /s | 1.15 /s |
+| `recovered` 恢复速率 | 1.1 /s | 1.0333 /s | 0.9333 /s |
+| `recovered` 阈值 | ≥ 0.4417 /s | ≥ 0.375 /s | ≥ 0.575 /s |
+| **独占特征** | **有报错**：两个观测点都是 89–90 条报错 span，另两类全程 0 报错 | **撤除后积压回放**：immediate 全哑（0 条），harvest 被 59 条 p50 68.6s 的 span 填满，`in_flight` ≈ 注入期全部请求 | **常数右移无在途**：两个观测点 p50 都是 802.67ms（基线 2.36ms），报错 0，`in_flight` 仅 3 |
+
+三类九项探针全过。三个独占特征互不重叠：看报错数分出 `crash`，看 `in_flight_at_revert`
+（59 vs 1/3）分出 `blackhole`，看「两快照 p50 相同且为常数偏移」分出 `latency`。
+
+### 两条限定
+
+**1. `crash` 的耗时形态不稳定，不作判据。** 同一原语同一靶子四轮测到三种形态：
+p50 分别为 **65 786 ms / 1 529 ms / 0.51 ms**，错误文字两种（**`ETIMEDOUT`** 与
+**`EHOSTUNREACH`**）。v1.0 因此以**报错数**而非耗时形态作 `crash` 判据。成因假设
+（调用方 ARP 邻居缓存是否过期）未验证，见 [open_items.md](open_items.md) O-P2-5。
+
+**2. 本表阈值只对 `cart` 标定。** `cart` 是高流量靶子（基线约 0.75–1.15 span/s）。
+其余 15 个靶子的 `N`、`k` 与 `blackhole` 的基线比例需在 W2 **逐靶标定** ——
+低流量靶子在 120 秒注入窗内可能根本达不到 `N = 20`。
+
+---
+
 ## 指纹表
+
+> 历史过程记录，定稿见顶部「指纹对照表 v1.0」。
 
 | 字段 | **crash** baseline | **crash** during | **crash** after | **blackhole** baseline | **blackhole** during | **blackhole** after |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -53,6 +92,8 @@
 ---
 
 ## 入库档三类指纹（runner `full3_cart_205013`，settle 150s，2026-08-24）
+
+> 历史过程记录，定稿见顶部「指纹对照表 v1.0」。
 
 批次三周期九项探针全过。观测点见决策 016：`immediate` = `t_revert` 即刻，
 `harvest` = `t_end + settle`。`in_flight` = harvest 条数 − immediate 条数。
@@ -128,6 +169,8 @@
 
 ## latency / cart（调试档首跑记录，数字已由上方入库档表取代）
 
+> 历史过程记录，定稿见顶部「指纹对照表 v1.0」。
+
 原语 `delay_outbound`（`tc netem delay 800ms` 挂容器出口，u32 匹配 `tcp sport=7070`，
 只延迟 `cart` 服务端口发出的响应包），时序 **30 / 60 / 30**（调试档，非入库档）。
 `t_inject` = 2026-08-24T19:19:24Z，`t_revert` = 19:20:30Z。
@@ -165,6 +208,8 @@ during 也只有 14 条，绝对值全在 1–4ms 量级 —— 这是小样本�
 
 ## crash vs blackhole 分辨结论
 
+> 历史过程记录，定稿见顶部「指纹对照表 v1.0」。
+
 | 字段 | 可分？ | 依据 |
 | --- | --- | --- |
 | `caller_spans_total` | **可分（最强判据）** | crash 期 73 条（全部报错），blackhole 期 **0 条**。前者"吵"，后者"哑"，形态相反。 |
@@ -190,6 +235,8 @@ during 也只有 14 条，绝对值全在 1–4ms 量级 —— 这是小样本�
 ---
 
 ## symptom 探针阈值建议
+
+> 历史过程记录，定稿见顶部「指纹对照表 v1.0」。
 
 §5 现定义 `crash` / `blackhole` 的 symptom 为「调用方对 B 的错误 span 数 > N」。
 

@@ -1,10 +1,13 @@
-# 故障场景 schema v0.9
+# 故障场景 schema v1.0
 
 **修订记录**
 
 - 2026-08-24：类别 `dep_timeout` 更名 `blackhole`（决策 011）
+- 2026-08-24：**v1.0 定稿** —— 三类（`crash` / `blackhole` / `latency`）定义、三探针判据、
+  双观测点冻结（决策 017）；`misconfig` / `mem_leak` 原语待建（W2 首项）；
+  `cart` 以外靶子阈值待标定
 
-（版本号仍为 v0.9，v1.0 待 ⑤ 收口。）
+（v1.0 只冻三类；`misconfig` / `mem_leak` 补建后以 v1.1 增补。）
 
 ## §1 定位
 
@@ -84,11 +87,11 @@ recommendation, shipping, valkey-cart
 
 | class | 定义 | 调用方侧预期 | B 自身预期 |
 | --- | --- | --- | --- |
-| `crash`（杀容器） | B 容器不存活 | **报错 span 大量出现**；错误文字为**地址不可达类**（实测 `EHOSTUNREACH`，非"连接被拒"） | 日志归零 |
-| `latency`（注入延迟） | B 存活、可达、响应慢，延迟低于调用方超时 | span 变长、错误少 | 正常 |
-| `blackhole`（服务端口静默丢包）<br>（原名 `dep_timeout`，2026-08-24 决策 011 更名） | B 存活但服务端口丢包 | **span 完全静默**：既无成功也无报错，调用方卡在 TCP 重传里，无任何超时错误；撤除后积压回放 | 日志归零 |
-| `misconfig`（错误配置） | B 配置被改（compose env / flagd 开关） | 收到错误或错误结果 | 自身 span / 日志有错 |
-| `mem_leak`（内存泄漏） | B 内存持续增长 | 先变慢后报错 | 内存曲线爬升 → OOM 重启 |
+| `crash`（杀容器）<br>**已定稿（015/016）** | B 容器不存活 | **报错 span 大量出现**；错误文字为**地址不可达类**（实测 `EHOSTUNREACH`，非"连接被拒"） | 日志归零 |
+| `latency`（注入延迟）<br>**已定稿（015/016）** | B 存活、可达、响应慢，延迟低于调用方超时 | span 变长、错误少 | 正常 |
+| `blackhole`（服务端口静默丢包）<br>**已定稿（015/016）**（原名 `dep_timeout`，决策 011 更名） | B 存活但服务端口丢包 | **span 完全静默**：既无成功也无报错，调用方卡在 TCP 重传里，无任何超时错误；撤除后积压回放 | 日志归零 |
+| `misconfig`（错误配置）<br>**原语待建，判据待实测** | B 配置被改（compose env / flagd 开关） | 收到错误或错误结果 | 自身 span / 日志有错 |
+| `mem_leak`（内存泄漏）<br>**原语待建，判据待实测** | B 内存持续增长 | 先变慢后报错 | 内存曲线爬升 → OOM 重启 |
 
 > `crash` 与 `blackhole` 两行为 2026-08-23 实测结果，见 [fingerprints.md](fingerprints.md)。
 > **观测点前提（决策 016）**：吵 / 哑在 **`immediate`**（`t_revert` 即刻）观测点判，
@@ -101,8 +104,9 @@ recommendation, shipping, valkey-cart
 > 在服务死后继续导出 series）、请求速率（60s 指标粒度在 120 秒窗内仅 2 个样本，该粒度来自
 > SDK 导出间隔、经 OTLP 推送，Prometheus 无 scrape；2026-08-24 已降为 15s，见决策 013，
 > 差分跨注入边界被污染）、日志行数（两类都归零）。
-> `latency` 行的注入作用面与判据已由 2026-08-24 调试档实测（决策 014），入库档待补；
-> 其余两类（`misconfig` / `mem_leak`）的指纹仍为**未实测的预期**。
+> `crash` / `blackhole` / `latency` 三行均已由 2026-08-24 入库档实测定稿
+> （`full3_cart_205013`，三类九项探针全过，见 fingerprints.md「指纹对照表 v1.0」）；
+> `misconfig` / `mem_leak` 两行仍为**未实测的预期**，原语待建。
 
 ### 注入原语映射
 
@@ -178,9 +182,9 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 
 | class | 观测点 | 初值 |
 | --- | --- | --- |
-| `crash` | `harvest` | 调用方对 B 的错误 span 数 > N（`cart` 实测建议 N = 20）。报错要等 127s 建连预算耗尽才集中出现，immediate 会看到 0 条 |
-| `blackhole` | `immediate` | 调用方对 B 的 **span 总数**（`caller_spans_total`）**低于基线 10%** —— 该类整链静音、错误 span 恒为 0，用错误数判会永远不通过。静音是机制性的且**只在 immediate 成立**：撤除后积压请求同一秒回放，harvest 会看到比基线还多的 span |
-| `latency` | `harvest` | 调用方 → B 的耗时分布相对基线**右移 ≥ `delay_ms` × 0.8**，**且报错 span 数不增**（该类只产生「慢」不产生「错」）。`cart` 800ms 入库档实测右移 p50 +800.31ms、报错 0。 |
+| `crash` | `harvest` | 调用方对 B 的错误 span 数 **严格 > N**（`cart` 标定 N = 20；代码 `got > CRASH_ERROR_SPANS_MIN`）。报错要等 127s 建连预算耗尽才集中出现，immediate 会看到 0 条 |
+| `blackhole` | `immediate` | 调用方对 B 的 **span 总数**（`caller_spans_total`）**低于基线 × 0.10**（且要求基线 > 0，代码 `b > 0 and d < b*0.10`）—— 该类整链静音、错误 span 恒为 0，用错误数判会永远不通过。静音是机制性的且**只在 immediate 成立**：撤除后积压请求同一秒回放，harvest 会看到比基线还多的 span |
+| `latency` | `harvest` | 调用方 → B 的 **`caller_all_dur.p50_ms`** 相对基线**右移 ≥ `delay_ms` × 0.8**，**且报错 span 数不增**（该类只产生「慢」不产生「错」）。`cart` 800ms 入库档实测右移 p50 +800.31ms、报错 0。 |
 | `misconfig` | `harvest` | B 自身错误 span / 日志 > N |
 | `mem_leak` | `harvest` | B 内存 > 基线 × k |
 
@@ -193,7 +197,9 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 **按每秒速率比较，不比原始条数**（决策 016）：基线窗是 `pre` 秒（入库档 60s），
 恢复窗是 `[t_revert+30s, t_end]` 只有 30s，直接比条数等于拿 60 秒的量和 30 秒的量
 对撞，恢复正常也会判失败（实测 crash 18 vs 53、blackhole 32 vs 66 两次假失败）。
-判据：恢复窗 span 速率 ≥ 基线速率 × 50%，且该类 symptom 在恢复窗判假。
+判据：恢复窗 span 速率 ≥ 基线速率 × 50%，且该类 symptom 在恢复窗判假
+（代码 `judge_recovered`：`(not sym_still) and after_rate >= base_rate * 0.50`）。
+恢复窗只有一份快照，不适用 symptom 的 immediate / harvest 分流。
 
 `latency` 的 `recovered` 判据是**右移消失**（耗时分布回到基线量级），而非错误数回落 —— 该类全程无错误。
 
@@ -234,14 +240,15 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 
 ---
 
-## §8 待 ④ 实测确认清单
+## §8 实测核对清单
 
-- [ ] `timing` 三初值（`warmup_s` / `observe_s` / `cooldown_s`）
-- [ ] 各类 `symptom` 阈值 `N` / `k`
+- [x] `timing` 三初值 —— 60/120/60 定稿（决策 012），含 settle 的周期墙钟 390s（决策 016）
+- [x] 三类 `symptom` 阈值 —— `crash` N=20、`blackhole` 基线×0.10、`latency` delay×0.8（仅 `cart` 标定，其余靶子 W2 逐靶标定）
+- [ ] `misconfig` / `mem_leak` 的 `N` / `k`
 - [ ] 调用方超时值 — 决定 `latency` 类延迟上限。（`blackhole` 类无此项：实测服务间 gRPC 长连接未设 deadline，250 秒窗内不产生任何超时错误，无 span 耗时可言，见决策 011）
-- [x] `crash` 指纹核对（2026-08-23，见 fingerprints.md）
-- [x] `blackhole` 指纹核对（2026-08-23，见 fingerprints.md）
-- [~] `latency` 指纹核对（2026-08-24 **调试档**，见 fingerprints.md；入库档待补）
+- [x] `crash` 指纹核对（2026-08-24 入库档 `full3_cart_205013`，见 fingerprints.md）
+- [x] `blackhole` 指纹核对（2026-08-24 入库档 `full3_cart_205013`，见 fingerprints.md）
+- [x] `latency` 指纹核对（2026-08-24 **入库档** `full3_cart_205013`，见 fingerprints.md）
 - [ ] `misconfig` / `mem_leak` 两类指纹逐类核对
 - [ ] `mem_leak` 类容器内存指标在 Prometheus 中是否可查
 - [ ] flagd 内置故障开关清单（W2 首日收）

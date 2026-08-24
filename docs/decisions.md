@@ -394,7 +394,7 @@ symptom 读取快照**按类固定**：
 
 | class | 读哪份 | 判据（阈值不变） |
 | --- | --- | --- |
-| `crash` | `harvest` | 报错 span ≥ 20 |
+| `crash` | `harvest` | 报错 span **> 20**（代码为严格大于，非 ≥） |
 | `blackhole` | `immediate` | caller span < 基线 10% |
 | `latency` | `harvest` | 右移 ≥ 0.8 × delay、无报错增加 |
 
@@ -426,3 +426,35 @@ span 只在**结束时**导出，两类故障的可靠信号出现在**不同时
 
 **附**
 `crash` 错误形态两日不一致（8/23 与 `full2` 为 `EHOSTUNREACH` 双峰，8/24 `full_cart_194613` 为 `ETIMEDOUT` 无快速失败）。本轮 evidence 显示邻居缓存在注入后约 40–80s 内 `REACHABLE → INCOMPLETE → FAILED`，与「缓存失效则秒级 `EHOSTUNREACH`」假设同向，但 `ETIMEDOUT` 轮次无 evidence 对照，**待确认**（[O-P2-5](open_items.md)）。
+
+---
+
+## 017 fault_schema v1.0 冻结（2026-08-24）
+
+**选了什么**
+冻结三类故障（`crash` / `blackhole` / `latency`）的定义、三探针判据（`injected` 由原语 `probe`；`symptom` 按类读 `immediate` / `harvest` 快照；`recovered` 速率比较）、双观测点（`t_revert` 即刻、`t_end + 150s`）、周期双档（012），作为 W2 80 场景量产的标准。
+
+**此后只增不改** —— 改动需新决策并重跑受影响场景。
+
+**为什么**
+三类各有一个**独占且机制可解释**的特征（[fingerprints.md](fingerprints.md)「指纹对照表 v1.0」）：
+
+| 类 | 独占特征 | 机制 |
+| --- | --- | --- |
+| `crash` | 有报错（89–90 条），另两类全程 0 | 容器不存活，调用方连接失败 |
+| `blackhole` | 撤除后积压回放，`in_flight_at_revert` = 59 ≈ 注入期全部请求 | DROP 期间已建连接卡在 TCP 重传，撤除即全部完成 |
+| `latency` | 常数右移无在途：两快照 p50 同为 802.67ms，`in_flight` 仅 3 | netem 固定延迟，请求照常完成 |
+
+且入库档三类九项探针全过（`full3_cart_205013`）。再改 schema 就要重跑已入库场景，**量产前冻结是止损点**。
+
+**放弃了什么**
+**等 `misconfig` / `mem_leak` 两类实测后再冻结。** 放弃 —— 两类原语走 flagd 开关、机制与前三类不同（不在容器 / 网络层），等它们会拖住三类的量产。改为 **v1.0 先冻三类，两类补建后以 v1.1 增补**。
+
+**trade-off**
+阈值只对 `cart` 标定，其余靶子 W2 逐靶标定，可能出现**低流量靶子无法达到 N = 20** 的情况（fingerprints.md 已预警）。
+
+`crash` 耗时形态不稳定（四轮三态，p50 从 65 786ms 到 0.51ms，错误文字两种）未解，见 [O-P2-5](open_items.md)。v1.0 **以报错数为判据规避之** —— 报错**数**在四轮里始终稳定（73/55/74/90 量级），不稳定的只是耗时与文字。若 W3 的 agent 需要耗时形态做证据，需先解 O-P2-5。
+
+**W2 首两项**
+1. `misconfig` / `mem_leak` 原语（flagd 通道）建成，并按 012 / 016 跑 `cart` 入库档；
+2. 靶子清单与逐靶阈值标定（含 `flagd` / `frontend-proxy` 的服务端口人工判定，见 [O-P2-4](open_items.md)）。
