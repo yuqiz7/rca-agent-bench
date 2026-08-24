@@ -296,3 +296,39 @@ override 文件干净、可整体回退，但引入了 `-f` 合并顺序陷阱�
 批跑的失败发现是**滞后**的 —— 人不在场，问题要等汇总才暴露。靠两条兜底：`injected` 失败即停（注入没生效就不往下跑），`recovered` 连续失败中止批次（阈值暂定 2，**待入库档实测校准**）。
 
 批次内测得的基线**随周期变化**（每周期各自测各自的稳定期），因此指纹只保证**周期内**可比；跨批次对照需要另做双基线，留作 W2 议题。
+
+---
+
+## 013 指标导出间隔降至 15s —— 唯一有效旋钮是 SDK 的 OTEL_METRIC_EXPORT_INTERVAL（2026-08-24）
+
+**选了什么**
+在 `compose.override.yaml` 给 11 个自研服务注入 `OTEL_METRIC_EXPORT_INTERVAL=15000`；**不改** `prometheus-config.yaml` 的 `scrape_interval`、**不改** Grafana 的 `timeInterval`。
+
+spanmetrics：实测 flush 间隔 **60s**，已在 `src/otel-collector/otelcol-config-extras.yml` 追加 `connectors.span_metrics.metrics_flush_interval: 15s`（extras 是 collector 最后加载的一层，`connectors` 是 map 不是 array，可安全合并，无需改 `otelcol-config.yml`）。改后 `cart` 与 `checkout` 均实测 **15.0s**。
+
+**为什么**
+查证发现 **Prometheus 没有任何 scrape 作业**（`/api/v1/targets` 返回 `0 active` / `0 dropped`，配置文件里根本没有 `scrape_configs` 段），指标由 collector 经 OTLP HTTP 推送写入（`otelcol-config-observability.yml:26-27` 的 `otlp_http/prometheus` → `http://prometheus:9090/api/v1/otlp`，配合 `compose.observability.yaml:76` 的 `--web.enable-otlp-receiver`）。
+
+指标的 60s 节奏来自各语言 SDK 的**默认导出间隔**；`OTEL_METRIC_EXPORT_INTERVAL` 在整个上游仓库里**只被引用、从未被赋值**（两处注释把它当作 60s 的对齐锚点，`src/quote/public/index.php:71` 读它，但 `.env` 与全部 compose 文件都没设过）。
+
+降到 15s 后，120s 注入窗内采样点由约 2 个增至约 8 个，agent 的指标查询工具可用于时间定位。
+
+**放弃了什么**
+- **改 Prometheus `scrape_interval`。** 放弃 —— 无 scrape 作业，改了不生效。
+- **只改 `.env` 加变量。** 放弃 —— compose 未把该变量传入容器 `environment`，仅改 `.env` 无效；必须在 `compose.override.yaml` 里逐服务注入。
+- **降到 5s / 10s。** 放弃 —— 写入量 ×6–12，2G 限额与 009 记录的 WAL 重放 OOM 风险不值得。
+
+**trade-off**
+样本率 ×4，Prometheus 内存与 WAL 增长（改后 10 分钟实测：**MEM 332.4MiB / WAL 183.4M**，改前同日实测 **319.6MiB / 148.0M**），重启时 WAL 重放压力待下次起机复测（O-P2-3）。
+
+第三方镜像与 collector receiver 采集的指标**不受此变量控制**，间隔各异（见 O-P2-4）。
+
+**未生效服务：`currency`、`frontend`**，两者真实周期仍为 60s。原因均已查到、且都不是环境变量没送达（`docker inspect` 确认两个容器的 `Config.Env` 都含 `OTEL_METRIC_EXPORT_INTERVAL=15000`）：
+
+- `currency`（C++）：`src/currency/src/meter_common.h:26` 默认构造 `PeriodicExportingMetricReaderOptions options;`，从不设置导出间隔；`src/currency/src/` 下仅有的两处 `getenv` 是 `VERSION`（`server.cpp:94`）与 `IPV6_ENABLED`（`server.cpp:257`），**没有任何读取该变量的代码**。
+- `frontend`（Node）：`utils/telemetry/Instrumentation.js:25-27` 构造 `PeriodicExportingMetricReader({exporter})` 时**不传 `exportIntervalMillis`**；容器内 `@opentelemetry/sdk-metrics` 2.9.0 的 `PeriodicExportingMetricReader.js:27` 把 `exportIntervalMillis = 60000` 写死在解构默认值里，**该文件全文不含 `OTEL_METRIC_EXPORT_INTERVAL`**，env 永远不被查询。
+
+决策 010「指标不是分类探针信号」**不变**；指标能否用于**时间定位**待 W2 评估。
+
+**勘误**
+009 与 010 把 60s 归因于 Prometheus 的 `scrape_interval`，**不准确** —— 真实成因是 SDK 默认导出间隔，Prometheus 侧无 scrape。两条原文按 append-only 不改，以本条为准。012 正文中同类表述亦以本条为准。

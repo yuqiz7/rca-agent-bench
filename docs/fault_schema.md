@@ -94,7 +94,8 @@ recommendation, shipping, valkey-cart
 > 两类的分界是**「吵」与「哑」**：`crash` 期调用方 span 73 条且全部报错，`blackhole`
 > 期 0 条。**不可用于分辨的字段**（均已实测证否）：调用方时延（`blackhole` 无完成
 > span 可测）、上报心跳（服务已死 120 秒时 `heartbeat_age_s` 仍只有 5.4 s，collector
-> 在服务死后继续导出 series）、请求速率（1 分钟 scrape 在 120 秒窗内仅 2 个样本，
+> 在服务死后继续导出 series）、请求速率（60s 指标粒度在 120 秒窗内仅 2 个样本，该粒度来自
+> SDK 导出间隔、经 OTLP 推送，Prometheus 无 scrape；2026-08-24 已降为 15s，见决策 013，
 > 差分跨注入边界被污染）、日志行数（两类都归零）。
 > 其余三类（`latency` / `misconfig` / `mem_leak`）的指纹仍为**未实测的预期**。
 

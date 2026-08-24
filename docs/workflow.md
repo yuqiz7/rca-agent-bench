@@ -52,8 +52,8 @@
 
 ### 入库档取值依据
 
-- **注入期 120s**：Prometheus 的 `scrape_interval` 是 **60s**（决策 009 实测）。120s 窗内实测 `samples_in_window = 2`，够做计数器差分；60s 窗实测只拿到 **1 个样本**、连速率都算不出（`req_rate_per_s = null`），见 [fingerprints.md](fingerprints.md) `crash / after` 一列。
-- **恢复期 60s**：覆盖 ④ 实测的撤除尾巴 —— `crash` 撤除后 `after` 窗测到 **12 条**报错 span，末条在 **`t_revert + 12.42s`**；同时容纳 `recovered` 判定窗起点 `t_revert + 30s`，留出 30 秒判定长度。
+- **注入期 120s**：与 ④ 指纹同窗可比、为 `symptom` 阈值提供足够 span 样本；指标导出间隔已降为 **15s**（决策 013），窗内约 8 个采样点。
+- **恢复期 60s**：覆盖 ④ 实测的撤除尾巴（12s 内 12 条报错 span，末条在 `t_revert + 12.42s`）与 `recovered` 判定窗起点 `t_revert + 30s`，留出 30 秒判定长度。
 
 ### 调试档无法评估 recovered
 

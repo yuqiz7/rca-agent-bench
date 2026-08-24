@@ -60,9 +60,9 @@
 | `caller_error_spans` | **可分** | 73 vs 0。 |
 | `error_messages_top3` | **可分，但不是原假设的方式** | 不是"地址不可达类 vs 超时类"两种文字，而是 **有错误文字（`EHOSTUNREACH` ×73）vs 一条 span 都没有**。blackhole 根本不产生错误文字。 |
 | 时延分布 / p50 / p95 | **不可分** | blackhole 期无任何完成的 span，无时延可测；crash 的双峰（`<100ms` 45.2%、`>10s` 45.2%）没有可比对象。 |
-| `heartbeat_age_s` | **不可分** | crash 期 cart 已死 120 秒，`heartbeat_age_s` 却只有 **5.4 s** —— collector 在服务死后仍继续导出该 series，Prometheus 照常拿到新样本。两类的取值区间（crash 0.4→11.4、blackhole 36.5→45.5）差异完全来自 1 分钟 scrape 的相位噪声（±60s），与是否注入无关。 |
+| `heartbeat_age_s` | **不可分** | crash 期 cart 已死 120 秒，`heartbeat_age_s` 却只有 **5.4 s** —— collector 在服务死后仍继续导出该 series，Prometheus 照常拿到新样本。两类的取值区间（crash 0.4→11.4、blackhole 36.5→45.5）差异完全来自 60s 指标粒度的相位噪声（±60s），与是否注入无关。该粒度来自 SDK 导出间隔（经 OTLP 推送，Prometheus 无 scrape），2026-08-24 已降为 15s，见决策 013。 |
 | `heartbeat_samples_in_window` | **不可分** | 3 vs 6，同属相位噪声量级。 |
-| `req_rate_per_s` | **不可分** | crash 0.05、blackhole **3.4**（比自身 baseline 2.5667 还高）。1 分钟 scrape 在 120 秒窗内只有 2 个样本，差分跨越注入边界，被注入前的计数值污染。 |
+| `req_rate_per_s` | **不可分** | crash 0.05、blackhole **3.4**（比自身 baseline 2.5667 还高）。60s 指标粒度在 120 秒窗内只有 2 个样本，差分跨越注入边界，被注入前的计数值污染。该粒度来自 SDK 导出间隔（经 OTLP 推送，Prometheus 无 scrape），2026-08-24 已降为 15s，见决策 013。 |
 | `logs.log_lines` | **不可分** | 两类都归零（73→0 / 61→0）。cart 只在处理请求时记日志，请求进不来就都不记。 |
 | 撤除后的积压回放 | **可分（次要判据）** | blackhole 的 `after` 窗日志 **151** 条，是自身 baseline（61）的 2.5 倍 —— TCP 重传的请求在规则撤除后一次性涌入。crash 的 `after` 是 42 条，低于 baseline 73（容器刚重启）。 |
 

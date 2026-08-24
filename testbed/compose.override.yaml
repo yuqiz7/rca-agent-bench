@@ -11,6 +11,8 @@
 # OOM-killed on loop, blocking frontend/frontend-proxy/load-generator.
 services:
   ad:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -53,6 +55,8 @@ services:
 
   # cart: 160M -> 512M  (用量 108.0M / 67.5%, 命中 pct>50)
   cart:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -60,6 +64,8 @@ services:
 
   # checkout: 20M -> 256M  (用量 14.8M / 73.8%, 命中 pct>50+lim<=64M+forced)
   checkout:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -67,6 +73,8 @@ services:
 
   # currency: 20M -> 256M  (用量 8.2M / 41.0%, 命中 lim<=64M)
   currency:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -74,6 +82,8 @@ services:
 
   # email: 100M -> 512M  (用量 67.2M / 67.2%, 命中 pct>50)
   email:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -95,6 +105,8 @@ services:
 
   # frontend: 250M -> 768M  (用量 178.9M / 71.6%, 命中 pct>50)
   frontend:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -130,6 +142,8 @@ services:
 
   # payment: 140M -> 512M  (用量 117.9M / 84.2%, 命中 pct>50)
   payment:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -137,6 +151,8 @@ services:
 
   # product-catalog: 20M -> 256M  (用量 16.0M / 79.9%, 命中 pct>50+lim<=64M)
   product-catalog:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -144,6 +160,8 @@ services:
 
   # quote: 40M -> 256M  (用量 20.8M / 52.0%, 命中 pct>50+lim<=64M)
   quote:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -151,6 +169,8 @@ services:
 
   # shipping: 20M -> 256M  (用量 9.6M / 48.1%, 命中 lim<=64M)
   shipping:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
     deploy:
       resources:
         limits:
@@ -173,3 +193,10 @@ services:
     # 走容器网络，不需要发布到宿主机。
     ports: !override
       - "16686:16686"
+
+  # ── 指标导出间隔 15s（决策 013）────────────────────────────────────────
+  # recommendation 此前不在本覆盖文件中（资源审计未命中它），为注入
+  # OTEL_METRIC_EXPORT_INTERVAL 新增本块；不设任何其他键。
+  recommendation:
+    environment:
+      OTEL_METRIC_EXPORT_INTERVAL: "15000"
