@@ -80,11 +80,16 @@ def collect_traces(base, svc, t0, t1):
     services, err = fetch(f"{base}/api/services", label="jaeger:services")
     if not services:
         return {"error": err or "no services", "caller_error_spans": None}
-    callers = [s for s in services.get("data") or [] if s != svc]
+    all_svcs = services.get("data") or []
+    callers = [s for s in all_svcs if s != svc]
+    # 也查 svc 自己：self_edges 需要它的 server span，只靠调用方的 trace 顺带
+    # 带出来不可靠（调用方 trace 未被采样时就漏了）。
+    query_list = callers + ([svc] if svc in all_svcs else [])
 
     spans, hit_limit = {}, []
     down = {}                    # 下游边：svc 自己发出的 client span，按 peer 分组
-    for caller in callers:
+    self_srv = {}                # svc 自己的 server span，按方法分组
+    for caller in query_list:
         q = urllib.parse.urlencode(
             {"service": caller, "start": us0, "end": us1, "limit": TRACE_LIMIT_PER_CALLER}
         )
@@ -99,12 +104,22 @@ def collect_traces(base, svc, t0, t1):
                 if owner is None:
                     continue
                 if owner == svc:
-                    # svc 自己发出的下游调用：latency 类要靠它证明 sport 过滤
-                    # 生效（下游没被误伤），见决策 014。
                     st_o = sp.get("startTime")
                     if st_o is None or not (us0 <= st_o <= us1):
                         continue
                     tg = {t["key"]: t.get("value") for t in sp.get("tags") or []}
+                    if tg.get("span.kind") == "server":
+                        # svc 自己的 server span：misconfig 类的症状落在这里，
+                        # 调用方侧可能一条报错都没有（实测 cartFailure=50% 时
+                        # 调用方 0 报错、cart 自身 123 条里 2 条报错，决策 018）。
+                        # 分组键按实际标签取：ad 用 rpc.method，cart/email 用
+                        # http.route，都没有则退回 operationName。
+                        mk = (tg.get("rpc.method") or tg.get("http.route")
+                              or sp.get("operationName") or "?")
+                        self_srv.setdefault(mk, {})[sp["spanID"]] = (sp, tg)
+                        continue
+                    # svc 自己发出的下游调用：latency 类要靠它证明 sport 过滤
+                    # 生效（下游没被误伤），见决策 014。
                     if tg.get("span.kind") != "client":
                         continue
                     pr = next((tg.get(k) for k in PEER_KEYS if tg.get(k)), None)
@@ -209,6 +224,19 @@ def collect_traces(base, svc, t0, t1):
         "caller_edges": {k: edge_stats(v) for k, v in sorted(caller_edges.items())},
         "downstream_edges": {k: edge_stats(list(v.values()))
                              for k, v in sorted(down.items())},
+        # self_edges（2026-08-24 决策 018 第二部分新增）：misconfig 的判据落在
+        # server_by_method 上，与 caller_edges 是两回事。
+        "self_edges": {
+            "server_by_method": {k: edge_stats(list(v.values()))
+                                 for k, v in sorted(self_srv.items())},
+            "client_by_peer": {k: edge_stats(list(v.values()))
+                               for k, v in sorted(down.items())},
+            "server_spans_total": sum(len(v) for v in self_srv.values()),
+            "server_error_spans": sum(
+                1 for v in self_srv.values() for sp, tg in v.values()
+                if tg.get("error") is True
+                or str(tg.get("otel.status_code", "")).upper() == "ERROR"),
+        },
     }
 
 

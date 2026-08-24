@@ -53,6 +53,39 @@ LATENCY_SHIFT_FRAC = 0.80         # §5: 耗时分布右移 ≥ delay_ms × 0.8
 # 数回到基线 50% 以上"实现，待 ⑤ 定稿后回填 §5。
 RECOVER_SPAN_FRAC = 0.50
 
+# ── misconfig / mem_leak 判据（决策 018 第二部分）────────────────────────
+# misconfig：症状落在目标**自身** server span 上，不在调用方 span 上
+# （实测 cartFailure=50% 时调用方 0 报错、cart 自身 123 条里 2 条报错）。
+MISCONFIG_N_FLOOR = 2
+MISCONFIG_N_FRAC = 0.5
+# flag -> 受影响方法。来源：docs/flag_catalog.md 的逐个代码定位。
+# 值是 self_edges.server_by_method 的分组键（rpc.method 或 http.route）。
+FLAG_METHOD = {
+    "cartFailure": "/oteldemo.CartService/EmptyCart",
+    "adFailure": "GetAds",
+    "paymentFailure": "Charge",
+    "productCatalogFailure": "oteldemo.ProductCatalogService/GetProduct",
+    "paymentUnreachable": "oteldemo.CheckoutService/PlaceOrder",
+}
+# flag -> 实际生效比例。variant 名带百分比的从名字解析；这里记的是**代码里额外
+# 的固定概率**（adFailure 即使 on 也只有 1/10 请求失败，见 AdService.java:238）。
+FLAG_EXTRA_RATIO = {"adFailure": 0.1}
+
+# mem_leak：注入窗增长量阈值
+MEMLEAK_GROWTH_FLOOR_MIB = 10
+MEMLEAK_GROWTH_FRAC = 0.15
+MEMLEAK_RECOVER_SLACK_MIB_PER_MIN = 1.0
+
+
+def parse_ratio(param):
+    """从 <flag>=<variant> 解析实际生效比例。"""
+    flag, variant = param.split("=", 1)
+    if variant.endswith("%"):
+        r = float(variant[:-1]) / 100.0
+    else:
+        r = 1.0                       # on/off 型无比例
+    return flag, variant, r * FLAG_EXTRA_RATIO.get(flag, 1.0)
+
 PRIMS = {"kill_container", "drop_inbound", "delay_outbound", "set_flag"}
 CLASS_OF = {"kill_container": "crash", "drop_inbound": "blackhole",
             "delay_outbound": "latency"}
@@ -204,18 +237,42 @@ def judge_symptom(cls, base, during, param):
             "snapshot": SYMPTOM_SNAPSHOT[cls],
             "rule": f"caller_spans_total < baseline x {BLACKHOLE_SPAN_FRAC} (§5)",
             "baseline_spans": b, "during_spans": d, "threshold": round(thr, 2)}
-    if cls in ("misconfig", "mem_leak"):
-        # 判据待决策 018 后半（本轮只落原始数字，不裁决）
-        return None, {"snapshot": SYMPTOM_SNAPSHOT.get(cls, "harvest"),
-                      "rule": "待定：misconfig / mem_leak 的 symptom 规则待决策 018 后半",
-                      "baseline": {"spans": bt.get("caller_spans_total"),
-                                   "error_spans": bt.get("caller_error_spans"),
-                                   "p50_ms": (bt.get("caller_all_dur") or {}).get("p50_ms")},
-                      "during": {"spans": dt_.get("caller_spans_total"),
-                                 "error_spans": dt_.get("caller_error_spans"),
-                                 "p50_ms": (dt_.get("caller_all_dur") or {}).get("p50_ms")},
-                      "baseline_memory": base.get("memory"),
-                      "during_memory": during.get("memory")}
+    if cls == "misconfig":
+        flag, variant, ratio = parse_ratio(param)
+        method = FLAG_METHOD.get(flag)
+        bse, dse = bt.get("self_edges") or {}, dt_.get("self_edges") or {}
+        dm = (dse.get("server_by_method") or {}).get(method) or {}
+        calls = dm.get("spans") or 0
+        got = dm.get("error_spans") or 0
+        base_self_err = bse.get("server_error_spans") or 0
+        n = max(MISCONFIG_N_FLOOR, math.ceil(MISCONFIG_N_FRAC * ratio * calls))
+        ok = got >= n and base_self_err == 0
+        return ok, {"snapshot": SYMPTOM_SNAPSHOT[cls],
+                    "rule": f"self server errors on affected method >= "
+                            f"max({MISCONFIG_N_FLOOR}, ceil({MISCONFIG_N_FRAC} x ratio x calls)) "
+                            f"AND baseline self errors == 0 (§5 / 决策 018)",
+                    "flag": flag, "variant": variant, "effective_ratio": ratio,
+                    "affected_method": method, "affected_method_calls": calls,
+                    "threshold_N": n, "during_self_errors_on_method": got,
+                    "baseline_self_errors_total": base_self_err,
+                    "during_self_by_method": dse.get("server_by_method"),
+                    "during_self_client_by_peer": dse.get("client_by_peer")}
+
+    if cls == "mem_leak":
+        bm, dmem = base.get("memory") or {}, during.get("memory") or {}
+        first, last = dmem.get("first_mib"), dmem.get("last_mib")
+        growth = dmem.get("growth_mib")
+        thr = (max(MEMLEAK_GROWTH_FLOOR_MIB, MEMLEAK_GROWTH_FRAC * first)
+               if first is not None else None)
+        ok = (growth is not None and thr is not None
+              and growth >= thr and last >= first + thr)
+        return ok, {"snapshot": SYMPTOM_SNAPSHOT[cls],
+                    "rule": f"growth_mib >= max({MEMLEAK_GROWTH_FLOOR_MIB}, "
+                            f"{MEMLEAK_GROWTH_FRAC} x first_mib) AND last >= first + threshold "
+                            f"(§5 / 决策 018)",
+                    "first_mib": first, "last_mib": last, "max_mib": dmem.get("max_mib"),
+                    "growth_mib": growth, "threshold_mib": round(thr, 2) if thr else None,
+                    "baseline_memory": bm}
 
     # latency
     bp = (bt.get("caller_all_dur") or {}).get("p50_ms")
@@ -240,6 +297,26 @@ def judge_recovered(cls, base, after, param):
     直接比条数等于拿 60 秒的量和 30 秒的量对撞，恢复正常也会判失败
     （实测 crash 18 vs 53、blackhole 32 vs 66，两次都是窗长差造成的假失败）。
     """
+    if cls == "misconfig":
+        ase = after["traces"].get("self_edges") or {}
+        got = ase.get("server_error_spans") or 0
+        return got == 0, {"rule": "misconfig recovered: 恢复窗 self server 报错 == 0（决策 018）",
+                          "after_self_errors": got,
+                          "after_self_by_method": ase.get("server_by_method")}
+    if cls == "mem_leak":
+        bm, am = base.get("memory") or {}, after.get("memory") or {}
+        def rate(m, w):
+            g = m.get("growth_mib")
+            return None if g is None or not w else round(g / (w / 60.0), 3)
+        br = rate(bm, base["window"]["seconds"])
+        ar = rate(am, after["window"]["seconds"])
+        ok = (br is not None and ar is not None
+              and ar <= br + MEMLEAK_RECOVER_SLACK_MIB_PER_MIN)
+        return ok, {"rule": f"mem_leak recovered: 恢复窗增长率 <= 基线增长率 + "
+                            f"{MEMLEAK_RECOVER_SLACK_MIB_PER_MIN} MiB/min（决策 018）",
+                    "baseline_rate_mib_per_min": br, "after_rate_mib_per_min": ar,
+                    "baseline_memory": bm, "after_memory": am}
+
     sym_still, sd = judge_symptom(cls, base, after, param)
     if sym_still is None:
         return None, {"rule": "待定：该类 symptom 规则未定，recovered 同样待定",
@@ -499,11 +576,13 @@ def write_summary(batch_dir, batch_id, rows, aborted):
             key = f"caller span {d.get('during_spans')} / 基线 {d.get('baseline_spans')}"
         elif r["class"] == "latency":
             key = f"p50 右移 {d.get('shift_ms')}ms（需 ≥{d.get('required_shift_ms')}）"
+        elif r["class"] == "misconfig":
+            key = (f"{d.get('affected_method','?').split('/')[-1]} 报错 "
+                   f"{d.get('during_self_errors_on_method')}/{d.get('affected_method_calls')} "
+                   f"（阈值 N={d.get('threshold_N')}）")
         else:
-            dm = d.get("during_memory") or {}
-            key = (f"待定｜spans {(d.get('during') or {}).get('spans')} "
-                   f"err {(d.get('during') or {}).get('error_spans')} "
-                   f"mem {dm.get('first_mib')}→{dm.get('last_mib')} MiB")
+            key = (f"内存 {d.get('first_mib')}→{d.get('last_mib')} MiB "
+                   f"增长 {d.get('growth_mib')}（阈值 {d.get('threshold_mib')}）")
         if r.get("aborted"):
             key = r["aborted"]
         L.append(f"| {r['idx']} | `{r['primitive']}` | `{r['service']}` | {r['tier']} | "
@@ -528,6 +607,8 @@ def main():
     ap.add_argument("--batch-id", default=None)
     ap.add_argument("--abort-after-recovered-failures", type=int, default=2)
     ap.add_argument("--out-root", default=os.path.join(ROOT, "out"))
+    ap.add_argument("--pre-batch-hook", default="",
+                    help="批次开始前执行一次的脚本（O-P2-7）。默认空=不执行。")
     ap.add_argument("--settle-s", type=int, default=SETTLE_S_DEFAULT,
                     help="三个窗口统一推迟到 t_end+settle 查询（决策 016），默认 150")
     a = ap.parse_args()
@@ -549,6 +630,14 @@ def main():
     batch_dir = os.path.join(a.out_root, batch_id)
     os.makedirs(batch_dir, exist_ok=True)
     log(f"batch {batch_id} start; {len(cycles)} cycles -> {batch_dir}")
+
+    if a.pre_batch_hook:
+        log(f"pre-batch hook: {a.pre_batch_hook}")
+        rc, so, se = sh([a.pre_batch_hook])
+        open(os.path.join(batch_dir, "pre_batch_hook.log"), "w").write(so + se)
+        log(f"pre-batch hook rc={rc} (输出见 pre_batch_hook.log)")
+        if rc != 0:
+            raise SystemExit(f"pre-batch hook failed rc={rc}: {se.strip()[:300]}")
 
     rows, aborted, rec_fail_streak = [], None, 0
     try:

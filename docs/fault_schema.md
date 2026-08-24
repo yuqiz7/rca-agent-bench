@@ -1,4 +1,4 @@
-# 故障场景 schema v1.0
+# 故障场景 schema v1.1
 
 **修订记录**
 
@@ -6,8 +6,12 @@
 - 2026-08-24：**v1.0 定稿** —— 三类（`crash` / `blackhole` / `latency`）定义、三探针判据、
   双观测点冻结（决策 017）；`misconfig` / `mem_leak` 原语待建（W2 首项）；
   `cart` 以外靶子阈值待标定
+- 2026-08-24：**v1.1** —— `misconfig` / `mem_leak` 判据定稿（决策 018 第二部分）：
+  `misconfig` 判目标**自身** server span 的报错（不是调用方 span），`mem_leak` 判容器
+  内存增长；`mem_leak` 可用靶子**仅 `email`**（`recommendationCacheFailure` 120s 窗
+  不可判定，见 O-P2-8）
 
-（v1.0 只冻三类；`misconfig` / `mem_leak` 补建后以 v1.1 增补。）
+（v1.1 五类齐备。`misconfig` 的可用 flag 与 `mem_leak` 的靶子限制见 [flag_catalog.md](flag_catalog.md)。）
 
 ## §1 定位
 
@@ -90,8 +94,8 @@ recommendation, shipping, valkey-cart
 | `crash`（杀容器）<br>**已定稿（015/016）** | B 容器不存活 | **报错 span 大量出现**；错误文字为**地址不可达类**（实测 `EHOSTUNREACH`，非"连接被拒"） | 日志归零 |
 | `latency`（注入延迟）<br>**已定稿（015/016）** | B 存活、可达、响应慢，延迟低于调用方超时 | span 变长、错误少 | 正常 |
 | `blackhole`（服务端口静默丢包）<br>**已定稿（015/016）**（原名 `dep_timeout`，决策 011 更名） | B 存活但服务端口丢包 | **span 完全静默**：既无成功也无报错，调用方卡在 TCP 重传里，无任何超时错误；撤除后积压回放 | 日志归零 |
-| `misconfig`（错误配置）<br>**原语 `set_flag` 已建（018），判据待实测** | B 配置被改（compose env / flagd 开关） | 收到错误或错误结果 | 自身 span / 日志有错 |
-| `mem_leak`（内存泄漏）<br>**原语 `set_flag` 已建（018），判据待实测** | B 内存持续增长 | 先变慢后报错 | 内存曲线爬升 → OOM 重启 |
+| `misconfig`（错误配置）<br>**已定稿（018 第二部分）** | B 配置被改（compose env / flagd 开关） | 收到错误或错误结果 | 自身 span / 日志有错 |
+| `mem_leak`（内存泄漏）<br>**已定稿（018 第二部分）**<br>靶子仅 `email` | B 内存持续增长 | 先变慢后报错 | 内存曲线爬升 → OOM 重启 |
 
 > `crash` 与 `blackhole` 两行为 2026-08-23 实测结果，见 [fingerprints.md](fingerprints.md)。
 > **观测点前提（决策 016）**：吵 / 哑在 **`immediate`**（`t_revert` 即刻）观测点判，
@@ -185,8 +189,8 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 | `crash` | `harvest` | 调用方对 B 的错误 span 数 **严格 > N**，`N = max(5, ceil(0.25 × baseline_rate_per_s × inject_s))`（决策 018；`cart` 算得 N = 27，实测报错 90 通过）。固定 20 只对高流量靶子成立，`email`/`payment`/`checkout` 被调仅 4.4/min，120s 窗内约 9 次调用永远达不到。报错要等 127s 建连预算耗尽才集中出现，immediate 会看到 0 条 |
 | `blackhole` | `immediate` | 调用方对 B 的 **span 总数**（`caller_spans_total`）**低于基线 × 0.10**（且要求基线 > 0，代码 `b > 0 and d < b*0.10`）—— 该类整链静音、错误 span 恒为 0，用错误数判会永远不通过。静音是机制性的且**只在 immediate 成立**：撤除后积压请求同一秒回放，harvest 会看到比基线还多的 span |
 | `latency` | `harvest` | 调用方 → B 的 **`caller_all_dur.p50_ms`** 相对基线**右移 ≥ `delay_ms` × 0.8**，**且报错 span 数不增**（该类只产生「慢」不产生「错」）。`cart` 800ms 入库档实测右移 p50 +800.31ms、报错 0。 |
-| `misconfig` | `harvest` | B 自身错误 span / 日志 > N |
-| `mem_leak` | `harvest` | B 内存 > 基线 × k |
+| `misconfig` | `harvest` | **B 自身** server span 在受影响方法上的报错数 ≥ `max(2, ⌈0.5 × ratio × 该方法调用数⌉)`，**且基线窗 B 自身报错为 0**。`ratio` 由 variant 名解析，另乘代码里的固定概率（`adFailure` 即使 `on` 也只有 0.1）。受影响方法见 [flag_catalog.md](flag_catalog.md)。**症状不在调用方 span 上** —— 实测 `cartFailure=50%` 时调用方 109 条 span 零报错 |
+| `mem_leak` | `harvest` | 注入窗 `growth_mib ≥ max(10, 0.15 × first_mib)` **且** `last_mib ≥ first_mib + 阈值`（指标 `container_memory_usage_total_bytes`） |
 
 `N`、`k` 于 ④ 实测后定。
 
@@ -202,6 +206,9 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 恢复窗只有一份快照，不适用 symptom 的 immediate / harvest 分流。
 
 `latency` 的 `recovered` 判据是**右移消失**（耗时分布回到基线量级），而非错误数回落 —— 该类全程无错误。
+
+`misconfig` 的 `recovered` 判据是**恢复窗 B 自身 server 报错为 0**；
+`mem_leak` 的是**恢复窗增长率（MiB/min）≤ 基线窗增长率 + 1**。
 
 判定窗从 **`t_revert + 30s`** 起算，跳过撤除后的错误尾巴（实测两轮分别在
 `t_revert+6.48s` 与 `t_revert+12.42s` 结束）。从 `t_revert` 起算会把尾巴算进来，
@@ -244,11 +251,11 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 
 - [x] `timing` 三初值 —— 60/120/60 定稿（决策 012），含 settle 的周期墙钟 390s（决策 016）
 - [x] 三类 `symptom` 阈值 —— `crash` N=20、`blackhole` 基线×0.10、`latency` delay×0.8（仅 `cart` 标定，其余靶子 W2 逐靶标定）
-- [ ] `misconfig` / `mem_leak` 的 `N` / `k`
+- [x] `misconfig` / `mem_leak` 的判据与阈值（决策 018 第二部分）
 - [ ] 调用方超时值 — 决定 `latency` 类延迟上限。（`blackhole` 类无此项：实测服务间 gRPC 长连接未设 deadline，250 秒窗内不产生任何超时错误，无 span 耗时可言，见决策 011）
 - [x] `crash` 指纹核对（2026-08-24 入库档 `full3_cart_205013`，见 fingerprints.md）
 - [x] `blackhole` 指纹核对（2026-08-24 入库档 `full3_cart_205013`，见 fingerprints.md）
 - [x] `latency` 指纹核对（2026-08-24 **入库档** `full3_cart_205013`，见 fingerprints.md）
-- [ ] `misconfig` / `mem_leak` 两类指纹逐类核对
-- [ ] `mem_leak` 类容器内存指标在 Prometheus 中是否可查
+- [x] `misconfig` / `mem_leak` 指纹核对（2026-08-24 入库档 `judge_222727`）
+- [x] `mem_leak` 类容器内存指标 —— `container_memory_usage_total_bytes`（docker_stats receiver，标签 `container_name`，实测 10s 一个点）
 - [x] flagd 内置故障开关清单 —— 15 个，逐个定位到服务代码判断处（决策 018）

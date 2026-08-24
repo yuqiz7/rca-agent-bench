@@ -1,0 +1,5 @@
+# 018 第二部分判据验证
+set_flag cart full cartFailure=50%
+set_flag ad full adFailure=on
+set_flag email full emailMemoryLeak=1000x
+set_flag email full emailMemoryLeak=10000x

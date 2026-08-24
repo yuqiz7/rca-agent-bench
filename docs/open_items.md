@@ -18,7 +18,13 @@ W2 的建库 harness 必须在场景批次之间清理 OpenSearch 的 `otel-logs
 日志量随场景轮次**线性累积**，而 80 卡 × 每卡至少 2 轮验证（决策 004）意味着
 至少 160 轮注入观察窗的日志。抬限额只是推迟撞墙，不解决增长本身。
 
-**runner 现状**：`run_batch.py` **未留批次边界钩子**，清理动作暂无处挂载，见 O-P2-7。
+**runner 现状（2026-08-24 更新）**：`run_batch.py` 已加 `--pre-batch-hook`，
+清理动作有了挂载点，见 O-P2-7。
+
+**索引现状（2026-08-24 实测）**：仅 2 个索引、共 223 MB
+（`otel-logs-2026-08-23` 44 236 docs / 22.3 MB，`otel-logs-2026-08-24` 374 230 docs
+/ 200.6 MB）。距 `opensearch` 的 4G 限额尚远，**本轮未删任何索引**。
+一天的批次量已产出 200 MB，80 卡量产时按此速率需要定期清理，本条**保持开放**。
 
 **注意**
 清理动作必须落在**批次之间**，不能落在单卡的观察窗内 —— 窗口内删索引会把
@@ -139,5 +145,33 @@ W3 harness 设计前必裁：agent 的 `trace_query` 工具查到的是哪个时
 `run_batch.py` **目前没有**批次边界钩子 —— 批次开始/结束时不执行任何外部命令，
 因此 O-P2-1 要求的「批次之间清理 OpenSearch 日志索引」尚无处挂载。
 
-W2 建库前需要给 runner 加一个批次级 pre/post hook（或由外层调度脚本承担），
-清理动作只能落在批次之间，不得落在周期之间（原因见 [O-P2-1](#o-p2-1w2-harness-需在批次间清理-opensearch-日志索引)）。
+**2026-08-24 已实现（部分关闭）**：`run_batch.py` 新增 `--pre-batch-hook <脚本>`
+（默认空），批次开始前执行一次，输出落 `<batch>/pre_batch_hook.log`，钩子非零退出
+即中止批次。配套脚本 `scripts/maintenance/log_index_report.sh`：默认**只报告不删**，
+`--delete-older-than-days N` 才删，且排除当前写入索引（`otel-logs-<今天>`）。
+
+本轮以报告模式作为 `judge_222727` 批次的前钩子实跑，输出见该批次目录。
+
+**仍开放的部分**：只有 pre hook，**没有 post hook**；清理策略（保留几天、多大触发）
+未定，取决于 O-P2-1 的索引增长观测。
+
+---
+
+## O-P2-8　`recommendationCacheFailure` 在 120s 窗内不可判定
+
+**内容**
+`recommendationCacheFailure=on` 的内存增长实测 **+0.3 MiB / 120s = 0.1 MiB/min**
+（47.4 → 47.7 MiB），远低于 `mem_leak` 判据的 `max(10, 0.15 × first_mib)` ≈ 10 MiB。
+该 flag **不入库**，`mem_leak` 类当前**只有 `email` 一个可用靶子**。
+
+**为什么慢**
+泄漏点在 `src/recommendation/recommendation_server.py:86-87`（`cached_ids` 每次
+cache miss 追加自身 1/4，几何增长），但两个因素同时压制：cache miss 只有 50% 概率
+触发（`:80` `random.random() < 0.5`），且 `recommendation` 被调仅 **25.9 /min**。
+120 秒窗内只有约 26 次机会、其中约 13 次触发增长，攒不出可观增量。
+
+**待议**
+若 W3 需要第二个 `mem_leak` 靶子，须另议窗长 —— 几何增长意味着拉长窗口的收益是
+超线性的，但会推翻决策 012 的 60/120/60 并让 80 卡机器时间成倍上升。另一条路是
+换更高流量的靶子，但该 flag 的靶子锁死在 `recommendation`，只能改应用代码，
+而那会破坏 3.0.0 pin（决策 001）。

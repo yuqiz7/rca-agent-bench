@@ -502,3 +502,70 @@ span 只在**结束时**导出，两类故障的可靠信号出现在**不同时
 1. **`misconfig` 的症状不在调用方 span 上。** `cartFailure=50%` 的调用方报错 span 是 **0**，而 `cart` **自身** server span 123 条里有 2 条报错（`FailedPrecondition: Can't access cart storage`）。这与 §5 写的「`misconfig` = B 自身错误 span / 日志 > N」一致 —— 但 `three_signals.py` **目前没有 B 自身 span 的字段**（只有 `caller_edges` 与 `downstream_edges`），第二部分需先补 `self_edges`。
 2. **`cartFailure=50%` 的实际报错率是 1.6%，不是 50%，差 48.4 个百分点。** 原因经代码核实：该 flag 只在 `EmptyCart` 方法内判断（`src/cart/src/services/CartService.cs:74-90`），`GetCart`（90 条）与 `AddItem`（26 条）完全不受影响；`EmptyCart` 本身只被调 7 次，其中 2 次失败 = 28.6%，接近设定的 50%。**变体名里的百分比是「该方法的失败率」，不是「该服务的失败率」** —— 出题时 `ground_truth.note` 必须写清受影响的方法，否则症状量级完全对不上。
 3. **两个 `mem_leak` flag 的强度差三个量级。** `emailMemoryLeak=10000x` 85.8 MiB/min，`recommendationCacheFailure=on` 只有 0.1 MiB/min —— 后者的增长靠 `cached_ids` 列表几何增长（`recommendation_server.py:86-87` 每次 cache miss 追加自身 1/4），但 cache miss 只有 50% 概率触发，且 `recommendation` 被调仅 25.9/min，120 秒窗内攒不出可观增长。该 flag 要做成可判定的 `mem_leak` 卡，需要显著更长的 `observe_s`，或换更高流量的靶子。
+
+---
+
+## 018 第二部分：misconfig / mem_leak 判据（2026-08-24）
+
+承 018 第一部分。两类的 `symptom` / `recovered` 判据定稿，`fault_schema` 随之升 v1.1。
+
+**选了什么**
+
+**`misconfig` symptom**：`harvest` 快照中，目标**自身** server span 在**受影响方法**上的报错数
+≥ `max(2, ⌈0.5 × ratio × 该方法调用数⌉)`，**且基线窗目标自身报错为 0**。
+
+- `ratio` 由 variant 名解析（`50%` → 0.5；`on`/`off` 型取 1.0），再乘代码里的**固定概率**
+  —— `adFailure` 即使 `on` 也只有 `random.nextInt(10) == 0`，实际 ratio = **0.1**。
+- 受影响方法从 [flag_catalog.md](flag_catalog.md) 读，runner 内置 `FLAG_METHOD` 映射表。
+
+**`misconfig` recovered**：恢复窗目标自身 server 报错 = 0。
+
+**`mem_leak` symptom**：注入窗 `growth_mib ≥ max(10, 0.15 × first_mib)` **且**
+`last_mib ≥ first_mib + 阈值`。指标 `container_memory_usage_total_bytes`
+（`docker_stats` receiver，标签 `container_name`，实测 10s 一个点）。
+
+**`mem_leak` recovered**：恢复窗增长率（MiB/min）≤ 基线窗增长率 + 1。
+
+**为什么 misconfig 判目标自身 span**
+实测 `cartFailure=50%`：调用方 span **109 条、0 报错**，而 `cart` 自身 123 条里 2 条报错。
+`misconfig` 的失败被调用方吞掉了 —— 用调用方报错数判，该类的卡**一张都通不过**。
+这和 §5 原本写的「B 自身错误 span / 日志 > N」一致，只是此前 `three_signals.py`
+没有目标自身 span 的字段，本轮补了 `self_edges`。
+
+**入库档验证**（`judge_222727` + `rerun_cart_225459`）
+
+| 周期 | 受影响方法 / 内存 | 阈值 | 实测 | symptom | recovered |
+| --- | --- | ---: | ---: | --- | --- |
+| `cartFailure=50%`（首跑） | `EmptyCart` 调用 6 次 | N=2 | 报错 **0** | **失败** | 通过 |
+| `cartFailure=50%`（重跑） | `EmptyCart` 调用 4 次 | N=2 | 报错 **2** | 通过 | 通过 |
+| `adFailure=on` | `GetAds` 调用 23 次，ratio 0.1 | N=2 | 报错 **5** | 通过 | 通过 |
+| `emailMemoryLeak=1000x` | 58.5 → 94.0（max 98.7）MiB | 10 MiB | 增长 **35.5** | 通过 | 通过（基线 0.2、恢复 −3.8 MiB/min） |
+| `emailMemoryLeak=10000x` | 80.7 → 131.8（max 139.3）MiB | 12.11 MiB | 增长 **51.1** | 通过 | 通过（基线 0.6、恢复 1.4 MiB/min） |
+
+**放弃了什么**
+**用调用方报错数判 `misconfig`。** 放弃 —— 实测证否（调用方零报错）。
+
+**trade-off**
+
+**`cartFailure` 这类低调用量方法的判定天然不稳。** `EmptyCart` 只有 **3.9 /min**，
+120 秒窗内实测仅 4–6 次调用。在 p=0.5 下，6 次调用全不失败的概率是 1.6%、
+4 次调用中失败 ≥2 次的概率是 68.75% —— **首跑失败、重跑通过，两次都在概率范围内**，
+不是阈值错。做卡时该 flag 应选 `75%` 以上的 variant，或换调用量更高的方法。
+
+`misconfig` 的判据依赖 `FLAG_METHOD` 这张人工维护的映射表。表错了不会报错，只会
+把报错数统计到错的方法上导致判失败 —— 每新增一个 flag 都必须先在
+[flag_catalog.md](flag_catalog.md) 里定位到代码行再登记。
+
+**`recommendationCacheFailure` 不入库。** 实测增长 0.1 MiB/min，远低于 10 MiB 阈值。
+成因：cache miss 只有 50% 概率触发（`recommendation_server.py:80`），且该服务被调
+仅 25.9 /min，120 秒窗内攒不出量。**`mem_leak` 类当前只有 `email` 一个可用靶子**，
+见 [O-P2-8](open_items.md)。
+
+**出题要求：`cartFailure` 的百分比是方法级不是服务级。** 实测 `50%` 时 `cart` 整体
+报错率仅 1.6%（`EmptyCart` 只占全部调用的 5.7%）。`ground_truth.note` 必须写清
+受影响的方法，否则 agent 看到的症状量级与卡面描述完全对不上。
+
+**附**：`paymentUnreachable` 的症状落点与其余四个 `misconfig` flag **不同** ——
+它把 payment 客户端换成指向 `badAddress:50051`（`checkout/main.go:567-571`），
+症状在 `checkout` 的 **client span** 上，`payment` 全程正常。现有 `misconfig` 判据
+读的是 `server_by_method`，对该 flag 不适用，做卡前需单独实测确认落点。
