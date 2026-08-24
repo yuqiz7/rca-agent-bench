@@ -1,0 +1,4 @@
+# 调试档验 runner：三个原语各一周期，靶子 cart
+kill_container cart debug
+drop_inbound cart debug
+delay_outbound cart debug 800

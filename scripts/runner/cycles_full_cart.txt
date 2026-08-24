@@ -1,0 +1,4 @@
+# 入库档正式指纹：三个原语各一周期，靶子 cart
+kill_container cart full
+drop_inbound cart full
+delay_outbound cart full 800

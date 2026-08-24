@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""three_signals.py <service> <window_start_iso> <window_end_iso>
+"""three_signals.py <service> <window_start_iso> <window_end_iso> [--out-dir DIR]
 
 从 Jaeger / Prometheus / OpenSearch 三个后端采集针对单个服务的信号，输出一个 JSON。
 只用标准库（urllib/json），不装任何包。运行在宿主机，不进容器。
 
-每个查询的原始请求与原始返回落盘到 scripts/out/<ts>_<service>_<start>.json 备查。
+每个查询的原始请求与原始返回落盘到 <out-dir>/<ts>_<service>_<start>.json 备查，
+<out-dir> 默认 scripts/out，文件名格式不随 --out-dir 改变。
 """
 import json, os, sys, time, urllib.parse, urllib.request
 from collections import Counter
@@ -73,6 +74,7 @@ def collect_traces(base, svc, t0, t1):
     callers = [s for s in services.get("data") or [] if s != svc]
 
     spans, hit_limit = {}, []
+    down = {}                    # 下游边：svc 自己发出的 client span，按 peer 分组
     for caller in callers:
         q = urllib.parse.urlencode(
             {"service": caller, "start": us0, "end": us1, "limit": TRACE_LIMIT_PER_CALLER}
@@ -85,7 +87,21 @@ def collect_traces(base, svc, t0, t1):
             procs = {k: v.get("serviceName") for k, v in (tr.get("processes") or {}).items()}
             for sp in tr.get("spans") or []:
                 owner = procs.get(sp.get("processID"))
-                if owner == svc or owner is None:
+                if owner is None:
+                    continue
+                if owner == svc:
+                    # svc 自己发出的下游调用：latency 类要靠它证明 sport 过滤
+                    # 生效（下游没被误伤），见决策 014。
+                    st_o = sp.get("startTime")
+                    if st_o is None or not (us0 <= st_o <= us1):
+                        continue
+                    tg = {t["key"]: t.get("value") for t in sp.get("tags") or []}
+                    if tg.get("span.kind") != "client":
+                        continue
+                    pr = next((tg.get(k) for k in PEER_KEYS if tg.get(k)), None)
+                    if not pr or pr == svc:
+                        continue
+                    down.setdefault(pr, {})[sp["spanID"]] = (sp, tg)
                     continue
                 # span 必须自身起始于窗口内。Jaeger 返回的是与窗口相交的整条
                 # trace，不过滤会把注入期起始的长 span 算进 after 窗口
@@ -135,6 +151,28 @@ def collect_traces(base, svc, t0, t1):
         if m:
             msgs[str(m)[:200]] += 1
 
+    def edge_stats(items):
+        """一条边的 span 数 / 报错数 / 耗时分位。items: [(sp, tags), ...]"""
+        ds = sorted(x[0]["duration"] / 1000.0 for x in items)
+        ne = sum(1 for _, tg in items
+                 if tg.get("error") is True
+                 or str(tg.get("otel.status_code", "")).upper() == "ERROR")
+        m = len(ds)
+        def q(pp):
+            if not ds:
+                return None
+            k = pp / 100.0 * (m - 1)
+            lo, hi = int(k), min(int(k) + 1, m - 1)
+            return round(ds[lo] + (ds[hi] - ds[lo]) * (k - lo), 2)
+        return {"spans": m, "error_spans": ne, "min_ms": round(ds[0], 2) if ds else None,
+                "p50_ms": q(50), "p90_ms": q(90), "p95_ms": q(95),
+                "max_ms": round(ds[-1], 2) if ds else None}
+
+    caller_items = [(sp, tg) for sp, tg, _ in spans.values()]
+    caller_edges = {}
+    for sp, tg, own in spans.values():
+        caller_edges.setdefault(own, []).append((sp, tg))
+
     n = len(durs)
     buckets = {
         "pct_under_100ms": round(sum(1 for x in durs if x < 100) / n * 100, 1) if n else None,
@@ -154,6 +192,14 @@ def collect_traces(base, svc, t0, t1):
         "callers_queried": len(callers),
         "trace_limit_per_caller": TRACE_LIMIT_PER_CALLER,
         "callers_hitting_limit": hit_limit,
+        # ── 以下为 2026-08-24 新增，供 runner 按 fault_schema §5 判三探针 ──
+        # caller_all_dur 是「调用方 → svc 全部 span」的耗时分布（含成功的），
+        # 与只统计报错 span 的 caller_error_p* 不同：latency 类全程无报错，
+        # 只能靠全部 span 的分位数看右移。
+        "caller_all_dur": edge_stats(caller_items),
+        "caller_edges": {k: edge_stats(v) for k, v in sorted(caller_edges.items())},
+        "downstream_edges": {k: edge_stats(list(v.values()))
+                             for k, v in sorted(down.items())},
     }
 
 
@@ -261,10 +307,19 @@ def collect_logs(base, svc, t0, t1):
 
 
 def main():
-    if len(sys.argv) != 4:
+    argv = sys.argv[1:]
+    out_dir = OUT_DIR
+    if "--out-dir" in argv:
+        i = argv.index("--out-dir")
+        if i + 1 >= len(argv):
+            print("error: --out-dir needs a value", file=sys.stderr)
+            return 2
+        out_dir = argv[i + 1]
+        del argv[i:i + 2]
+    if len(argv) != 3:
         print(__doc__.strip(), file=sys.stderr)
         return 2
-    svc, s0, s1 = sys.argv[1], sys.argv[2], sys.argv[3]
+    svc, s0, s1 = argv[0], argv[1], argv[2]
     t0, t1 = iso_to_dt(s0), iso_to_dt(s1)
     env = load_env()
 
@@ -277,10 +332,10 @@ def main():
         "logs": collect_logs(env["OPENSEARCH_BASE"], svc, t0, t1),
     }
 
-    os.makedirs(OUT_DIR, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
     safe = s0.replace(":", "").replace("-", "")
-    path = os.path.join(OUT_DIR, f"{stamp}_{svc}_{safe}.json")
+    path = os.path.join(out_dir, f"{stamp}_{svc}_{safe}.json")
     with open(path, "w") as f:
         json.dump({"summary": out, "raw": _raw}, f, indent=1)
     out["raw_dump"] = os.path.relpath(path, ROOT)
