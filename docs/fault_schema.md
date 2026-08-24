@@ -91,6 +91,10 @@ recommendation, shipping, valkey-cart
 | `mem_leak`（内存泄漏） | B 内存持续增长 | 先变慢后报错 | 内存曲线爬升 → OOM 重启 |
 
 > `crash` 与 `blackhole` 两行为 2026-08-23 实测结果，见 [fingerprints.md](fingerprints.md)。
+> **观测点前提（决策 016）**：吵 / 哑在 **`immediate`**（`t_revert` 即刻）观测点判，
+> 即 ④ 手工测量的时刻。`blackhole` 是**注入期间哑、撤除后回放** —— 在
+> `harvest` 观测点看，它的注入窗会被积压回放填满，反而比基线还吵。
+>
 > 两类的分界是**「吵」与「哑」**：`crash` 期调用方 span 73 条且全部报错，`blackhole`
 > 期 0 条。**不可用于分辨的字段**（均已实测证否）：调用方时延（`blackhole` 无完成
 > span 可测）、上报心跳（服务已死 120 秒时 `heartbeat_age_s` 仍只有 5.4 s，collector
@@ -168,13 +172,17 @@ recommendation, shipping, valkey-cart
 
 过阈值即通过。**不得使用"系统内任意异常"类查询。**
 
-| class | 初值 |
-| --- | --- |
-| `crash` | 调用方对 B 的错误 span 数 > N（`cart` 实测建议 N = 20） |
-| `blackhole` | 调用方对 B 的 **span 总数**（`caller_spans_total`）**低于基线 10%** —— 该类整链静音、错误 span 恒为 0，用错误数判会永远不通过 |
-| `latency` | 调用方 → B 的耗时分布相对基线**右移 ≥ `delay_ms` × 0.8**，**且报错 span 数不增**（该类只产生「慢」不产生「错」）。`cart` 800ms 调试档实测右移 p50 +800.20ms、报错 0。 |
-| `misconfig` | B 自身错误 span / 日志 > N |
-| `mem_leak` | B 内存 > 基线 × k |
+**观测点（决策 016）**：注入窗查询两次 —— `immediate` = `t_revert` 即刻，
+`harvest` = `t_end + settle`（默认 150s）。基线窗与恢复窗只在 `harvest` 查。
+span 只在结束时导出，两类故障的可靠信号出现在不同时刻，单一观测点必然误判其一。
+
+| class | 观测点 | 初值 |
+| --- | --- | --- |
+| `crash` | `harvest` | 调用方对 B 的错误 span 数 > N（`cart` 实测建议 N = 20）。报错要等 127s 建连预算耗尽才集中出现，immediate 会看到 0 条 |
+| `blackhole` | `immediate` | 调用方对 B 的 **span 总数**（`caller_spans_total`）**低于基线 10%** —— 该类整链静音、错误 span 恒为 0，用错误数判会永远不通过。静音是机制性的且**只在 immediate 成立**：撤除后积压请求同一秒回放，harvest 会看到比基线还多的 span |
+| `latency` | `harvest` | 调用方 → B 的耗时分布相对基线**右移 ≥ `delay_ms` × 0.8**，**且报错 span 数不增**（该类只产生「慢」不产生「错」）。`cart` 800ms 入库档实测右移 p50 +800.31ms、报错 0。 |
+| `misconfig` | `harvest` | B 自身错误 span / 日志 > N |
+| `mem_leak` | `harvest` | B 内存 > 基线 × k |
 
 `N`、`k` 于 ④ 实测后定。
 
@@ -182,11 +190,20 @@ recommendation, shipping, valkey-cart
 
 `revert` 后 `cooldown_s` 内，同一 `symptom` 查询回落至基线，且 `injected` 探针反向通过。
 
+**按每秒速率比较，不比原始条数**（决策 016）：基线窗是 `pre` 秒（入库档 60s），
+恢复窗是 `[t_revert+30s, t_end]` 只有 30s，直接比条数等于拿 60 秒的量和 30 秒的量
+对撞，恢复正常也会判失败（实测 crash 18 vs 53、blackhole 32 vs 66 两次假失败）。
+判据：恢复窗 span 速率 ≥ 基线速率 × 50%，且该类 symptom 在恢复窗判假。
+
 `latency` 的 `recovered` 判据是**右移消失**（耗时分布回到基线量级），而非错误数回落 —— 该类全程无错误。
 
 判定窗从 **`t_revert + 30s`** 起算，跳过撤除后的错误尾巴（实测两轮分别在
 `t_revert+6.48s` 与 `t_revert+12.42s` 结束）。从 `t_revert` 起算会把尾巴算进来，
 逼着把 N 抬高到尾巴之上，白白牺牲 symptom 的灵敏度。
+
+**`in_flight_at_revert`**（决策 016 新增指纹字段）= `harvest` 条数 − `immediate` 条数，
+即注入期拨出、撤除后才结束的调用数。`blackhole` 该值等于被卡住的全部请求
+（实测 59），`crash` 与 `latency` 接近 0（实测 1 与 3）。
 
 每卡记录 `runs[]`，每轮含 `{ts, injected, symptom, recovered}`。
 

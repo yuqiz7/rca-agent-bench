@@ -52,7 +52,81 @@
 
 ---
 
-## latency / cart　（调试档，待入库档确认）
+## 入库档三类指纹（runner `full3_cart_205013`，settle 150s，2026-08-24）
+
+批次三周期九项探针全过。观测点见决策 016：`immediate` = `t_revert` 即刻，
+`harvest` = `t_end + settle`。`in_flight` = harvest 条数 − immediate 条数。
+
+| 类 | 基线（60s） | **immediate**（t_revert） | **harvest**（t_end+150s） | `in_flight_at_revert` | symptom 读 | 判定 |
+| --- | --- | --- | --- | ---: | --- | --- |
+| `crash` | 53 spans / 0 err | **89 spans / 89 err** / p50 0.52ms | **90 spans / 90 err** / p50 0.51ms | **1** | `harvest` | 通过（90 > 20） |
+| `blackhole` | 45 spans / 0 err | **0 spans / 0 err** | **59 spans / 0 err** / p50 68 627.71ms | **59** | `immediate` | 通过（0 < 4.5） |
+| `latency` | 69 spans / 0 err / p50 2.36ms | **120 spans / 0 err** / p50 802.67ms | **123 spans / 0 err** / p50 802.67ms | **3** | `harvest` | 通过（右移 +800.31ms ≥ 640） |
+
+`in_flight_at_revert` 三个数把 016 的机制讲清楚了：`blackhole` 的 **59** 条全部是被
+`DROP` 卡住、撤除后才完成的调用（harvest 里 p50 达 68.6 秒 ≈ 注入窗的一半）；
+`crash` 与 `latency` 分别只有 1 与 3 条，撤除时几乎没有在飞行中的调用。
+
+`recovered` 三类全过（按速率比较，决策 016）：
+
+| 类 | 基线速率 | 恢复窗速率 | 阈值 |
+| --- | ---: | ---: | ---: |
+| `crash` | 53/60s = 0.8833/s | 33/30s = **1.1/s** | ≥ 0.4417/s |
+| `blackhole` | 45/60s = 0.75/s | 31/30s = **1.0333/s** | ≥ 0.375/s |
+| `latency` | 69/60s = 1.15/s | 28/30s = **0.9333/s** | ≥ 0.575/s |
+
+> ④ 手工测量的数字（本文件上方各节）取自 **`t_revert` 即刻**附近，因此
+> **≈ `immediate` 观测点**，与本表 immediate 列可比，与 harvest 列不可比。
+
+### latency 下游未误伤（入库档复核）
+
+| 边 | 基线 p95 | 注入期 p95 | 偏移 |
+| --- | ---: | ---: | ---: |
+| `cart → valkey-cart` | 0.67 ms (n=138) | 0.76 ms (n=218) | **+0.09 ms** |
+| `cart → flagd` | 1.65 ms (n=18) | 1.59 ms (n=26) | **−0.06 ms** |
+
+`caller → cart` 本轮 `min 801.76 / p50 802.67 / p95 803.98 ms` —— 整体平移，最小值也抬到 801.76ms。
+
+**flagd 抖动结论更新**：调试档那轮测到 `+2.45ms`，`full2` 测到 `−0.97ms`，本轮 `−0.06ms`
+—— **两轮反向偏移，确认为小样本抖动**（基线样本仅 8–18 条、绝对值全在 1–4ms 量级），
+不是注入误伤。真正的证据是 `valkey-cart`：三轮样本 105–218 条，偏移始终在 ±0.1ms 内。
+
+### crash 错误形态 8/23 vs 8/24（结论待确认）
+
+同一原语、同一靶子，四轮测到**三种形态**：
+
+| 轮次 | 错误文字 | `<100ms` 占比 | p50 | min | max |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 8/23 ④ 手工 | `EHOSTUNREACH` | 45.2% | 5 399.08 ms | 0.4 ms | 71 449.3 ms |
+| 8/24 `full_cart_194613`（重查） | **`ETIMEDOUT`** | **0%** | 65 786.23 ms | **17 916.7 ms** | 134 909.71 ms |
+| 8/24 `full2_cart_201241` | `EHOSTUNREACH` | 50.0% | 1 529.42 ms | 0.35 ms | 71 427.91 ms |
+| 8/24 `full3_cart_205013` | `EHOSTUNREACH` | **70.0%** | **0.51 ms** | 0.29 ms | 39 204.03 ms |
+
+`evidence.json`（`full3`，钩子仅 `kill_container` 采集，只记录不判定）：
+
+```json
+{"caller":"frontend","target":"cart","target_ip_before":"172.18.0.14",
+ "caller_tcp_syn_retries":"6","target_ip_after":"172.18.0.14",
+ "neigh":[
+  {"ts":"20:51:24Z","state":"REACHABLE","entry":"172.18.0.14 dev eth0 lladdr 9e:ce:3f:17:ab:ff REACHABLE"},
+  {"ts":"20:51:54Z","state":"INCOMPLETE","entry":"172.18.0.14 dev eth0 INCOMPLETE"},
+  {"ts":"20:52:34Z","state":"FAILED",    "entry":"172.18.0.14 dev eth0 FAILED"}]}
+```
+
+`full2` 的同一钩子测到 `REACHABLE → DELAY → INCOMPLETE`（转到 INCOMPLETE 约慢 40 秒）。
+
+**观察**：两轮 `EHOSTUNREACH` 的邻居缓存都在注入后 40–80 秒内失效；`full3` 转 `FAILED`
+更快，快速失败占比也更高（70.0% vs 50.0%），方向一致。`target_ip_after` 与 before 相同，
+**IP 变更不是形态差异的原因**。
+
+**结论待确认**：`ETIMEDOUT` 那一轮**没有 evidence 对照**（钩子是之后才加的），
+假设「调用方 ARP 邻居缓存中 cart 旧 IP 是否已过期决定形态 —— 缓存有效则 SYN 发往
+空 MAC 直到 127s 建连预算耗尽（`ETIMEDOUT`），缓存 `FAILED` 则秒级 `EHOSTUNREACH`」
+尚未验证。见 [open_items.md](open_items.md) O-P2-5。
+
+---
+
+## latency / cart（调试档首跑记录，数字已由上方入库档表取代）
 
 原语 `delay_outbound`（`tc netem delay 800ms` 挂容器出口，u32 匹配 `tcp sport=7070`，
 只延迟 `cart` 服务端口发出的响应包），时序 **30 / 60 / 30**（调试档，非入库档）。

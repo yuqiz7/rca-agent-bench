@@ -358,3 +358,71 @@ u32 只匹配 TCP（`match ip protocol 6`），UDP/ICMP 不覆盖 —— 本系�
 多网卡容器需人工判定接口 —— 脚本用 `ip -o link` 取非 `lo` 接口，**多于一个即停下报错，不猜**。另外 root 已有非默认 qdisc 时拒绝执行，不覆盖别人的规则。
 
 **调试档实测**（30/60/30，靶子 `cart`，800ms，`t_inject=19:19:24Z`）：`caller → cart` 右移 **p50 +800.20ms / p90 +800.15ms / p95 +800.10ms**；注入期报错 span **0**；下游未右移（`cart → valkey-cart` p95 **+0.04ms**，`cart → flagd` p95 +2.45ms，属 1–4ms 量级的采样噪声，非 800ms 量级右移）；revert 后 `tc qdisc show dev eth0` 仅剩 `noqueue`，无残留。
+
+---
+
+## 015 批次 runner run_batch.py：三探针判定在 runner 侧、非对称失败即停（2026-08-24）
+
+**选了什么**
+Python runner，读周期清单串行执行五段周期，按 [fault_schema.md](fault_schema.md) §5 判三探针，落盘到 `out/<batch>/<cycle>/`，批次汇总。锁文件保证同一时刻只有一个批次、一个原语在 apply；`injected` 失败立即中止，`recovered` 失败标红继续、连续 2 次中止；`nohup` 包装无人值守。
+
+**为什么**
+探针判定是评测集**生产侧的入库质检**，必须与 agent 完全隔离 —— agent 只见症状与原始三信号，永远不见判定与 ground truth（泄漏隔离，见 §4 与决策 005）。
+
+失败处理刻意做成**非对称**：无效注入产出的全是废数据，所以 `injected` 失败必须停线；而一次 `recovered` 失败可能只是尾巴未散，不值得停线。
+
+**放弃了什么**
+- **shell 脚本 runner。** 放弃 —— 判定逻辑与 JSON 汇总用 bash 写易错。
+- **判定放进 `three_signals.py`。** 放弃 —— 取样器应只取样不裁决，职责分离。
+- **并行周期。** 放弃 —— 同 testbed 互相污染（012 已裁）。
+
+**trade-off**
+runner 复用原语 `probe` 做残留核对，`probe` 有误则残留漏检，靠调试档批先验。
+
+**入库档批实测**（`full3_cart_205013`，settle 150s，三周期九项全过）：`crash` 报错 span **90** 条（阈值 >20）、`blackhole` immediate caller span **0**（基线 45）、`latency` p50 右移 **+800.31ms**（需 ≥640）。
+
+**调试档与入库档判定一致性**：方向一致（crash 吵+错、blackhole 哑、latency 慢无错），但**调试档通过不保证入库档通过** —— 调试档 60s 注入窗在窗口终点即刻查询恰好捞到快速失败的报错 span 而通过，入库档 120s 窗下同样的查询时机却查到 0 条。这正是 016 双快照要解决的问题，也说明 012 定的"调试档只验通路、不进准入门"是必要的。
+
+---
+
+## 016 注入窗双快照：immediate（t_revert）+ harvest（t_end+settle，默认 150s）；各类按机制保证信号的快照判 symptom；recovered 按速率比较（2026-08-24）
+
+**选了什么**
+注入窗查询**两次** —— `t_revert` 即刻（`immediate`）与 `t_end + settle`（`harvest`）；settle 默认 **150s**（Linux `tcp_syn_retries=6` → 127s 建连重试预算 + 约 20s 导出余量，实测报错 span p95 131.9s、max 134.9s）；基线窗与恢复窗只在 harvest 查。
+
+symptom 读取快照**按类固定**：
+
+| class | 读哪份 | 判据（阈值不变） |
+| --- | --- | --- |
+| `crash` | `harvest` | 报错 span ≥ 20 |
+| `blackhole` | `immediate` | caller span < 基线 10% |
+| `latency` | `harvest` | 右移 ≥ 0.8 × delay、无报错增加 |
+
+新增指纹字段 **`in_flight_at_revert`** = harvest 条数 − immediate 条数。`recovered` 由条数比较改为**每秒速率**比较。窗长 60/120/60 不变（012 不动）。
+
+**为什么**
+span 只在**结束时**导出，两类故障的可靠信号出现在**不同时刻**：
+
+- `blackhole` 在 DROP 生效期间**机制性静音** —— 已建连接卡在 TCP 重传、不发新 SYN，所以「哑」只在 immediate 成立。撤除后积压请求在同一秒全部完成并回放：实测 harvest **59 条、无报错、p50 68.6s ≈ 窗口一半**，比基线 45 条还多。
+- `crash` 的报错要等 127s 建连预算耗尽后才集中出现，且快速失败比例受调用方 ARP 邻居缓存状态影响（实测一轮 `EHOSTUNREACH` 双峰、一轮 `ETIMEDOUT` 无快速失败）。
+
+**单一观测点必然误判其中一类**（均为实测，非推演）：t_revert 即刻查把 `crash` 判成哑（0 条，`full_cart_194613`）；t_end+settle 查把 `blackhole` 判成吵（61 条，`full2_cart_201241`）。
+
+**放弃了什么**
+- **`blackhole` 改判耗时分布。** 放弃 —— 与 `latency` 同形，只靠量级区分。
+- **按类设不同 settle。** 放弃 —— 同批次观测点不统一。
+- **新增「harvest 时刻仍未完成」计数字段。** 放弃 —— 双快照之差已等价。
+- **加长注入窗。** 放弃 —— 推翻 012 且治标。
+- **流水线收割。** 放弃 —— 复杂度上升，W2 墙钟成瓶颈时再议。
+
+**trade-off**
+每周期墙钟 240s → **390s**，80 卡机器时间约 **8.7h**（决策 004 原估算是"每卡约 8 分钟、80 卡约 11 小时"，含每卡 2 轮；单轮口径下 390s × 80 ≈ 8.7h，与该估算同量级，未推翻）。
+
+注入窗多一次**只读**查询，无系统扰动。settle 与调用方 `tcp_syn_retries` 绑定，换调用方需重校。
+
+**010 表述修正**：吵 / 哑在 **immediate 观测点**判（即 ④ 手工测量的时刻）；「blackhole 持续哑」改为「**注入期间哑、撤除后回放**」。
+
+**W3 牵连**：agent 拿到的是实时视角（immediate）还是事后视角（harvest），决定它看到的 `blackhole` 形态 —— 双快照保留两种选择，裁决留 W3（[O-P2-6](open_items.md)）。
+
+**附**
+`crash` 错误形态两日不一致（8/23 与 `full2` 为 `EHOSTUNREACH` 双峰，8/24 `full_cart_194613` 为 `ETIMEDOUT` 无快速失败）。本轮 evidence 显示邻居缓存在注入后约 40–80s 内 `REACHABLE → INCOMPLETE → FAILED`，与「缓存失效则秒级 `EHOSTUNREACH`」假设同向，但 `ETIMEDOUT` 轮次无 evidence 对照，**待确认**（[O-P2-5](open_items.md)）。

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""three_signals.py <service> <window_start_iso> <window_end_iso> [--out-dir DIR]
+"""three_signals.py <service> <window_start_iso> <window_end_iso> [--out-dir DIR] [--name-suffix S]
 
 从 Jaeger / Prometheus / OpenSearch 三个后端采集针对单个服务的信号，输出一个 JSON。
 只用标准库（urllib/json），不装任何包。运行在宿主机，不进容器。
 
 每个查询的原始请求与原始返回落盘到 <out-dir>/<ts>_<service>_<start>.json 备查，
 <out-dir> 默认 scripts/out，文件名格式不随 --out-dir 改变。
+--name-suffix 在文件名末尾追加一段（同一窗口查两次时区分快照，见决策 016），
+默认空、即文件名格式不变。
 """
 import json, os, sys, time, urllib.parse, urllib.request
 from collections import Counter
@@ -316,6 +318,14 @@ def main():
             return 2
         out_dir = argv[i + 1]
         del argv[i:i + 2]
+    name_suffix = ""
+    if "--name-suffix" in argv:
+        i = argv.index("--name-suffix")
+        if i + 1 >= len(argv):
+            print("error: --name-suffix needs a value", file=sys.stderr)
+            return 2
+        name_suffix = argv[i + 1]
+        del argv[i:i + 2]
     if len(argv) != 3:
         print(__doc__.strip(), file=sys.stderr)
         return 2
@@ -335,7 +345,7 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
     safe = s0.replace(":", "").replace("-", "")
-    path = os.path.join(out_dir, f"{stamp}_{svc}_{safe}.json")
+    path = os.path.join(out_dir, f"{stamp}_{svc}_{safe}{name_suffix}.json")
     with open(path, "w") as f:
         json.dump({"summary": out, "raw": _raw}, f, indent=1)
     out["raw_dump"] = os.path.relpath(path, ROOT)

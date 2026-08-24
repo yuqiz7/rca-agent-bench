@@ -29,6 +29,17 @@ TIERS = {
 # recovered 判定窗自 t_revert + RECOVER_SKIP_S 起算。来源：fault_schema §5。
 RECOVER_SKIP_S = 30
 
+# 三探针的观测点 = t_end + SETTLE_S，三个窗口统一在该时刻查询（决策 016）。
+# span 只在结束时才导出，注入窗内拨出的报错调用多在窗口结束后才结束 ——
+# 窗口终点即刻查询会看到 0 条（实测：即刻 0/0，5 分钟后重查同一窗口 55/55），
+# 把「终将吵」的 crash 误判成「哑」的 blackhole。
+#
+# 150s 的来源：
+#   - Linux tcp_syn_retries=6 → 建连重试预算 1+2+4+8+16+32+64 = 127s；
+#   - 实测报错 span p95 131.9s、max 134.9s（2026-08-24 入库档 crash 周期）；
+#   - 加导出落库余量约 20s。
+SETTLE_S_DEFAULT = 150
+
 # symptom 阈值，逐条抄自 fault_schema §5，改阈值请先改 §5。
 CRASH_ERROR_SPANS_MIN = 20        # §5: 调用方对 B 的错误 span 数 > N（cart 实测 N = 20）
 BLACKHOLE_SPAN_FRAC = 0.10        # §5: caller_spans_total 低于基线 10%
@@ -68,8 +79,12 @@ def parse_kv(stdout):
     return kv
 
 
-def probe_signals(svc, t0, t1, out_dir):
-    rc, so, se = sh([sys.executable, PROBE, svc, iso(t0), iso(t1), "--out-dir", out_dir])
+def probe_signals(svc, t0, t1, out_dir, suffix=""):
+    """suffix 只用于把同一窗口的两次快照的 raw 转储分开落盘（决策 016 双快照）。"""
+    cmd = [sys.executable, PROBE, svc, iso(t0), iso(t1), "--out-dir", out_dir]
+    if suffix:
+        cmd += ["--name-suffix", suffix]
+    rc, so, se = sh(cmd)
     if rc != 0:
         return None, f"three_signals rc={rc}: {se.strip()[:300]}"
     try:
@@ -96,13 +111,59 @@ def residue_clean(prim, svc):
     return (not bad), f"tc netem qdiscs={len(bad)}"
 
 
+# ── crash 证据钩子（只记录不判定，决策 016 附注 / O-P2-5）────────────────
+def _pid_of(svc):
+    rc, so, _ = sh(["docker", "inspect", svc, "--format", "{{.State.Pid}}"])
+    return so.strip() if rc == 0 else ""
+
+
+def _ip_of(svc):
+    rc, so, _ = sh(["docker", "inspect", svc, "--format",
+                    "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"])
+    return so.strip() if rc == 0 else ""
+
+
+def neigh_snapshot(caller_svc, target_ip):
+    """在 caller 的 netns 内看 target 旧 IP 的邻居缓存状态。"""
+    pid = _pid_of(caller_svc)
+    if not pid or pid == "0":
+        return {"error": f"no pid for {caller_svc}"}
+    rc, so, se = sh(["sudo", "-n", "nsenter", "-t", pid, "-n", "ip", "neigh", "show"])
+    if rc != 0:
+        return {"error": se.strip()[:200]}
+    line = next((l for l in so.splitlines() if l.split()[:1] == [target_ip]), None)
+    return {"ts": iso(now()), "target_ip": target_ip,
+            "entry": line, "state": (line.split()[-1] if line else "ABSENT")}
+
+
+def tcp_syn_retries(caller_svc):
+    pid = _pid_of(caller_svc)
+    if not pid or pid == "0":
+        return None
+    rc, so, _ = sh(["sudo", "-n", "nsenter", "-t", pid, "-n",
+                    "sysctl", "-n", "net.ipv4.tcp_syn_retries"])
+    return so.strip() if rc == 0 else None
+
+
 # ── 三探针判定，逐类按 fault_schema §5 ────────────────────────────────────
+# 各类 symptom 读哪一份注入窗快照（决策 016）。
+# blackhole 的静音是**机制性**的：DROP 生效期间已建连接卡在重传、不发新 SYN，
+# 所以「哑」只在 immediate（t_revert 即刻）成立；撤除后积压请求同一秒全部完成
+# 并回放，harvest 反而看到比基线还多的 span。
+# crash 的报错要等 127s 建连预算耗尽才集中出现，immediate 看到 0 条。
+SYMPTOM_SNAPSHOT = {"crash": "harvest", "blackhole": "immediate", "latency": "harvest"}
+
+
 def judge_symptom(cls, base, during, param):
-    """返回 (pass: bool, detail: dict)。base/during 是 three_signals 的 summary。"""
+    """返回 (pass: bool, detail: dict)。base/during 是 three_signals 的 summary。
+
+    调用方需按 SYMPTOM_SNAPSHOT[cls] 传入对应的注入窗快照。
+    """
     bt, dt_ = base["traces"], during["traces"]
     if cls == "crash":
         got = dt_.get("caller_error_spans") or 0
         return got > CRASH_ERROR_SPANS_MIN, {
+            "snapshot": SYMPTOM_SNAPSHOT[cls],
             "rule": f"caller_error_spans > {CRASH_ERROR_SPANS_MIN} (§5)",
             "during_error_spans": got, "baseline_error_spans": bt.get("caller_error_spans")}
     if cls == "blackhole":
@@ -110,6 +171,7 @@ def judge_symptom(cls, base, during, param):
         d = dt_.get("caller_spans_total") or 0
         thr = b * BLACKHOLE_SPAN_FRAC
         return (b > 0 and d < thr), {
+            "snapshot": SYMPTOM_SNAPSHOT[cls],
             "rule": f"caller_spans_total < baseline x {BLACKHOLE_SPAN_FRAC} (§5)",
             "baseline_spans": b, "during_spans": d, "threshold": round(thr, 2)}
     # latency
@@ -120,7 +182,8 @@ def judge_symptom(cls, base, during, param):
     shift = (dp - bp) if (bp is not None and dp is not None) else None
     err_ok = (dt_.get("caller_error_spans") or 0) <= (bt.get("caller_error_spans") or 0)
     ok = shift is not None and shift >= need and err_ok
-    return ok, {"rule": f"p50 shift >= delay x {LATENCY_SHIFT_FRAC} and errors not up (§5)",
+    return ok, {"snapshot": SYMPTOM_SNAPSHOT[cls],
+                "rule": f"p50 shift >= delay x {LATENCY_SHIFT_FRAC} and errors not up (§5)",
                 "baseline_p50_ms": bp, "during_p50_ms": dp,
                 "shift_ms": round(shift, 2) if shift is not None else None,
                 "required_shift_ms": need, "errors_not_up": err_ok,
@@ -128,15 +191,26 @@ def judge_symptom(cls, base, during, param):
 
 
 def judge_recovered(cls, base, after, param):
+    """按**每秒速率**比较，不比原始条数。
+
+    基线窗是 pre 秒（入库档 60s），恢复窗是 [t_revert+30s, t_end] 只有 30s ——
+    直接比条数等于拿 60 秒的量和 30 秒的量对撞，恢复正常也会判失败
+    （实测 crash 18 vs 53、blackhole 32 vs 66，两次都是窗长差造成的假失败）。
+    """
     sym_still, sd = judge_symptom(cls, base, after, param)
-    b = (base["traces"].get("caller_spans_total") or 0)
-    a = (after["traces"].get("caller_spans_total") or 0)
-    span_back = b > 0 and a >= b * RECOVER_SPAN_FRAC
+    bs = (base["traces"].get("caller_spans_total") or 0)
+    as_ = (after["traces"].get("caller_spans_total") or 0)
+    bsec = base["window"]["seconds"] or 1
+    asec = after["window"]["seconds"] or 1
+    brate, arate = bs / bsec, as_ / asec
+    span_back = brate > 0 and arate >= brate * RECOVER_SPAN_FRAC
     return (not sym_still) and span_back, {
-        "rule": f"symptom false in recover window AND caller_spans_total >= baseline x {RECOVER_SPAN_FRAC}"
+        "rule": f"symptom false in recover window AND caller span RATE >= baseline rate x {RECOVER_SPAN_FRAC}"
                 " (§5 未给数值判据，此处为 runner 实现，待 ⑤ 定稿回填)",
         "symptom_still_true": sym_still, "symptom_detail": sd,
-        "baseline_spans": b, "after_spans": a}
+        "baseline_window_s": bsec, "baseline_spans": bs, "baseline_rate_per_s": round(brate, 4),
+        "after_window_s": asec, "after_spans": as_, "after_rate_per_s": round(arate, 4),
+        "required_rate_per_s": round(brate * RECOVER_SPAN_FRAC, 4)}
 
 
 def sleep_until(target):
@@ -152,7 +226,7 @@ def git_head(path):
     return so.strip() if rc == 0 else "unknown"
 
 
-def run_cycle(idx, prim, svc, tier, param, batch_dir):
+def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s):
     cls = CLASS_OF[prim]
     tm = TIERS[tier]
     cdir = os.path.join(batch_dir, f"{idx:02d}_{prim}_{svc}")
@@ -168,13 +242,17 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir):
     t0 = now()
     log(f"cycle {idx} {prim}/{svc} tier={tier} param={param} t0={iso(t0)}")
 
-    # ── 稳定期 → 基线窗 ──
+    # 证据钩子（只 kill_container，只记录不判定）
+    evidence = None
+    if prim == "kill_container":
+        evidence = {"caller": "frontend", "target": svc,
+                    "target_ip_before": _ip_of(svc),
+                    "caller_tcp_syn_retries": tcp_syn_retries("frontend"),
+                    "neigh": []}
+
+    # ── 稳定期（窗口起止照记，查询推迟到 t_end+settle）──
     sleep_until(t0 + timedelta(seconds=tm["pre"]))
-    base, err = probe_signals(svc, t0, now(), cdir)
-    if err:
-        res["aborted"] = f"baseline probe failed: {err}"
-        return res, None
-    json.dump(base, open(os.path.join(cdir, "window_baseline.json"), "w"), indent=1)
+    base_win = (t0, now())
 
     # ── apply ──
     rc, so, se = sh([script, "apply"] + pargs)
@@ -185,8 +263,15 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir):
     kv = parse_kv(so)
     t_apply = now()
 
-    # ── 注入期中段 probe（injected）──
-    sleep_until(t_apply + timedelta(seconds=tm["inject"] // 2))
+    # ── 注入期中段 probe（injected）；沿途抓三次邻居缓存 ──
+    for off in (10, 40, 80):
+        if off >= tm["inject"]:
+            break
+        sleep_until(t_apply + timedelta(seconds=off))
+        if evidence is not None:
+            evidence["neigh"].append(neigh_snapshot("frontend",
+                                                    evidence["target_ip_before"]))
+    sleep_until(t_apply + timedelta(seconds=max(tm["inject"] // 2, 80)))
     rc, so, se = sh([script, "probe"] + pargs)
     res["injected"] = (parse_kv(so).get("injected") == "true")
     if not res["injected"]:
@@ -195,14 +280,9 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir):
         res["aborted"] = "injected=false at mid-inject; batch aborted"
         return res, None
 
-    # ── 注入窗 ──
+    # ── 注入窗（只记窗口起止）──
     sleep_until(t_apply + timedelta(seconds=tm["inject"]))
-    during, err = probe_signals(svc, t_apply, now(), cdir)
-    if err:
-        sh([script, "revert"] + pargs)
-        res["aborted"] = f"during probe failed: {err}"
-        return res, None
-    json.dump(during, open(os.path.join(cdir, "window_during.json"), "w"), indent=1)
+    during_win = (t_apply, now())
 
     # ── revert ──
     rc, so, se = sh([script, "revert"] + pargs)
@@ -211,6 +291,19 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir):
         res["aborted"] = f"revert rc={rc}: {se.strip()[:300]}"
         return res, None
 
+    # ── 注入窗快照①：immediate（t_revert 即刻）──
+    # blackhole 的静音只在这一刻可见，撤除后积压请求就会回放填满注入窗。
+    t_q_imm = now()
+    during_imm, err = probe_signals(svc, during_win[0], during_win[1], cdir,
+                                    suffix="_immediate")
+    if err:
+        res["aborted"] = f"during(immediate) probe failed: {err}"
+        return res, None
+    json.dump(during_imm,
+              open(os.path.join(cdir, "window_during_immediate.json"), "w"), indent=1)
+
+    if evidence is not None:
+        evidence["target_ip_after"] = _ip_of(svc)
     rc, so, _ = sh([script, "probe"] + pargs)
     reverted = (parse_kv(so).get("injected") == "false")
     clean, cdetail = residue_clean(prim, svc)
@@ -220,27 +313,69 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir):
     # ── 恢复期 → 恢复窗 [t_revert+30s, t_end] ──
     t_end = t_revert + timedelta(seconds=tm["post"])
     rec_start = t_revert + timedelta(seconds=RECOVER_SKIP_S)
-    if rec_start >= t_end:
-        res["recovered"] = None
+    sleep_until(t_end)
+    after_win = None if rec_start >= t_end else (rec_start, t_end)
+    if after_win is None:
         res["notes"].append(
             f"recover window empty: t_revert+{RECOVER_SKIP_S}s >= t_end (post={tm['post']}s); "
             "workflow.md §3 已记：调试档结构上无法评估 recovered")
-        sleep_until(t_end)
-        after = None
-    else:
-        sleep_until(t_end)
-        after, err = probe_signals(svc, rec_start, t_end, cdir)
+
+    # ── 统一收割：三个窗口一律在 t_end + settle_s 查询（决策 016）──
+    t_harvest = t_end + timedelta(seconds=settle_s)
+    if settle_s > 0:
+        log(f"cycle {idx} settle {settle_s}s -> harvest at {iso(t_harvest)}")
+        sleep_until(t_harvest)
+    t_harvest = now()
+
+    base, err = probe_signals(svc, base_win[0], base_win[1], cdir)
+    if err:
+        res["aborted"] = f"baseline probe failed: {err}"
+        return res, None
+    json.dump(base, open(os.path.join(cdir, "window_baseline.json"), "w"), indent=1)
+
+    # ── 注入窗快照②：harvest（t_end+settle）──
+    t_q_harv = now()
+    during_harv, err = probe_signals(svc, during_win[0], during_win[1], cdir,
+                                     suffix="_harvest")
+    if err:
+        res["aborted"] = f"during(harvest) probe failed: {err}"
+        return res, None
+    json.dump(during_harv,
+              open(os.path.join(cdir, "window_during_harvest.json"), "w"), indent=1)
+
+    after = None
+    if after_win is not None:
+        after, err = probe_signals(svc, after_win[0], after_win[1], cdir)
         if err:
             res["aborted"] = f"after probe failed: {err}"
             return res, None
         json.dump(after, open(os.path.join(cdir, "window_after.json"), "w"), indent=1)
+    else:
+        res["recovered"] = None
 
     # ── 判定 ──
     # probe_signals 返回的就是 three_signals 打到 stdout 的 summary 本体
-    sym_ok, sym_d = judge_symptom(cls, base, during, param)
+    snap = {"immediate": during_imm, "harvest": during_harv}[SYMPTOM_SNAPSHOT[cls]]
+    sym_ok, sym_d = judge_symptom(cls, base, snap, param)
     res["symptom"] = sym_ok
+    def snap_nums(d):
+        t = d["traces"]
+        return {"spans": t.get("caller_spans_total"),
+                "error_spans": t.get("caller_error_spans"),
+                "p50_ms": (t.get("caller_all_dur") or {}).get("p50_ms")}
+
+    imm_n, harv_n = snap_nums(during_imm), snap_nums(during_harv)
+    in_flight = (harv_n["spans"] or 0) - (imm_n["spans"] or 0)
+    res["in_flight_at_revert"] = in_flight
     probes = {"injected": {"pass": res["injected"], "detail": "primitive probe injected=true"},
-              "symptom": {"pass": sym_ok, "detail": sym_d}}
+              "symptom": {"pass": sym_ok, "detail": sym_d},
+              "inject_immediate": imm_n,
+              "inject_harvest": harv_n,
+              # 撤除时仍在飞行中的调用数：harvest 比 immediate 多出来的 span，
+              # 即注入期拨出、撤除后才结束的那些。
+              "in_flight_at_revert": in_flight,
+              "t_query_immediate": iso(t_q_imm),
+              "t_query_harvest": iso(t_q_harv)}
     if after is not None:
         rec_ok, rec_d = judge_recovered(cls, base, after, param)
         res["recovered"] = rec_ok
@@ -249,7 +384,8 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir):
         probes["recovered"] = {"pass": None, "detail": "recover window empty (debug tier)"}
 
     anchors = {"t0": iso(t0), "t_apply": iso(t_apply), "t_revert": iso(t_revert),
-               "t_end": iso(t_end), "tier": tier, "primitive": prim, "service": svc,
+               "t_end": iso(t_end), "settle_s": settle_s, "t_harvest": iso(t_harvest),
+               "tier": tier, "primitive": prim, "service": svc,
                "param": param, "class": cls,
                "testbed": {"repo": "opentelemetry-demo", "tag": "3.0.0",
                            "branch": "p2-baseline",
@@ -258,6 +394,8 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir):
                "p2_rca_commit": git_head(REPO)}
     json.dump(anchors, open(os.path.join(cdir, "anchors.json"), "w"), indent=1)
     json.dump(probes, open(os.path.join(cdir, "probes.json"), "w"), indent=1)
+    if evidence is not None:
+        json.dump(evidence, open(os.path.join(cdir, "evidence.json"), "w"), indent=1)
     res["probes"] = probes
     log(f"cycle {idx} done injected={res['injected']} symptom={res['symptom']} "
         f"recovered={res['recovered']} residue_clean={res['residue_clean']}")
@@ -323,6 +461,8 @@ def main():
     ap.add_argument("--batch-id", default=None)
     ap.add_argument("--abort-after-recovered-failures", type=int, default=2)
     ap.add_argument("--out-root", default=os.path.join(ROOT, "out"))
+    ap.add_argument("--settle-s", type=int, default=SETTLE_S_DEFAULT,
+                    help="三个窗口统一推迟到 t_end+settle 查询（决策 016），默认 150")
     a = ap.parse_args()
 
     cycles = parse_cycles(a.cycles)
@@ -346,7 +486,7 @@ def main():
     rows, aborted, rec_fail_streak = [], None, 0
     try:
         for i, (prim, svc, tier, param) in enumerate(cycles, 1):
-            r, _ = run_cycle(i, prim, svc, tier, param, batch_dir)
+            r, _ = run_cycle(i, prim, svc, tier, param, batch_dir, a.settle_s)
             rows.append(r)
             if r.get("aborted"):
                 aborted = f"cycle {i}: {r['aborted']}"

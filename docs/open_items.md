@@ -18,6 +18,8 @@ W2 的建库 harness 必须在场景批次之间清理 OpenSearch 的 `otel-logs
 日志量随场景轮次**线性累积**，而 80 卡 × 每卡至少 2 轮验证（决策 004）意味着
 至少 160 轮注入观察窗的日志。抬限额只是推迟撞墙，不解决增长本身。
 
+**runner 现状**：`run_batch.py` **未留批次边界钩子**，清理动作暂无处挂载，见 O-P2-7。
+
 **注意**
 清理动作必须落在**批次之间**，不能落在单卡的观察窗内 —— 窗口内删索引会把
 `logs.log_lines` 这个信号直接抹掉，而它是确认注入生效的信号之一（`crash` 与
@@ -78,3 +80,64 @@ WAL 由 **148.0M → 183.4M**、TSDB 由 **351.1M → 406.5M**、MEM 由 **319.6
 是否需要把这些统一到 15s，待 W2 按靶子清单裁决 —— 取决于哪些靶子的哪些指标真的会被
 agent 的 `metrics_query` 工具用于时间定位。`currency` 与 `frontend` 若要生效，只能改
 应用代码（显式传入间隔），而那会破坏 3.0.0 pin 的复现锚点（见决策 001、011）。
+
+---
+
+## O-P2-5　crash 错误形态两日不一致，ARP 邻居缓存假设待验证
+
+**内容**
+同一原语（`kill_container`）、同一靶子（`cart`），四轮测到三种错误形态：
+
+| 轮次 | 错误文字 | `<100ms` 占比 | p50 |
+| --- | --- | ---: | ---: |
+| 8/23 ④ 手工 | `EHOSTUNREACH` | 45.2% | 5 399 ms |
+| 8/24 `full_cart_194613` | **`ETIMEDOUT`** | **0%** | 65 786 ms |
+| 8/24 `full2_cart_201241` | `EHOSTUNREACH` | 50.0% | 1 529 ms |
+| 8/24 `full3_cart_205013` | `EHOSTUNREACH` | 70.0% | 0.51 ms |
+
+**假设（待验证）**
+差别在于调用方 ARP 邻居缓存中 `cart` 旧 IP 是否已过期：缓存有效则 SYN 发往已失效的
+MAC，直到 `tcp_syn_retries=6` 的 127s 建连预算耗尽才报 `ETIMEDOUT`；缓存转
+`FAILED` 则秒级 `EHOSTUNREACH`。
+
+**证据与缺口**
+两轮 `EHOSTUNREACH` 的 `evidence.json` 显示邻居缓存在注入后 40–80s 内
+`REACHABLE → INCOMPLETE → FAILED`，转 `FAILED` 越快、快速失败占比越高（70.0% vs
+50.0%），方向一致。但 **`ETIMEDOUT` 那一轮没有 evidence 对照**（钩子是之后才加的），
+假设未验证。`target_ip_after` 与 before 相同，IP 变更已排除。
+
+详见 [fingerprints.md](fingerprints.md)「crash 错误形态 8/23 vs 8/24」。
+
+**怎么验**
+连跑多轮 `crash` 周期并全程采 `evidence.json`，看是否能复现 `ETIMEDOUT` 轮次并对上
+邻居缓存状态。若假设成立，`crash` 的指纹需按邻居缓存状态分两种形态记录，
+决策 010 的「吵」也要相应细化。
+
+---
+
+## O-P2-6　agent 评测观测点：实时（immediate）还是事后（harvest）
+
+**内容**
+决策 016 让 runner 在两个时刻各取一次注入窗快照。**agent 评测时拿到哪一个视角，
+决定它看到的 `blackhole` 是什么形态**：
+
+- `immediate`（`t_revert` 即刻）：整链静音，0 条 span —— 「哑」，靠信号缺失诊断；
+- `harvest`（`t_end+settle`）：59 条 span、无报错、p50 68.6 秒 —— 「慢到离谱」，
+  形态反而接近 `latency`。
+
+同一张卡在两个视角下的难度与正确解法都不同。
+
+**待裁决**
+W3 harness 设计前必裁：agent 的 `trace_query` 工具查到的是哪个时刻的数据快照、
+证据快照取在何时。两种都保留在落盘里，选择权还在。
+
+---
+
+## O-P2-7　runner 的批次边界钩子（承 O-P2-1）
+
+**内容**
+`run_batch.py` **目前没有**批次边界钩子 —— 批次开始/结束时不执行任何外部命令，
+因此 O-P2-1 要求的「批次之间清理 OpenSearch 日志索引」尚无处挂载。
+
+W2 建库前需要给 runner 加一个批次级 pre/post hook（或由外层调度脚本承担），
+清理动作只能落在批次之间，不得落在周期之间（原因见 [O-P2-1](#o-p2-1w2-harness-需在批次间清理-opensearch-日志索引)）。
