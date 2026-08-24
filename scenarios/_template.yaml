@@ -8,7 +8,7 @@ id: S000                      # 场景编号，S + 三位数字；不得出现�
 private:
   target:
     service:                  # ∈ target_enum（16 项，见 §2）。例：cart
-    class:                    # ∈ crash | latency | dep_timeout | misconfig | mem_leak
+    class:                    # ∈ crash | latency | blackhole | misconfig | mem_leak
 
   injection:
     primitive:                # kill_container | delay_outbound_on_service_port

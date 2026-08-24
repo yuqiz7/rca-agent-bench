@@ -7,7 +7,7 @@
 计数器差分算速率、`heartbeat_age_s` 取 `timestamp(target_info)` 真实样本时刻、分位数线性插值）。
 
 - `crash / cart`：`kill_container`，`t_inject` = 2026-08-23T23:29:56Z，`t_revert` = 23:32:02Z
-- `dep_timeout / cart`：`drop_inbound`（`iptables -I INPUT -p tcp --dport 7070 -j DROP`，只堵服务端口），
+- `blackhole / cart`：`drop_inbound`（`iptables -I INPUT -p tcp --dport 7070 -j DROP`，只堵服务端口），
   `t_inject` = 23:25:39Z，`t_revert` = 23:27:43Z
 
 时序均为 §2 默认值 60 / 120 / 60。
@@ -16,7 +16,7 @@
 
 ## 指纹表
 
-| 字段 | **crash** baseline | **crash** during | **crash** after | **dep_timeout** baseline | **dep_timeout** during | **dep_timeout** after |
+| 字段 | **crash** baseline | **crash** during | **crash** after | **blackhole** baseline | **blackhole** during | **blackhole** after |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `caller_spans_total` | 60 | 73 | 43 | 54 | **0** | 80 |
 | `caller_error_spans` | 0 | **73** | 12 | 0 | **0** | 0 |
@@ -35,12 +35,12 @@
 
 - **crash / during**：`14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 172.18.0.21:7070. Resolution note: ` ×73
 - **crash / after**：同上 ×12（撤除后的尾巴）
-- **dep_timeout / 全部三窗**：**空**。没有任何报错 span，因此没有错误文字。
+- **blackhole / 全部三窗**：**空**。没有任何报错 span，因此没有错误文字。
 
-### dep_timeout 的窗口外复查
+### blackhole 的窗口外复查
 
 `during` 窗内 `caller_spans_total = 0` 一度像是探针漏采，故把窗口拉宽复查
-（须避开紧接着的 crash 轮次，其 `t_inject` 在 dep_timeout 的 `TI+257s`）：
+（须避开紧接着的 crash 轮次，其 `t_inject` 在 blackhole 的 `TI+257s`）：
 
 | 窗口 | `caller_spans_total` | `caller_error_spans` |
 | --- | ---: | ---: |
@@ -52,35 +52,35 @@
 
 ---
 
-## crash vs dep_timeout 分辨结论
+## crash vs blackhole 分辨结论
 
 | 字段 | 可分？ | 依据 |
 | --- | --- | --- |
-| `caller_spans_total` | **可分（最强判据）** | crash 期 73 条（全部报错），dep_timeout 期 **0 条**。前者"吵"，后者"哑"，形态相反。 |
+| `caller_spans_total` | **可分（最强判据）** | crash 期 73 条（全部报错），blackhole 期 **0 条**。前者"吵"，后者"哑"，形态相反。 |
 | `caller_error_spans` | **可分** | 73 vs 0。 |
-| `error_messages_top3` | **可分，但不是原假设的方式** | 不是"地址不可达类 vs 超时类"两种文字，而是 **有错误文字（`EHOSTUNREACH` ×73）vs 一条 span 都没有**。dep_timeout 根本不产生错误文字。 |
-| 时延分布 / p50 / p95 | **不可分** | dep_timeout 期无任何完成的 span，无时延可测；crash 的双峰（`<100ms` 45.2%、`>10s` 45.2%）没有可比对象。 |
-| `heartbeat_age_s` | **不可分** | crash 期 cart 已死 120 秒，`heartbeat_age_s` 却只有 **5.4 s** —— collector 在服务死后仍继续导出该 series，Prometheus 照常拿到新样本。两类的取值区间（crash 0.4→11.4、dep_timeout 36.5→45.5）差异完全来自 1 分钟 scrape 的相位噪声（±60s），与是否注入无关。 |
+| `error_messages_top3` | **可分，但不是原假设的方式** | 不是"地址不可达类 vs 超时类"两种文字，而是 **有错误文字（`EHOSTUNREACH` ×73）vs 一条 span 都没有**。blackhole 根本不产生错误文字。 |
+| 时延分布 / p50 / p95 | **不可分** | blackhole 期无任何完成的 span，无时延可测；crash 的双峰（`<100ms` 45.2%、`>10s` 45.2%）没有可比对象。 |
+| `heartbeat_age_s` | **不可分** | crash 期 cart 已死 120 秒，`heartbeat_age_s` 却只有 **5.4 s** —— collector 在服务死后仍继续导出该 series，Prometheus 照常拿到新样本。两类的取值区间（crash 0.4→11.4、blackhole 36.5→45.5）差异完全来自 1 分钟 scrape 的相位噪声（±60s），与是否注入无关。 |
 | `heartbeat_samples_in_window` | **不可分** | 3 vs 6，同属相位噪声量级。 |
-| `req_rate_per_s` | **不可分** | crash 0.05、dep_timeout **3.4**（比自身 baseline 2.5667 还高）。1 分钟 scrape 在 120 秒窗内只有 2 个样本，差分跨越注入边界，被注入前的计数值污染。 |
+| `req_rate_per_s` | **不可分** | crash 0.05、blackhole **3.4**（比自身 baseline 2.5667 还高）。1 分钟 scrape 在 120 秒窗内只有 2 个样本，差分跨越注入边界，被注入前的计数值污染。 |
 | `logs.log_lines` | **不可分** | 两类都归零（73→0 / 61→0）。cart 只在处理请求时记日志，请求进不来就都不记。 |
-| 撤除后的积压回放 | **可分（次要判据）** | dep_timeout 的 `after` 窗日志 **151** 条，是自身 baseline（61）的 2.5 倍 —— TCP 重传的请求在规则撤除后一次性涌入。crash 的 `after` 是 42 条，低于 baseline 73（容器刚重启）。 |
+| 撤除后的积压回放 | **可分（次要判据）** | blackhole 的 `after` 窗日志 **151** 条，是自身 baseline（61）的 2.5 倍 —— TCP 重传的请求在规则撤除后一次性涌入。crash 的 `after` 是 42 条，低于 baseline 73（容器刚重启）。 |
 
-### 为什么 dep_timeout 是"哑"的
+### 为什么 blackhole 是"哑"的
 
 `iptables ... -j DROP` 丢包而不回 RST，调用方的 TCP 连接卡在重传退避里
 （Linux `tcp_retries2` 默认约 15 次、合计十几分钟）。而 demo 的 frontend 调用 cart
 时没有设置足以在 120 秒内触发的 gRPC deadline，所以调用方既不成功也不报错，就是**挂着**。
 规则一撤，重传立刻成功，请求补跑完成 —— 全程一条错误 span 都不产生。
 
-也就是说，在这个被测系统里，`dep_timeout` 的真实表现是**"卡住"而不是"超时"**。
+也就是说，在这个被测系统里，`blackhole` 的真实表现是**"卡住"而不是"超时"**。
 §3 原先预期的"等到超时才报错（耗时 ≈ 超时值）"没有发生。
 
 ---
 
 ## symptom 探针阈值建议
 
-§5 现定义 `crash` / `dep_timeout` 的 symptom 为「调用方对 B 的错误 span 数 > N」。
+§5 现定义 `crash` / `blackhole` 的 symptom 为「调用方对 B 的错误 span 数 > N」。
 
 **`crash`：N = 20**（针对 `cart`）。baseline 为 0，during 为 73，N = 20 约为 during 的 27%，
 留 3.6 倍余量。取 20 而非上一轮建议的 10，是因为本轮 `after` 窗测到 **12 条**恢复尾巴
@@ -90,7 +90,7 @@
 实测两轮的错误尾巴分别在 `t_revert+6.48s` 和 `t_revert+12.42s` 结束，30 秒足够跳过，
 且不必为了迁就尾巴而抬高 N、牺牲 symptom 的灵敏度。
 
-**`dep_timeout`：现行定义不可用。** 错误 span 数恒为 0，`0 > N` 永远为假，
-按现定义 `dep_timeout` 的卡**一张都通不过验证**。该类的 symptom 必须改判
+**`blackhole`：按错误数判的旧定义不可用。** 错误 span 数恒为 0，`0 > N` 永远为假，
+按错误数判该类的卡**一张都通不过验证**。该类的 symptom 已改判
 `caller_spans_total` **降至 ≈ 0**（baseline 54 → during 0），即「哑」而非「错」。
 具体阈值需在其余靶子上各跑一轮再定 —— 本轮只测了 `cart`，不外推。

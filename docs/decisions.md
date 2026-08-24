@@ -247,3 +247,26 @@ override 文件干净、可整体回退，但引入了 `-f` 合并顺序陷阱�
 
 **附**
 `drop_inbound` 严格遵守 007 的注入作用面硬规则：只 `-I INPUT -p tcp --dport 7070 -j DROP`，实测注入期间目标 netns 内 `iptables -S` 只有这一条规则，`OUTPUT` 链未动 —— `cart` 自身的对外调用与遥测上报不受影响，故 `heartbeat` 在 `dep_timeout` 期持续（36.5→41.5s，正常相位噪声），这一点与设计预期相符。
+
+---
+
+## 011 故障类别 dep_timeout 更名为 blackhole（2026-08-24）
+
+**选了什么**
+故障类别枚举中的 `dep_timeout` 改名为 `blackhole`。注入原语脚本 `scripts/primitives/drop_inbound.sh` 的文件名与接口（`apply|revert|probe <service>`）不变；类别分辨依据沿用决策 010（吵 / 哑）。
+
+**为什么**
+④ 实测（靶子 `cart`，DROP 进服务端口，250 秒观察窗）**未出现任何超时错误** —— 0 span、0 报错、0 日志，整链静音。原因是 OTel Demo 3.0.0 服务间 gRPC 长连接未设 deadline，调用方无限等待而不是报超时。
+
+`dep_timeout` 描述的是一种**实际没有出现的症状**（超时错误）。保留它会把错误的预期信号写进 schema 指纹、场景 `ground_truth` 与 findings，误导 agent 与评测口径。`blackhole` 描述的是实测机制：请求进入后既不成功也不失败、没有任何回音，即网络术语里的静默丢包。
+
+**放弃了什么**
+- **保留 `dep_timeout` 名、只加注释。** 放弃 —— 类别名进入 `ground_truth` 的判分二元组与全部场景文件，名实不符会随 W2 量产扩散到 80 个场景。
+- **改造 testbed、给调用方加 deadline 以制造真正的超时错误。** 放弃 —— 这要改 OTel Demo 应用代码，破坏 3.0.0 pin 的复现锚点（见 001）；且现有原语全部在容器 / 网络层（`kill` / `iptables` / `tc`），改应用代码会开出第二条注入通道，增加复现与说明成本。
+
+**trade-off**
+与项目原始定义文字"依赖超时"脱钩，靠知识库注记衔接（已加）。
+
+黑洞类的症状是**"信号缺失"而非"信号出错"**：agent 只能靠调用方 span 数下降（symptom 判据 = `caller_spans_total` 低于基线 10%，见 [fault_schema.md](fault_schema.md) §5）而非错误文本来发现 —— 这是该类天然更难的原因，评测结果解读时单列。
+
+若后续某条调用链实测存在客户端超时（例如 HTTP 路径），届时再评估是否新增独立的 `timeout` 类，不预设。

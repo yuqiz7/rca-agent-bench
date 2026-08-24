@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# drop_inbound — dep_timeout 类注入原语（fault_schema v0.9 §3）
+# drop_inbound — blackhole 类注入原语（fault_schema v0.9 §3）
+# class: blackhole（原 dep_timeout，决策 011）
 #
 # 接口与 kill_container.sh 完全一致：
 #   apply  <service>   在目标容器的 netns 内丢弃进入其服务端口的 TCP 包；打印 t_inject

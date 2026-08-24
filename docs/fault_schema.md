@@ -1,5 +1,11 @@
 # 故障场景 schema v0.9
 
+**修订记录**
+
+- 2026-08-24：类别 `dep_timeout` 更名 `blackhole`（决策 011）
+
+（版本号仍为 v0.9，v1.0 待 ⑤ 收口。）
+
 ## §1 定位
 
 一个场景 = 一道有唯一标准答案的题；schema = 出题卡的固定格式。80 张卡同格式，验证脚本与判分脚本各写一遍即可覆盖全集。
@@ -80,13 +86,13 @@ recommendation, shipping, valkey-cart
 | --- | --- | --- | --- |
 | `crash`（杀容器） | B 容器不存活 | **报错 span 大量出现**；错误文字为**地址不可达类**（实测 `EHOSTUNREACH`，非"连接被拒"） | 日志归零 |
 | `latency`（注入延迟） | B 存活、可达、响应慢，延迟低于调用方超时 | span 变长、错误少 | 正常 |
-| `dep_timeout`（依赖服务端口被堵） | B 存活但服务端口丢包 | **span 完全静默**：既无成功也无报错，调用方卡在 TCP 重传里；撤除后积压回放 | 日志归零 |
+| `blackhole`（服务端口静默丢包）<br>（原名 `dep_timeout`，2026-08-24 决策 011 更名） | B 存活但服务端口丢包 | **span 完全静默**：既无成功也无报错，调用方卡在 TCP 重传里，无任何超时错误；撤除后积压回放 | 日志归零 |
 | `misconfig`（错误配置） | B 配置被改（compose env / flagd 开关） | 收到错误或错误结果 | 自身 span / 日志有错 |
 | `mem_leak`（内存泄漏） | B 内存持续增长 | 先变慢后报错 | 内存曲线爬升 → OOM 重启 |
 
-> `crash` 与 `dep_timeout` 两行为 2026-08-23 实测结果，见 [fingerprints.md](fingerprints.md)。
-> 两类的分界是**「吵」与「哑」**：`crash` 期调用方 span 73 条且全部报错，`dep_timeout`
-> 期 0 条。**不可用于分辨的字段**（均已实测证否）：调用方时延（`dep_timeout` 无完成
+> `crash` 与 `blackhole` 两行为 2026-08-23 实测结果，见 [fingerprints.md](fingerprints.md)。
+> 两类的分界是**「吵」与「哑」**：`crash` 期调用方 span 73 条且全部报错，`blackhole`
+> 期 0 条。**不可用于分辨的字段**（均已实测证否）：调用方时延（`blackhole` 无完成
 > span 可测）、上报心跳（服务已死 120 秒时 `heartbeat_age_s` 仍只有 5.4 s，collector
 > 在服务死后继续导出 series）、请求速率（1 分钟 scrape 在 120 秒窗内仅 2 个样本，
 > 差分跨注入边界被污染）、日志行数（两类都归零）。
@@ -98,16 +104,16 @@ recommendation, shipping, valkey-cart
 | --- | --- |
 | `kill_container` | `crash` |
 | `delay_outbound_on_service_port` | `latency` |
-| `drop_inbound_on_service_port` | `dep_timeout` |
+| `drop_inbound_on_service_port` | `blackhole` |
 | `env_override` / `flagd_flag` | `misconfig` |
 | flagd 内置泄漏开关 或 `mem_hog` | `mem_leak` |
 
 ### 注入作用面（硬规则）
 
-`latency` 与 `dep_timeout` 的规则**只作用于 B 的服务端口**：
+`latency` 与 `blackhole` 的规则**只作用于 B 的服务端口**：
 
 - `latency` 只延迟**从 B 服务端口发出的响应包**；
-- `dep_timeout` 只丢弃**进入 B 服务端口的请求包**；
+- `blackhole` 只丢弃**进入 B 服务端口的请求包**；
 - **不得作用于整块网卡。**
 
 否则 B 自身的对外调用与遥测上报会被一并拖慢 / 切断，制造"B 的依赖慢"或"B 崩了"的假象，污染标准答案。
@@ -151,7 +157,7 @@ recommendation, shipping, valkey-cart
 | class | 探针 |
 | --- | --- |
 | `crash` | `docker inspect` 状态 ≠ `running` |
-| `latency` / `dep_timeout` | 目标 netns 内**限定服务端口**的 tc / iptables 规则存在 |
+| `latency` / `blackhole` | 目标 netns 内**限定服务端口**的 tc / iptables 规则存在 |
 | `misconfig` | env / flag 当前值 = 注入值 |
 | `mem_leak` | 容器内存统计持续上升 |
 
@@ -162,7 +168,7 @@ recommendation, shipping, valkey-cart
 | class | 初值 |
 | --- | --- |
 | `crash` | 调用方对 B 的错误 span 数 > N（`cart` 实测建议 N = 20） |
-| `dep_timeout` | 调用方对 B 的 **span 总数**（`caller_spans_total`）降至 ≈ 0 —— 该类错误 span 恒为 0，用错误数判会永远不通过 |
+| `blackhole` | 调用方对 B 的 **span 总数**（`caller_spans_total`）**低于基线 10%** —— 该类整链静音、错误 span 恒为 0，用错误数判会永远不通过 |
 | `latency` | 调用 B 的 span p95 > 基线 × k |
 | `misconfig` | B 自身错误 span / 日志 > N |
 | `mem_leak` | B 内存 > 基线 × k |
@@ -210,9 +216,9 @@ recommendation, shipping, valkey-cart
 
 - [ ] `timing` 三初值（`warmup_s` / `observe_s` / `cooldown_s`）
 - [ ] 各类 `symptom` 阈值 `N` / `k`
-- [ ] 调用方超时值 — 决定 `latency` 类延迟上限与 `dep_timeout` 类 span 耗时预期
+- [ ] 调用方超时值 — 决定 `latency` 类延迟上限。（`blackhole` 类无此项：实测服务间 gRPC 长连接未设 deadline，250 秒窗内不产生任何超时错误，无 span 耗时可言，见决策 011）
 - [x] `crash` 指纹核对（2026-08-23，见 fingerprints.md）
-- [x] `dep_timeout` 指纹核对（2026-08-23，见 fingerprints.md）
+- [x] `blackhole` 指纹核对（2026-08-23，见 fingerprints.md）
 - [ ] `latency` / `misconfig` / `mem_leak` 三类指纹逐类核对
 - [ ] `mem_leak` 类容器内存指标在 Prometheus 中是否可查
 - [ ] flagd 内置故障开关清单（W2 首日收）
