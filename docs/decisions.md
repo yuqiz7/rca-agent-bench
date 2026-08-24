@@ -332,3 +332,29 @@ spanmetrics：实测 flush 间隔 **60s**，已在 `src/otel-collector/otelcol-c
 
 **勘误**
 009 与 010 把 60s 归因于 Prometheus 的 `scrape_interval`，**不准确** —— 真实成因是 SDK 默认导出间隔，Prometheus 侧无 scrape。两条原文按 append-only 不改，以本条为准。012 正文中同类表述亦以本条为准。
+
+---
+
+## 014 latency 原语 delay_outbound：出口 netem + u32 按 sport 过滤，初值 800ms（2026-08-24）
+
+**选了什么**
+`tc netem` 挂目标服务容器出口：`prio` 根 qdisc 的 `priomap` 全部指向 band 2 作"直通"，只有 u32 匹配 `tcp sport = 服务端口` 的包被导入挂 `netem delay 800ms` 的 band（`1:1`）。接口 `apply|revert|probe <service> [delay_ms]`，与前两个原语的参数、退出码、日志格式、`state/` 命名（`<service>.delay`，记 `delay_ms`/`iface`/`port`）完全一致。
+
+**为什么**
+只延迟该服务**发给调用方的响应**，不碰它自己的下游调用（决策 007 硬规则）—— 否则症状漂到下游、根因不再唯一。出口方向 tc 原生支持、零额外部件；入口整形必须把流量重定向到 ifb 虚设备，多一层机关。
+
+**800ms 的依据**：明显高于基线 —— `caller → cart` 基线实测 **p50 2.43ms / p95 3.77ms**（调试档稳定期 n=29；同日 4 分钟大样本 n=209 为 p50 2.63ms / p95 4.82ms / max 6.40ms），800ms 是基线 p95 的约 200 倍，不可能被噪声淹没。明显低于外层超时上限 —— Envoy 通往 `frontend` 的 catch-all 路由（`src/frontend-proxy/envoy.tmpl.yaml:81` `route: { cluster: frontend }`）**未设 `timeout`**（Envoy 默认，默认值未查证）；压测器 `load-generator` 的 HTTP 请求超时**未设**（`compose` 环境变量中无相关项，`script.js` 里只有浏览器侧的 `waitForSelector timeout: 15000` 与 `waitForTimeout(2000)`，不是请求超时）。本系统 gRPC 无 deadline（决策 010、011 实测），延迟只产生"慢"不产生"错"。
+
+**放弃了什么**
+- **延迟目标服务全部出流量。** 放弃 —— 下游调用一并变慢，注入点与症状点混淆。
+- **入口整形。** 放弃 —— 需 ifb 设备，多一层机关。
+- **用 flagd 内置延迟开关。** 放弃 —— 只覆盖它预置的少数路径，不能任选靶子。
+
+**trade-off**
+u32 只匹配 TCP（`match ip protocol 6`），UDP/ICMP 不覆盖 —— 本系统服务间调用全是 TCP（gRPC/HTTP），无影响。
+
+`prio` + `u32` 比单挂一个 netem 多两条命令，靠 `probe` 核对过滤器兜底：`probe` 把端口编码成 u32 的 hex 形式（`7070` → `1b9e0000/ffff0000`）在 `tc filter show` 中比对，netem 存在但过滤器端口不符时判 `injected=false`。
+
+多网卡容器需人工判定接口 —— 脚本用 `ip -o link` 取非 `lo` 接口，**多于一个即停下报错，不猜**。另外 root 已有非默认 qdisc 时拒绝执行，不覆盖别人的规则。
+
+**调试档实测**（30/60/30，靶子 `cart`，800ms，`t_inject=19:19:24Z`）：`caller → cart` 右移 **p50 +800.20ms / p90 +800.15ms / p95 +800.10ms**；注入期报错 span **0**；下游未右移（`cart → valkey-cart` p95 **+0.04ms**，`cart → flagd` p95 +2.45ms，属 1–4ms 量级的采样噪声，非 800ms 量级右移）；revert 后 `tc qdisc show dev eth0` 仅剩 `noqueue`，无残留。

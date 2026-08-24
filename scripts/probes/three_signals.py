@@ -167,10 +167,11 @@ METRIC = "traces_span_metrics_calls_total"
 def collect_metrics(base, svc, t0, t1):
     """请求速率用计数器差分算，不用 rate()。
 
-    Prometheus 的 scrape_interval 是 1m，rate(...[60s]) 在 60 秒窗口里通常只
-    拿得到 1 个样本，直接返回空向量（实测 baseline/after 两个窗口都是 None）。
-    改成在窗口两端取计数器值做差分，得到窗口内真实平均速率，并把窗口内实际
-    样本数一并输出，让分辨率不足这件事可见而不是变成一个 null。
+    指标粒度由 SDK 导出间隔决定（经 OTLP 推送写入 Prometheus，无 scrape）。
+    该间隔原为 60s 时，rate(...[60s]) 在 60 秒窗口里通常只拿得到 1 个样本、
+    直接返回空向量（实测 baseline/after 两个窗口都是 None），故改用计数器差分。
+    metric_export_interval=15s (SDK, OTLP push; no scrape) 后样本已足，但仍保留
+    差分法：它把窗口内实际样本数一并输出，让分辨率不足这件事可见而不是变成 null。
     """
     q = f'sum({METRIC}{{service_name="{svc}",span_kind="SPAN_KIND_SERVER"}})'
     url = f"{base}/api/v1/query_range?" + urllib.parse.urlencode(
@@ -181,7 +182,7 @@ def collect_metrics(base, svc, t0, t1):
     if data and data.get("status") == "success" and data["data"]["result"]:
         vals = [(float(ts), float(v)) for ts, v in data["data"]["result"][0]["values"]]
         uniq = []
-        for ts, v in vals:                       # 折叠掉同一次 scrape 的重复点
+        for ts, v in vals:                       # 折叠掉取值未变化的重复点
             if not uniq or v != uniq[-1][1]:
                 uniq.append((ts, v))
         n_samples = len(uniq)
@@ -194,7 +195,7 @@ def collect_metrics(base, svc, t0, t1):
                 rate = round((vb - va) / (tb - ta), 4)
         else:
             note = (f"insufficient samples ({n_samples}) in a "
-                    f"{int((t1 - t0).total_seconds())}s window at scrape_interval=60s")
+                    f"{int((t1 - t0).total_seconds())}s window at metric_export_interval=15s (SDK, OTLP push; no scrape)")
     elif not err:
         note = "no series in window"
 
@@ -227,7 +228,7 @@ def collect_metrics(base, svc, t0, t1):
         "req_rate_per_s": rate,
         "metric_used": METRIC,
         "metric_note": "spanmetrics connector 派生，server-kind span；对全部靶子一致可用",
-        "rate_method": "counter delta over window (rate() unusable at scrape_interval=60s)",
+        "rate_method": "counter delta over window; metric_export_interval=15s (SDK, OTLP push; no scrape)",
         "samples_in_window": n_samples,
         "counter_reset": reset,
         "resolution_note": note,

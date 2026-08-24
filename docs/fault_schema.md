@@ -97,7 +97,8 @@ recommendation, shipping, valkey-cart
 > 在服务死后继续导出 series）、请求速率（60s 指标粒度在 120 秒窗内仅 2 个样本，该粒度来自
 > SDK 导出间隔、经 OTLP 推送，Prometheus 无 scrape；2026-08-24 已降为 15s，见决策 013，
 > 差分跨注入边界被污染）、日志行数（两类都归零）。
-> 其余三类（`latency` / `misconfig` / `mem_leak`）的指纹仍为**未实测的预期**。
+> `latency` 行的注入作用面与判据已由 2026-08-24 调试档实测（决策 014），入库档待补；
+> 其余两类（`misconfig` / `mem_leak`）的指纹仍为**未实测的预期**。
 
 ### 注入原语映射
 
@@ -158,7 +159,8 @@ recommendation, shipping, valkey-cart
 | class | 探针 |
 | --- | --- |
 | `crash` | `docker inspect` 状态 ≠ `running` |
-| `latency` / `blackhole` | 目标 netns 内**限定服务端口**的 tc / iptables 规则存在 |
+| `latency` | 目标 netns 内 `netem` 存在，**且** u32 过滤器的 sport 等于该服务端口（`probe` 把端口编码成 hex 比对，如 `7070` → `1b9e0000/ffff0000`）。netem 在但端口不符判 false。 |
+| `blackhole` | 目标 netns 内**限定服务端口**的 iptables 规则存在 |
 | `misconfig` | env / flag 当前值 = 注入值 |
 | `mem_leak` | 容器内存统计持续上升 |
 
@@ -170,7 +172,7 @@ recommendation, shipping, valkey-cart
 | --- | --- |
 | `crash` | 调用方对 B 的错误 span 数 > N（`cart` 实测建议 N = 20） |
 | `blackhole` | 调用方对 B 的 **span 总数**（`caller_spans_total`）**低于基线 10%** —— 该类整链静音、错误 span 恒为 0，用错误数判会永远不通过 |
-| `latency` | 调用 B 的 span p95 > 基线 × k |
+| `latency` | 调用方 → B 的耗时分布相对基线**右移 ≥ `delay_ms` × 0.8**，**且报错 span 数不增**（该类只产生「慢」不产生「错」）。`cart` 800ms 调试档实测右移 p50 +800.20ms、报错 0。 |
 | `misconfig` | B 自身错误 span / 日志 > N |
 | `mem_leak` | B 内存 > 基线 × k |
 
@@ -179,6 +181,8 @@ recommendation, shipping, valkey-cart
 ### `recovered`
 
 `revert` 后 `cooldown_s` 内，同一 `symptom` 查询回落至基线，且 `injected` 探针反向通过。
+
+`latency` 的 `recovered` 判据是**右移消失**（耗时分布回到基线量级），而非错误数回落 —— 该类全程无错误。
 
 判定窗从 **`t_revert + 30s`** 起算，跳过撤除后的错误尾巴（实测两轮分别在
 `t_revert+6.48s` 与 `t_revert+12.42s` 结束）。从 `t_revert` 起算会把尾巴算进来，
@@ -220,6 +224,7 @@ recommendation, shipping, valkey-cart
 - [ ] 调用方超时值 — 决定 `latency` 类延迟上限。（`blackhole` 类无此项：实测服务间 gRPC 长连接未设 deadline，250 秒窗内不产生任何超时错误，无 span 耗时可言，见决策 011）
 - [x] `crash` 指纹核对（2026-08-23，见 fingerprints.md）
 - [x] `blackhole` 指纹核对（2026-08-23，见 fingerprints.md）
-- [ ] `latency` / `misconfig` / `mem_leak` 三类指纹逐类核对
+- [~] `latency` 指纹核对（2026-08-24 **调试档**，见 fingerprints.md；入库档待补）
+- [ ] `misconfig` / `mem_leak` 两类指纹逐类核对
 - [ ] `mem_leak` 类容器内存指标在 Prometheus 中是否可查
 - [ ] flagd 内置故障开关清单（W2 首日收）
