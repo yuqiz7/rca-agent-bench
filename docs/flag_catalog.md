@@ -50,6 +50,10 @@
 > **出题要求**：variant 名里的百分比是**该方法的失败率**，不是该服务的。
 > 实测 `50%` 时 `cart` 整体报错率只有 **1.6%**（123 条里 2 条），因为 `EmptyCart`
 > 只占全部调用的 5.7%。`ground_truth.note` 必须写清受影响的方法。
+>
+> **Use variants at 75% or above only** — errored `EmptyCart` spans hang up to
+> 262 s, past the 150 s harvest settle, so harvest can undercount them.
+> See [open_items.md](open_items.md) O-P2-9.
 
 ### `paymentFailure` → `payment`
 

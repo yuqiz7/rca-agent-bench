@@ -77,8 +77,16 @@ WAL 仅 3.6M，`total_replay_duration` **118.97 ms** —— 这不构成对 2G �
 真正有意义的重放（昨日 WAL）发生在 VM 自动开机的 22:33:54，早于监视器启动 3.5 分钟，
 峰值未被采到（CSV 前两行 167.8/168.1 MiB 只是那次启动的尾部）。
 
-**下次怎么补**：在 WAL 积累一天以上后，**先**启动监视器（它会以 `status=absent` 轮询等待），
-**再**执行决策 002 的起停命令，从容器存在的第一秒开始采样。
+**New closing condition (2026-08-26)**: close only when both hold — (a) the boot replay
+does not OOM (already satisfied: pre-restart samples show `restart_count=0`,
+`oom_killed=false` against the boot instance), and (b) a restart taken while the head
+spans ≥ 2h40m peaks at ≤ 60% of the limit (not yet measured). The 60–85% / >85% / OOM
+bands are unchanged, and on the retest `restarted_during_watch` counts only from the
+manual restart onward. Retest window and rationale: see the Addendum in
+[resource_audit.md](resource_audit.md).
+
+**下次怎么补**：**先**启动监视器（它会以 `status=absent` 轮询等待），**再**重启容器，
+从新实例存在的第一秒开始采样。
 
 ---
 
@@ -192,3 +200,36 @@ cache miss 追加自身 1/4，几何增长），但两个因素同时压制：ca
 超线性的，但会推翻决策 012 的 60/120/60 并让 80 卡机器时间成倍上升。另一条路是
 换更高流量的靶子，但该 flag 的靶子锁死在 `recommendation`，只能改应用代码，
 而那会破坏 3.0.0 pin（决策 001）。
+
+---
+
+## O-P2-9　cartFailure error spans can outlive the harvest settle window
+
+**Status: open (2026-08-25)**
+
+**What**
+`cartFailure` error spans hang far longer than the harvest snapshot waits for them.
+In `rerun_cart_225459` the errored `EmptyCart` spans measured p50 **65.0 s** and
+**max 262.1 s**, while the harvest snapshot is taken at `t_end + settle` with
+settle = **150 s** (decision 016). Any error span still in flight at that moment is
+absent from the harvest window, so **harvest can undercount `misconfig` error spans**
+for this flag.
+
+**Why it matters**
+The `misconfig` symptom (decision 018 part 2) is judged on the harvest snapshot.
+Undercounting pushes a card toward a false symptom failure — the same shape of
+error that decision 016 fixed for `crash`, but caused by span duration rather than
+by the observation point.
+
+**Interim rule for card authoring**
+Use **only variants at 75% or above** for `cartFailure`. `EmptyCart` is called about
+3.9 /min, so a 120 s window yields roughly 4–8 calls; at a lower ratio the expected
+error count sits at or under the threshold even before any undercount, and the
+combination of the two makes the card unreliable (observed: first run 0/6 failed,
+rerun 2/4 passed — both inside the probability range, see decision 018 part 2).
+
+**Open question**
+Whether to raise `settle` for `misconfig` cycles specifically, or to accept the
+undercount and compensate in the threshold. Raising settle costs wall clock on every
+cycle (decision 016 trade-off); the alternative needs the hang-duration distribution
+measured across more runs than the two we have.

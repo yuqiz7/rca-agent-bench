@@ -114,6 +114,23 @@ settle = 150s 的来源：Linux `tcp_syn_retries=6` → 127s 建连重试预算�
 
 ## 5 批次运行纪律（多周期无人值守连跑）
 
+### Wake-up (daily start) — two standing rules
+
+**The wake-up command is idempotent.** Run it even when the containers have already
+come back on their own with the VM: it re-applies the merged compose configuration and
+acts as the health check for the day. It does not recreate containers that already match.
+
+**Right after wake-up, run:**
+
+```
+docker inspect -f '{{.RestartCount}} {{.State.OOMKilled}}' prometheus
+```
+
+Anything other than `0 false` — STOP and report. This is the **only visible evidence**
+that the boot-time WAL replay hit an OOM: a later manual restart resets the counter,
+after which the boot event can no longer be observed (see resource_audit.md, Addendum
+to the 2026-08-25 section, and open item O-P2-3).
+
 - **后台连跑**：多个周期合并为单个后台脚本串行连跑（`nohup` 或 `tmux`，不依赖前台终端）。用户在运行期间默认走开，只看批次结束后的汇总。
 - **串行不并行**：同一 testbed 上同一时刻**只允许一个原语处于 apply 状态**。并行注入会互相污染指纹。
 - **周期间衔接**：下一周期的 `t0` 不早于上一周期的 `t_end`。若上一周期 `recovered` 未通过，脚本**继续**跑下一周期，但在汇总中**标红**该周期。

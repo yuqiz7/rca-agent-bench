@@ -177,3 +177,44 @@ YAML 里重复出现同名 key 时 PyYAML 静默取最后一个，而 compose �
 | `valkey-cart` | 12.13 MiB / 256 MiB | 4.74% | 0.24% |
 
 宿主机 `free -m`：总 64295 / 已用 5091 / 可用 59203 MiB。未改动任何限额。
+
+### Addendum — why 88.0 MiB is not the loaded-state peak
+
+**1. The boot replay already happened, unattended, and left nothing to replay.**
+The containers carry a restart policy and came back up with the VM. At boot,
+yesterday's WAL was replayed, and within a few minutes the head block was compacted
+into a persistent block and the WAL truncated. By the time the Case B manual restart
+ran, the WAL held only post-boot data — **3.6M, replayed in 118.97 ms**. So
+**88.0 MiB is the peak of an almost-empty replay**, not of a loaded one.
+
+**2. What the pre-restart samples do and do not prove.**
+The two samples the watcher took *before* the manual restart carry
+`restart_count=0` and `oom_killed=false` against the boot instance
+(`StartedAt 2026-08-26T22:33:54Z`). That is positive evidence that **the boot replay
+did not OOM-kill the container**. It is the only such evidence available: a manual
+`docker compose restart` resets the observable counter, so samples taken after it say
+nothing about the boot event.
+
+**3. New closing condition for O-P2-3.**
+Both must hold:
+  - **(a) the boot replay does not OOM** — already satisfied, see point 2;
+  - **(b) a restart taken while the head spans ≥ 2h40m peaks at ≤ 60% of the limit** — not yet measured.
+
+The remaining bands are unchanged: 60–85% keeps the item open with a recheck after the
+first 16-card batch; > 85% or any OOM is blocking and the new limit is the user's call.
+On the retest, **`restarted_during_watch` counts only from the manual restart onward** —
+in Case B the flag is true by construction and says nothing about a crash.
+
+**4. Retest window.**
+Derived from the first `status=running` sample in
+`artifacts/resource_audit/prom_mem_2026-08-25.csv`, whose `started_at` is the boot-time
+container start:
+
+| Marker | UTC | America/New_York |
+| --- | --- | --- |
+| Boot container start | `2026-08-26T22:33:54Z` | `2026-08-26 18:33:54 EDT` |
+| **+2h40m** (window opens) | `2026-08-27T01:13:54Z` | `2026-08-26 21:13:54 EDT` |
+| **+2h59m** (window closes) | `2026-08-27T01:32:54Z` | `2026-08-26 21:32:54 EDT` |
+
+Start `scripts/maintenance/prom_mem_watch.sh` **before** restarting the container — it
+polls through `status=absent`, so it can capture the first second of the new instance.
