@@ -62,6 +62,23 @@ WAL 由 **148.0M → 183.4M**、TSDB 由 **351.1M → 406.5M**、MEM 由 **319.6
 下次 `--force-recreate prometheus` 或整机重启时，在启动窗口内持续采样
 `docker stats --no-stream prometheus`，记录 MEM 峰值与 `WAL replay completed` 的
 `total_replay_duration`（008 那次修复后为 6.42s）。
+工具已就绪：`scripts/maintenance/prom_mem_watch.sh`（支持 `status=absent` 轮询，
+可先起监视器再启容器，从而采到启动第一秒）。
+
+**2026-08-26 第一次复测：保持开放 —— 未压到真正的 WAL 重放**
+
+实测（Case B，`docker compose … restart prometheus`）：峰值 **88.0 MiB = 4.3% of 2048 MiB**
+@ +144.4 s，稳态 85.3 MiB，`OOMKilled=false`，`RestartCount` 0 → 0，stop_reason=stable。
+证据见 [resource_audit.md](resource_audit.md)「2026-08-25 — Prometheus restart WAL replay peak」
+与 `artifacts/resource_audit/prom_mem_2026-08-25.csv`。
+
+按规则 `peak_pct ≤ 60%` 本应关闭，**但不关闭**：容器重启前只运行了 3.5 分钟，
+WAL 仅 3.6M，`total_replay_duration` **118.97 ms** —— 这不构成对 2G 限额的压力测试。
+真正有意义的重放（昨日 WAL）发生在 VM 自动开机的 22:33:54，早于监视器启动 3.5 分钟，
+峰值未被采到（CSV 前两行 167.8/168.1 MiB 只是那次启动的尾部）。
+
+**下次怎么补**：在 WAL 积累一天以上后，**先**启动监视器（它会以 `status=absent` 轮询等待），
+**再**执行决策 002 的起停命令，从容器存在的第一秒开始采样。
 
 ---
 

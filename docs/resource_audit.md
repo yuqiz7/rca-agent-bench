@@ -98,3 +98,82 @@ YAML 里重复出现同名 key 时 PyYAML 静默取最后一个，而 compose �
 **重启重放峰值待 [O-P2-3](open_items.md)。** 本次全程未重启 `prometheus`，因此这张表反映的
 只是**稳态**代价。决策 008 记录的那次死锁发生在**重启时的 WAL 重放**阶段，样本率 ×4 后
 重放要多吃约 4 倍内存，而该峰值尚无实测数据 —— 稳态数字好看不能推断重启安全。
+
+---
+
+## 2026-08-25 — Prometheus restart WAL replay peak（O-P2-3 复测，15s 导出间隔）
+
+> **观测日期实为 2026-08-26**（容器时间戳与 `date -u` 一致）。产物文件名沿用任务
+> 指定的 `2026-08-25`，节标题保持一致，此处注明差异。
+
+**Case B** —— 25 个容器随 VM 自动重启（`Up 2 minutes`），`prometheus` 已在运行。
+先过健康门（25/25 running，`cart` RestartCount=0），再启动监视器并执行
+`docker compose <三文件> restart prometheus` 作为被测重放事件。
+
+| 项 | 值 |
+| --- | --- |
+| 限额 | **2048 MiB**（默认 **200M** → 覆盖 **2G**，来源 `testbed/compose.override.yaml:37-41`；默认值在 `opentelemetry-demo/compose.observability.yaml:83`） |
+| 重启后峰值 | **88.0 MiB = 4.3% of limit**，出现在 StartedAt **+144.4 s** |
+| 稳态 | **85.3 MiB**（末 12 采样均值） |
+| WAL 大小 | `/prometheus/wal` **3.6M**（TSDB 总计 404.9M） |
+| head series | **unavailable**（宿主机 curl 与容器内 wget 均取不到） |
+| OOMKilled | **false** |
+| RestartCount | **0 → 0**（`docker compose restart` 不增计数） |
+| `restarted_during_watch` | **true —— Case B 的设计使然**，见下方说明 |
+| stop_reason | **stable** |
+| WAL replay 实测 | `total_replay_duration=` **118.974 ms**（`wal_replay_duration=117.73ms`） |
+| CSV / summary | `artifacts/resource_audit/prom_mem_2026-08-25.csv`、`…csv.summary.txt` |
+| 监视日志 | `artifacts/resource_audit/prom_mem_watch_2026-08-25.log` |
+
+### 结论：**O-P2-3 保持开放** —— 本次未真正压到 WAL 重放
+
+按第 6 步规则，`peak_pct = 4.3% ≤ 60%` 对应「关闭」。**但不予关闭**，理由是数据没有
+回答 O-P2-3 的问题：
+
+1. **重放的 WAL 只有 3.5 分钟的量。** 容器在 22:33:54 随 VM 启动，我在 22:37:25 重启它
+   —— 此时 WAL 只积了 3.5 分钟，`total_replay_duration` 仅 **118.97 ms**。而决策 008 记录的
+   死锁发生在积累约一天之后。**119 毫秒的重放不构成对 2G 限额的压力测试。**
+2. **真正有意义的那次重放被错过了。** 昨日 WAL（15s 导出间隔下累积）的重放发生在
+   VM 自动开机的 **22:33:54**，比监视器启动早 3.5 分钟。CSV 前两行的 167.8 / 168.1 MiB
+   是那次启动的**尾部**，不是它的峰值 —— 峰值未被采到。
+3. `restarted_during_watch=true` **不是崩溃证据**。Case B 要求脚本主动 restart，
+   StartedAt 必然改变。同期 `RestartCount` 全程 **0 → 0**、`OOMKilled=false`，
+   说明容器没有因超限被杀。第 6 步规则的第一条（`restarted_during_watch=true` →
+   BLOCKING）是为「重放中意外崩溃」写的，在 Case B 下会恒真，故不按字面适用；
+   此处以 `RestartCount` 与 `OOMKilled` 为准。
+
+**要真正测到峰值**，需要在 WAL 积累一天以上后、在**容器启动的那一刻之前**就开始采样
+（监视器支持 `status=absent` 轮询，可先起监视器再 `up -d`），或直接在下次 VM 冷启动前
+把监视器挂上。
+
+### 全栈稳定后快照
+
+| 容器 | 内存 | 占限额 | CPU |
+| --- | ---: | ---: | ---: |
+| `ad` | 410.1 MiB / 768 MiB | 53.39% | 0.14% |
+| `astronomy-db` | 78.36 MiB / 256 MiB | 30.61% | 6.44% |
+| `cart` | 107.5 MiB / 512 MiB | 20.99% | 0.07% |
+| `checkout` | 42.56 MiB / 256 MiB | 16.63% | 0.61% |
+| `currency` | 27.39 MiB / 256 MiB | 10.70% | 3.55% |
+| `email` | 90.51 MiB / 512 MiB | 17.68% | 0.20% |
+| `flagd` | 112 MiB / 256 MiB | 43.75% | 0.19% |
+| `flagd-ui` | 175.6 MiB / 768 MiB | 22.86% | 0.05% |
+| `frontend` | 188.3 MiB / 768 MiB | 24.52% | 7.34% |
+| `frontend-proxy` | 39.58 MiB / 90 MiB | 43.98% | 3.15% |
+| `grafana` | 394.7 MiB / 512 MiB | **77.09%** | 1.03% |
+| `image-provider` | 27.29 MiB / 120 MiB | 22.74% | 0.23% |
+| `jaeger` | 147.4 MiB / 1.172 GiB | 12.29% | 0.80% |
+| `load-generator` | 481.5 MiB / 2 GiB | 23.51% | 136.05% |
+| `opamp-server` | 20.7 MiB / 65 MiB | 31.84% | 0.00% |
+| `opensearch` | 1.325 GiB / 4 GiB | 33.12% | 0.92% |
+| `otel-collector` | 321.6 MiB / 1 GiB | 31.40% | 2.79% |
+| `payment` | 145 MiB / 512 MiB | 28.32% | 1.03% |
+| `product-catalog` | 22.33 MiB / 256 MiB | 8.72% | 0.77% |
+| **`prometheus`** | **97.33 MiB / 2 GiB** | **4.75%** | 0.40% |
+| `quote` | 36.04 MiB / 256 MiB | 14.08% | 0.01% |
+| `recommendation` | 71.89 MiB / 500 MiB | 14.38% | 2.26% |
+| `shipping` | 19.5 MiB / 256 MiB | 7.62% | 0.31% |
+| `telemetry-docs` | 25.7 MiB / 100 MiB | 25.70% | 0.21% |
+| `valkey-cart` | 12.13 MiB / 256 MiB | 4.74% | 0.24% |
+
+宿主机 `free -m`：总 64295 / 已用 5091 / 可用 59203 MiB。未改动任何限额。
