@@ -24,7 +24,21 @@ W2 的建库 harness 必须在场景批次之间清理 OpenSearch 的 `otel-logs
 **索引现状（2026-08-24 实测）**：仅 2 个索引、共 223 MB
 （`otel-logs-2026-08-23` 44 236 docs / 22.3 MB，`otel-logs-2026-08-24` 374 230 docs
 / 200.6 MB）。距 `opensearch` 的 4G 限额尚远，**本轮未删任何索引**。
-一天的批次量已产出 200 MB，80 卡量产时按此速率需要定期清理，本条**保持开放**。
+
+**索引现状（2026-08-26 实测，`obs2card_233337` 的 pre-batch 报告）**：**4 个索引、
+共约 275 MB**：
+
+| 索引 | 文档数 | 大小 |
+| --- | ---: | ---: |
+| `otel-logs-2026-08-23` | 44 236 | 22.3 MB |
+| `otel-logs-2026-08-24` | 467 119 | 213.6 MB |
+| `otel-logs-2026-08-25` | 2 766 | 1.8 MB |
+| `otel-logs-2026-08-26` | 78 062 | 37.5 MB |
+
+**日增估算**：两日之间总量由 223 MB 增至约 275 MB，**约 +52 MB/两日 ≈ 26 MB/日**，
+但日增极不均匀 —— 取决于当天跑了多少批次（08-24 跑满批次 213.6 MB，08-25 几乎没跑
+1.8 MB）。按"跑满批次的一天约 200 MB"估，`opensearch` 的 4G 限额可支撑约 20 个满负荷
+批次日。80 卡量产需要定期清理，本条**保持开放**。
 
 **注意**
 清理动作必须落在**批次之间**，不能落在单卡的观察窗内 —— 窗口内删索引会把
@@ -227,3 +241,66 @@ span 时长而不是观测点。
 是给 `misconfig` 周期单独抬高 `settle`，还是接受少算并在阈值上补偿。抬 settle 会
 让每个周期都多花墙钟（决策 016 的 trade-off）；另一条路则需要在更多轮次上测出
 挂起时长的分布 —— 目前只有两轮。
+
+---
+
+## O-P2-10　paymentUnreachable 开启后 checkout 行为未改变
+
+**状态：open（2026-08-26）**
+
+**内容**
+`set_flag checkout paymentUnreachable=on` 在入库档观察批（`obs2card_233337`）里
+**注入生效但系统行为不变**：`probe` 返回 `injected=true`（flagd 的 OFREP 确实返回 `on`），
+而注入期 120 s 内 `checkout → payment` 8 条调用**全部成功**、`checkout` 自有
+`PlaceOrder` 8 条 **0 报错**、`payment` 自有 8 条 **0 报错**、`badAddress` 在 checkout
+全量日志里出现 **0** 次。
+
+**代码预期**
+`src/checkout/main.go:567-571`：`chargeCard` 在 flag 为真时把 payment 客户端换成指向
+`badAddress:50051` 的连接，`Charge` 应因名字解析失败返回错误，`PlaceOrder` 随之失败。
+实测完全没有发生。
+
+**假设（未验证）**
+checkout 用的是 flagd Go provider（`src/checkout/main.go:30`，指向 `FLAGD_HOST=flagd`
+/ `FLAGD_PORT=8013`），该 provider 带求值缓存。若缓存失效依赖的推送通道没工作、
+或 TTL 长于 120 s 的注入窗，checkout 就会在整个窗口里继续用旧值。
+**这只是假设** —— 没有直接证据，需要单独验证。
+
+**怎么验**
+拉长注入窗看 checkout 是否最终切换；或在注入期间直接观测 checkout 与 flagd 之间的
+连接（checkout 在 Jaeger 依赖图里**没有** `checkout → flagd` 边，说明它不是每请求
+RPC 求值）；或对照另一个同样由 checkout 读取的 flag（`kafkaQueueProblems`）看是否同样不生效。
+
+**影响**
+`paymentUnreachable` 目前**不入卡**。它原本是唯一一个症状落在**调用方 client span**
+上的 misconfig 候选（区别于其余四个落在目标自有 span 上），这条"症状误导"路线暂时没有可用素材。
+
+---
+
+## O-P2-11　productCatalogFailure 的 targeting 规则使其无法开启
+
+**状态：open（2026-08-26）**
+
+**内容**
+`demo.flagd.json` 里该 flag 的 targeting 规则**两个分支都返回 `off`**：
+
+```json
+"targeting": { "if": [ { "==": [ { "var": "product_id" }, "OLJCESPC7Z" ] }, "off", "off" ] }
+```
+
+flagd 中 targeting 优先于 `defaultVariant`，所以 `set_flag.sh` 改 `defaultVariant`
+**不会改变求值结果**。OFREP 实测（带 `product_id=OLJCESPC7Z` 与空上下文各一次）均返回
+`{"value":false,"variant":"off","reason":"TARGETING_MATCH"}`。`apply` 正确失败并回滚。
+
+**影响**
+`productCatalogFailure` **不入卡**。可惜的是它本该是个好靶子：`GetProduct` 被调
+**155.9 /min**，是全栈流量最高的方法之一，报错数远超任何阈值，且"只对一个特定商品失败"
+这种局部性对 agent 是有意思的难度。
+
+**待议**
+启用它必须改 `demo.flagd.json` 的 targeting 规则本身（把第一个分支改成 `"on"`），
+而该文件是测试床上游文件、是决策 001 的复现锚点。可选：
+(a) 接受改动并记入决策，把改动纳入 `testbed/` 归档；
+(b) 走 `set_flag.sh` 之外的第二条通道（改 targeting 而非 defaultVariant），
+    但那让原语的语义从"换变体"扩展到"改规则"；
+(c) 放弃该 flag。**需用户裁决**。

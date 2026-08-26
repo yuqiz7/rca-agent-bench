@@ -349,7 +349,7 @@ def git_head(path):
     return so.strip() if rc == 0 else "unknown"
 
 
-def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s):
+def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=False):
     cls = (FLAG_CLASS[param.split("=", 1)[0]] if prim == "set_flag" else CLASS_OF[prim])
     tm = TIERS[tier]
     cdir = os.path.join(batch_dir, f"{idx:02d}_{prim}_{svc}")
@@ -365,7 +365,8 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s):
     res = {"idx": idx, "primitive": prim, "service": svc, "class": cls,
            "tier": tier, "param": param,
            "injected": None, "symptom": None, "recovered": None,
-           "residue_clean": None, "aborted": None, "notes": []}
+           "residue_clean": None, "aborted": None, "notes": [],
+           "verdict": "unjudged" if observe_only else None}
 
     t0 = now()
     log(f"cycle {idx} {prim}/{svc} tier={tier} param={param} t0={iso(t0)}")
@@ -402,11 +403,13 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s):
     sleep_until(t_apply + timedelta(seconds=max(tm["inject"] // 2, 80)))
     rc, so, se = sh([script, "probe"] + pargs)
     res["injected"] = (parse_kv(so).get("injected") == "true")
-    if not res["injected"]:
+    if not res["injected"] and not observe_only:
         # injected 失败 = 无效注入，立刻 revert 并中止批次（§5 失败即停）
         sh([script, "revert"] + pargs)
         res["aborted"] = "injected=false at mid-inject; batch aborted"
         return res, None
+    if not res["injected"]:
+        res["notes"].append("observe-only: injected=false recorded, batch not aborted")
 
     # ── 注入窗（只记窗口起止）──
     sleep_until(t_apply + timedelta(seconds=tm["inject"]))
@@ -484,7 +487,12 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s):
     # ── 判定 ──
     # probe_signals 返回的就是 three_signals 打到 stdout 的 summary 本体
     snap = {"immediate": during_imm, "harvest": during_harv}[SYMPTOM_SNAPSHOT[cls]]
-    sym_ok, sym_d = judge_symptom(cls, base, snap, param)
+    if observe_only:
+        # --observe-only：周期、双快照、三探针原始输出全部照常落盘，只是不裁决。
+        sym_ok, sym_d = None, {"snapshot": SYMPTOM_SNAPSHOT[cls],
+                               "rule": "observe-only: no verdict computed"}
+    else:
+        sym_ok, sym_d = judge_symptom(cls, base, snap, param)
     res["symptom"] = sym_ok
     def snap_nums(d):
         t = d["traces"]
@@ -504,7 +512,10 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s):
               "in_flight_at_revert": in_flight,
               "t_query_immediate": iso(t_q_imm),
               "t_query_harvest": iso(t_q_harv)}
-    if after is not None:
+    if after is not None and observe_only:
+        res["recovered"] = None
+        probes["recovered"] = {"pass": None, "detail": "observe-only: no verdict computed"}
+    elif after is not None:
         rec_ok, rec_d = judge_recovered(cls, base, after, param)
         res["recovered"] = rec_ok
         probes["recovered"] = {"pass": rec_ok, "detail": rec_d}
@@ -567,6 +578,11 @@ def write_summary(batch_dir, batch_id, rows, aborted):
           "| --- | --- | --- | --- | :---: | :---: | :---: | :---: | --- |"]
     def mark(v):
         return "待定" if v is None else ("通过" if v else "**失败**")
+
+    observe = any(r.get("verdict") == "unjudged" for r in rows)
+    if observe:
+        L.insert(2, "**观察模式（--observe-only）：只落原始数字，未做判定（verdict=unjudged）。**")
+        L.insert(3, "")
     npass = nfail = nred = npend = 0
     for r in rows:
         d = ((r.get("probes") or {}).get("symptom") or {}).get("detail") or {}
@@ -607,6 +623,9 @@ def main():
     ap.add_argument("--batch-id", default=None)
     ap.add_argument("--abort-after-recovered-failures", type=int, default=2)
     ap.add_argument("--out-root", default=os.path.join(ROOT, "out"))
+    ap.add_argument("--observe-only", action="store_true",
+                    help="跑完整周期与双快照并落盘，但不做通过/失败判定、不因判定停批；"
+                         "每卡记 verdict=unjudged。默认关闭，不改变既有行为。")
     ap.add_argument("--pre-batch-hook", default="",
                     help="批次开始前执行一次的脚本（O-P2-7）。默认空=不执行。")
     ap.add_argument("--settle-s", type=int, default=SETTLE_S_DEFAULT,
@@ -642,12 +661,15 @@ def main():
     rows, aborted, rec_fail_streak = [], None, 0
     try:
         for i, (prim, svc, tier, param) in enumerate(cycles, 1):
-            r, _ = run_cycle(i, prim, svc, tier, param, batch_dir, a.settle_s)
+            r, _ = run_cycle(i, prim, svc, tier, param, batch_dir, a.settle_s,
+                             observe_only=a.observe_only)
             rows.append(r)
             if r.get("aborted"):
                 aborted = f"cycle {i}: {r['aborted']}"
                 log(f"ABORT {aborted}")
                 break
+            if a.observe_only:
+                continue
             if r["recovered"] is False:
                 rec_fail_streak += 1
                 log(f"recovered FAILED (streak {rec_fail_streak})")

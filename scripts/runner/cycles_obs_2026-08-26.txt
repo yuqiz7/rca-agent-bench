@@ -1,0 +1,3 @@
+# 2026-08-26 observation batch: two misconfig candidate cards (observe-only, no verdicts)
+set_flag checkout full paymentUnreachable=on
+set_flag product-catalog full productCatalogFailure=on

@@ -83,7 +83,27 @@
 | 症状落点 | **目标 server span** |
 | 调用量 | `GetProduct` 1559 / 10min = **155.9 /min**（全栈最高之一） |
 | variant | `off` / `on` |
-| 实际生效比例 | **未知** —— 取决于 flagd 侧对 `product_id` 的 targeting 规则命中率，**不是简单比例**。做卡前需先实测 |
+| 实际生效比例 | **恒为 0** —— 见下方实测 |
+
+**2026-08-26 观察批实测：无法开启，不入卡。**
+
+`demo.flagd.json` 里该 flag 的 targeting 规则**两个分支都返回 `off`**：
+
+```json
+"targeting": { "if": [ { "==": [ { "var": "product_id" }, "OLJCESPC7Z" ] }, "off", "off" ] }
+```
+
+flagd 中 targeting 的优先级高于 `defaultVariant`，因此把 `defaultVariant` 改成 `on`
+**不会改变求值结果**。OFREP 实测（带与不带 `product_id` 上下文各一次）均返回
+`{"value":false,"variant":"off","reason":"TARGETING_MATCH"}`。
+
+`set_flag.sh apply` 因此正确失败并回滚：
+`error: flagd did not pick up 'on' within 30s (got 'off'); rolling back`，
+观察批在该周期中止。
+
+**判定：不入卡。** 要启用必须改 `demo.flagd.json` 的 targeting 规则本身，
+而那是测试床上游文件（决策 001 的复现锚点），本步只读不改。
+见 [open_items.md](open_items.md) O-P2-11。
 
 ### `paymentUnreachable` → `checkout`（注意靶子是 checkout 不是 payment）
 
@@ -98,7 +118,26 @@
 | 实际生效比例 | 1.0（无随机） |
 
 > **这一项的症状落点与其余四项不同**，`self_edges.server_by_method` 上可能看不到，
-> 要看 `self_edges.client_by_peer`。做卡前需单独实测确认落点。
+> 要看 `self_edges.client_by_peer`。
+
+**2026-08-26 观察批实测（`obs2card_233337`，入库档 60/120/60，observe-only）：不入卡。**
+
+| 项 | 实测 |
+| --- | --- |
+| `set_flag probe` | `injected=true` —— flagd 的 OFREP 确实返回 `on` |
+| `checkout → payment`（`client_by_peer=172.18.0.18`） | 注入期 **8 条调用、0 报错**（基线 6 条 / 0 报错） |
+| `checkout` 自有 server span（`PlaceOrder`） | 注入期 **8 条、0 报错**（基线 6 条 / 0 报错） |
+| `frontend` 自有 server span | 注入期 996 条、**0 报错** |
+| `payment` 自有 server span | 注入期 **8 条、0 报错** |
+| `payment` 容器 | `Status=running`、`RestartCount=0` |
+| `badAddress` 出现次数（checkout 全量日志） | **0** |
+| `in_flight_at_revert` | 0 |
+| 基线速率 / 阈值 | 6/60s = 0.1/s → `N = max(5, ⌈0.25×0.1×120⌉)` = **5** |
+
+**判定：不入卡。** 判据第一条（client 侧报错数 ≥ N）不满足 —— 实测 **0 < 5**。
+另两条反而都满足（`payment` 容器 running、`payment` 自有 span 报错 0），
+但那是因为**注入压根没有生效**：checkout 全程正常向真实的 payment 收费，
+`badAddress` 从未出现。见 [open_items.md](open_items.md) O-P2-10。
 
 ---
 
