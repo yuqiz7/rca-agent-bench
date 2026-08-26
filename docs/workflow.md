@@ -114,22 +114,20 @@ settle = 150s 的来源：Linux `tcp_syn_retries=6` → 127s 建连重试预算�
 
 ## 5 批次运行纪律（多周期无人值守连跑）
 
-### Wake-up (daily start) — two standing rules
+### 起床流程（每日开机）——两条常设规则
 
-**The wake-up command is idempotent.** Run it even when the containers have already
-come back on their own with the VM: it re-applies the merged compose configuration and
-acts as the health check for the day. It does not recreate containers that already match.
+**起床命令是幂等的。** 即使容器已随 VM 自己起来了也照样执行：它会重新应用合并后的
+compose 配置，并作为当天的健康检查。已经与配置一致的容器不会被重建。
 
-**Right after wake-up, run:**
+**起床后紧接着执行：**
 
 ```
 docker inspect -f '{{.RestartCount}} {{.State.OOMKilled}}' prometheus
 ```
 
-Anything other than `0 false` — STOP and report. This is the **only visible evidence**
-that the boot-time WAL replay hit an OOM: a later manual restart resets the counter,
-after which the boot event can no longer be observed (see resource_audit.md, Addendum
-to the 2026-08-25 section, and open item O-P2-3).
+结果不是 `0 false` —— **停下回报**。这是开机时 WAL 重放发生 OOM 的**唯一可见证据**：
+之后任何一次手动重启都会把计数器清零，开机那次事件就再也观测不到了
+（见 resource_audit.md 2026-08-26 一节的 Addendum，以及开放项 O-P2-3）。
 
 - **后台连跑**：多个周期合并为单个后台脚本串行连跑（`nohup` 或 `tmux`，不依赖前台终端）。用户在运行期间默认走开，只看批次结束后的汇总。
 - **串行不并行**：同一 testbed 上同一时刻**只允许一个原语处于 apply 状态**。并行注入会互相污染指纹。

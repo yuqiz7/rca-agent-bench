@@ -69,21 +69,19 @@ WAL 由 **148.0M → 183.4M**、TSDB 由 **351.1M → 406.5M**、MEM 由 **319.6
 
 实测（Case B，`docker compose … restart prometheus`）：峰值 **88.0 MiB = 4.3% of 2048 MiB**
 @ +144.4 s，稳态 85.3 MiB，`OOMKilled=false`，`RestartCount` 0 → 0，stop_reason=stable。
-证据见 [resource_audit.md](resource_audit.md)「2026-08-25 — Prometheus restart WAL replay peak」
-与 `artifacts/resource_audit/prom_mem_2026-08-25.csv`。
+证据见 [resource_audit.md](resource_audit.md)「2026-08-26 — Prometheus restart WAL replay peak」
+与 `artifacts/resource_audit/prom_mem_2026-08-26.csv`。
 
 按规则 `peak_pct ≤ 60%` 本应关闭，**但不关闭**：容器重启前只运行了 3.5 分钟，
 WAL 仅 3.6M，`total_replay_duration` **118.97 ms** —— 这不构成对 2G 限额的压力测试。
 真正有意义的重放（昨日 WAL）发生在 VM 自动开机的 22:33:54，早于监视器启动 3.5 分钟，
 峰值未被采到（CSV 前两行 167.8/168.1 MiB 只是那次启动的尾部）。
 
-**New closing condition (2026-08-26)**: close only when both hold — (a) the boot replay
-does not OOM (already satisfied: pre-restart samples show `restart_count=0`,
-`oom_killed=false` against the boot instance), and (b) a restart taken while the head
-spans ≥ 2h40m peaks at ≤ 60% of the limit (not yet measured). The 60–85% / >85% / OOM
-bands are unchanged, and on the retest `restarted_during_watch` counts only from the
-manual restart onward. Retest window and rationale: see the Addendum in
-[resource_audit.md](resource_audit.md).
+**新的关闭条件（2026-08-26）**：两条同时满足才关闭 —— (a) 开机重放不 OOM
+（已满足：手动重启前的采样对开机实例显示 `restart_count=0`、`oom_killed=false`）；
+(b) 在 head 跨度 ≥ 2h40m 时做一次重启，峰值 ≤ 上限的 60%（尚未实测）。
+60–85% / >85% / OOM 三个分档不变；复测时 `restarted_during_watch` 只从手动重启
+之后起算。复测窗口与理由见 [resource_audit.md](resource_audit.md) 的 Addendum。
 
 **下次怎么补**：**先**启动监视器（它会以 `status=absent` 轮询等待），**再**重启容器，
 从新实例存在的第一秒开始采样。
@@ -203,33 +201,29 @@ cache miss 追加自身 1/4，几何增长），但两个因素同时压制：ca
 
 ---
 
-## O-P2-9　cartFailure error spans can outlive the harvest settle window
+## O-P2-9　cartFailure 的报错 span 存活时间超过 harvest 的 settle 窗
 
-**Status: open (2026-08-25)**
+**状态：open（2026-08-26）**
 
-**What**
-`cartFailure` error spans hang far longer than the harvest snapshot waits for them.
-In `rerun_cart_225459` the errored `EmptyCart` spans measured p50 **65.0 s** and
-**max 262.1 s**, while the harvest snapshot is taken at `t_end + settle` with
-settle = **150 s** (decision 016). Any error span still in flight at that moment is
-absent from the harvest window, so **harvest can undercount `misconfig` error spans**
-for this flag.
+**内容**
+`cartFailure` 的报错 span 挂起时间远超 harvest 快照的等待时长。在
+`rerun_cart_225459` 中，报错的 `EmptyCart` span 实测 p50 **65.0 s**、
+**max 262.1 s**，而 harvest 快照取于 `t_end + settle`，settle = **150 s**（决策 016）。
+在该时刻仍在飞行中的报错 span 不会出现在 harvest 窗口里，因此
+**harvest 可能少算该 flag 的 `misconfig` 报错 span**。
 
-**Why it matters**
-The `misconfig` symptom (decision 018 part 2) is judged on the harvest snapshot.
-Undercounting pushes a card toward a false symptom failure — the same shape of
-error that decision 016 fixed for `crash`, but caused by span duration rather than
-by the observation point.
+**为什么要紧**
+`misconfig` 的 symptom（决策 018 第二部分）判在 harvest 快照上。少算会把卡推向
+假的 symptom 失败 —— 与决策 016 为 `crash` 修掉的是同一形状的错误，只是成因是
+span 时长而不是观测点。
 
-**Interim rule for card authoring**
-Use **only variants at 75% or above** for `cartFailure`. `EmptyCart` is called about
-3.9 /min, so a 120 s window yields roughly 4–8 calls; at a lower ratio the expected
-error count sits at or under the threshold even before any undercount, and the
-combination of the two makes the card unreliable (observed: first run 0/6 failed,
-rerun 2/4 passed — both inside the probability range, see decision 018 part 2).
+**做卡的临时规则**
+`cartFailure` **只用 75% 及以上的变体**。`EmptyCart` 被调约 3.9 /min，120 s 窗内
+约 4–8 次调用；比例更低时，即便不考虑少算，预期报错数也就贴着阈值，两者叠加
+使卡不可靠（实测：首跑 0/6 失败、重跑 2/4 通过 —— 两次都在概率范围内，
+见决策 018 第二部分）。
 
-**Open question**
-Whether to raise `settle` for `misconfig` cycles specifically, or to accept the
-undercount and compensate in the threshold. Raising settle costs wall clock on every
-cycle (decision 016 trade-off); the alternative needs the hang-duration distribution
-measured across more runs than the two we have.
+**待议**
+是给 `misconfig` 周期单独抬高 `settle`，还是接受少算并在阈值上补偿。抬 settle 会
+让每个周期都多花墙钟（决策 016 的 trade-off）；另一条路则需要在更多轮次上测出
+挂起时长的分布 —— 目前只有两轮。

@@ -101,10 +101,7 @@ YAML 里重复出现同名 key 时 PyYAML 静默取最后一个，而 compose �
 
 ---
 
-## 2026-08-25 — Prometheus restart WAL replay peak（O-P2-3 复测，15s 导出间隔）
-
-> **观测日期实为 2026-08-26**（容器时间戳与 `date -u` 一致）。产物文件名沿用任务
-> 指定的 `2026-08-25`，节标题保持一致，此处注明差异。
+## 2026-08-26 — Prometheus restart WAL replay peak（O-P2-3 复测，15s 导出间隔）
 
 **Case B** —— 25 个容器随 VM 自动重启（`Up 2 minutes`），`prometheus` 已在运行。
 先过健康门（25/25 running，`cart` RestartCount=0），再启动监视器并执行
@@ -122,8 +119,8 @@ YAML 里重复出现同名 key 时 PyYAML 静默取最后一个，而 compose �
 | `restarted_during_watch` | **true —— Case B 的设计使然**，见下方说明 |
 | stop_reason | **stable** |
 | WAL replay 实测 | `total_replay_duration=` **118.974 ms**（`wal_replay_duration=117.73ms`） |
-| CSV / summary | `artifacts/resource_audit/prom_mem_2026-08-25.csv`、`…csv.summary.txt` |
-| 监视日志 | `artifacts/resource_audit/prom_mem_watch_2026-08-25.log` |
+| CSV / summary | `artifacts/resource_audit/prom_mem_2026-08-26.csv`、`…csv.summary.txt` |
+| 监视日志 | `artifacts/resource_audit/prom_mem_watch_2026-08-26.log` |
 
 ### 结论：**O-P2-3 保持开放** —— 本次未真正压到 WAL 重放
 
@@ -178,43 +175,39 @@ YAML 里重复出现同名 key 时 PyYAML 静默取最后一个，而 compose �
 
 宿主机 `free -m`：总 64295 / 已用 5091 / 可用 59203 MiB。未改动任何限额。
 
-### Addendum — why 88.0 MiB is not the loaded-state peak
+### Addendum —— 为什么 88.0 MiB 不是装满态的峰值
 
-**1. The boot replay already happened, unattended, and left nothing to replay.**
-The containers carry a restart policy and came back up with the VM. At boot,
-yesterday's WAL was replayed, and within a few minutes the head block was compacted
-into a persistent block and the WAL truncated. By the time the Case B manual restart
-ran, the WAL held only post-boot data — **3.6M, replayed in 118.97 ms**. So
-**88.0 MiB is the peak of an almost-empty replay**, not of a loaded one.
+**1. 开机重放早就跑完了，而且没给手动重启留下可重放的东西。**
+容器带 restart policy，随 VM 一起复活。开机时昨天的 WAL 在无人值守下完成重放，
+几分钟内 head block 就被压缩成正式块、WAL 被截断。等到 Case B 的手动重启执行时，
+WAL 里只剩开机之后的数据 —— **3.6M，重放耗时 118.97 ms**。所以
+**88.0 MiB 是一次近乎空载重放的峰值**，不是装满态的。
 
-**2. What the pre-restart samples do and do not prove.**
-The two samples the watcher took *before* the manual restart carry
-`restart_count=0` and `oom_killed=false` against the boot instance
-(`StartedAt 2026-08-26T22:33:54Z`). That is positive evidence that **the boot replay
-did not OOM-kill the container**. It is the only such evidence available: a manual
-`docker compose restart` resets the observable counter, so samples taken after it say
-nothing about the boot event.
+**2. 手动重启前的采样能证明什么、不能证明什么。**
+watcher 在手动重启**之前**取到的两个采样，对开机实例
+（`StartedAt 2026-08-26T22:33:54Z`）显示 `restart_count=0`、`oom_killed=false`。
+这是**开机重放没有把容器 OOM 杀掉**的正面证据，也是唯一能拿到的证据：
+手动 `docker compose restart` 会把这个可观测的计数器清零，之后取的采样对开机
+那次事件什么都说明不了。
 
-**3. New closing condition for O-P2-3.**
-Both must hold:
-  - **(a) the boot replay does not OOM** — already satisfied, see point 2;
-  - **(b) a restart taken while the head spans ≥ 2h40m peaks at ≤ 60% of the limit** — not yet measured.
+**3. O-P2-3 的新关闭条件。**
+两条必须同时满足：
+  - **(a) 开机重放不 OOM** —— 已满足，见第 2 点；
+  - **(b) 在 head 跨度 ≥ 2h40m 时做一次重启，峰值 ≤ 上限的 60%** —— 尚未实测。
 
-The remaining bands are unchanged: 60–85% keeps the item open with a recheck after the
-first 16-card batch; > 85% or any OOM is blocking and the new limit is the user's call.
-On the retest, **`restarted_during_watch` counts only from the manual restart onward** —
-in Case B the flag is true by construction and says nothing about a crash.
+其余分档不变：60–85% 保留该项并在首批 16 卡后复查；> 85% 或出现任何 OOM 即为
+拦路项，新限额由用户决定。复测时 **`restarted_during_watch` 只从手动重启之后起算** ——
+在 Case B 下这个标志按构造必然为 true，说明不了是否崩溃。
 
-**4. Retest window.**
-Derived from the first `status=running` sample in
-`artifacts/resource_audit/prom_mem_2026-08-25.csv`, whose `started_at` is the boot-time
-container start:
+**4. 复测窗口。**
+取自 `artifacts/resource_audit/prom_mem_2026-08-26.csv` 中第一条 `status=running`
+样本的 `started_at`，即开机时的容器启动时间：
 
-| Marker | UTC | America/New_York |
+| 时刻 | UTC | America/New_York |
 | --- | --- | --- |
-| Boot container start | `2026-08-26T22:33:54Z` | `2026-08-26 18:33:54 EDT` |
-| **+2h40m** (window opens) | `2026-08-27T01:13:54Z` | `2026-08-26 21:13:54 EDT` |
-| **+2h59m** (window closes) | `2026-08-27T01:32:54Z` | `2026-08-26 21:32:54 EDT` |
+| 开机容器启动 | `2026-08-26T22:33:54Z` | `2026-08-26 18:33:54 EDT` |
+| **+2h40m**（窗口开） | `2026-08-27T01:13:54Z` | `2026-08-26 21:13:54 EDT` |
+| **+2h59m**（窗口关） | `2026-08-27T01:32:54Z` | `2026-08-26 21:32:54 EDT` |
 
-Start `scripts/maintenance/prom_mem_watch.sh` **before** restarting the container — it
-polls through `status=absent`, so it can capture the first second of the new instance.
+**先**启动 `scripts/maintenance/prom_mem_watch.sh` **再**重启容器 —— 它会以
+`status=absent` 轮询等待，因此能采到新实例的第一秒。
