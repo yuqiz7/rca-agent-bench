@@ -569,3 +569,44 @@ span 只在**结束时**导出，两类故障的可靠信号出现在**不同时
 它把 payment 客户端换成指向 `badAddress:50051`（`checkout/main.go:567-571`），
 症状在 `checkout` 的 **client span** 上，`payment` 全程正常。现有 `misconfig` 判据
 读的是 `server_by_method`，对该 flag 不适用，做卡前需单独实测确认落点。
+
+
+---
+
+## 019 收工用 stop、起床后无条件重启 flag 消费方（2026-08-27）
+
+**选了什么**
+收工执行 `scripts/maintenance/shutdown.sh`（`docker compose <三文件> stop`），
+不把栈留给 restart policy。起床执行 `scripts/maintenance/wakeup.sh`：起床命令 →
+**等 flagd 真的能应答 OFREP** → **无条件重启全部 flag 消费方** → 过三项门
+（25 服务 running、`cart` RestartCount=0、`prometheus` 为 `0 false`）。
+
+**为什么**
+O-P2-10 的三假设实验（见 [open_items.md](open_items.md)）把根因钉死了：
+
+- VM 开机时 25 个容器被 restart policy 几乎同时拉起。实测 `checkout` 容器启动于
+  22:33:55.020，而 flagd 的 `Flag IResolver listening at [::]:8013` 到 22:34:00.957
+  才就绪 —— **checkout 早 5.9 秒**。
+- Go 服务用 `flagd.NewProvider()` + **非阻塞**的 `openfeature.SetProvider`
+  （`checkout/main.go:197,202`；`product-catalog/main.go:147,152` 写法相同），
+  首次连接失败**既不阻塞启动也不产生日志**（checkout 全量 stdout 日志 0 行），
+  该进程实例此后一直取默认值 `false`。
+- 实验证否了另两个假设：**重启 checkout 后注入立即生效**（`PlaceOrder` 10 条 / 5 报错）；
+  **不重启也能撤除**（7 条 / 0 报错）与**不重启也能注入**（2 条 / 2 报错）——
+  说明缓存失效通道在连接健康时两个方向都正常，问题只在那一次失败的首连。
+
+`depends_on: service_started` 只保证 flagd **容器**已启动，不保证其**监听器**就绪，
+所以光靠 compose 的依赖顺序不够，必须显式等 OFREP 应答。
+
+**放弃了什么**
+- **改 checkout / product-catalog 源码用 `SetProviderAndWait`。** 放弃 —— 那是测试床
+  上游文件，破坏决策 001 的 3.0.0 复现锚点。
+- **给每张 flag 卡的注入序列加一步重启。** 放弃 —— 重启会制造空窗与冷启动尖峰、
+  污染基线，且把 `misconfig` 卡的语义从「改配置」变成「改配置 + 重启」。
+  改为在**起床时**统一重启一次，卡内注入不再需要重启。
+
+**trade-off**
+每天多花 1–2 分钟（实测 `wakeup.sh` 全程 15 秒，含 flag 消费方重启 11 秒）。
+忘记 `shutdown.sh` 时，起床里那一步无条件重启就是兜底 —— 代价是每天都要重启 10 个
+服务，即使昨天规规矩矩 stop 过。选择无条件而非条件重启，是因为「provider 是否连上」
+根本**没有可观测信号**（零日志），条件判断无从下手。

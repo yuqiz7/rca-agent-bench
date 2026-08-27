@@ -244,9 +244,16 @@ span 时长而不是观测点。
 
 ---
 
-## O-P2-10　paymentUnreachable 开启后 checkout 行为未改变（根因已查明，待裁决修法）
+## O-P2-10　paymentUnreachable 开启后 checkout 行为未改变
 
-**状态：open（2026-08-26）—— 根因已定位，修法待用户裁决**
+**状态：closed（2026-08-27，决策 019）**
+
+**根因**：VM 开机时容器被 restart policy 同时拉起，`checkout` 比 flagd 的 8013 监听器
+早 5.9 秒启动，其非阻塞的 `openfeature.SetProvider` 首次连接失败后既不报错也不写日志，
+该进程实例此后一直取 flag 默认值。**修法见决策 019**：收工 `shutdown.sh`、
+起床 `wakeup.sh`（等 flagd 应答 OFREP + 无条件重启全部 flag 消费方 + 三项门）。
+
+以下为定位过程留档。
 
 **现象（`obs2card_233337`，入库档 observe-only）**
 `probe` 返回 `injected=true`（OFREP 确返回 `on`），但注入期 120 s 内

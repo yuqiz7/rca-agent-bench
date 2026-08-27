@@ -114,20 +114,33 @@ settle = 150s 的来源：Linux `tcp_syn_retries=6` → 127s 建连重试预算�
 
 ## 5 批次运行纪律（多周期无人值守连跑）
 
-### 起床流程（每日开机）——两条常设规则
+### 收工与起床（决策 019）
 
-**起床命令是幂等的。** 即使容器已随 VM 自己起来了也照样执行：它会重新应用合并后的
-compose 配置，并作为当天的健康检查。已经与配置一致的容器不会被重建。
+**收工用 `scripts/maintenance/shutdown.sh`**（`docker compose <三文件> stop`，
+等全部 exited；带 `--poweroff` 则随后关机）。**不要让容器留给 restart policy** ——
+下次开机 25 个容器会被同时拉起，flag 消费方会抢在 flagd 的 8013 监听器就绪之前
+连接（实测 checkout 早 5.9 秒），非阻塞的 `openfeature.SetProvider` 首次连接失败后
+**既不报错也不写日志**，该进程此后一直取 flag 默认值 —— flag 类的卡会静默失效。
 
-**起床后紧接着执行：**
+**起床用 `scripts/maintenance/wakeup.sh`**（可选 `--watch-prometheus`，在起床命令
+之前挂上 `prom_mem_watch.sh` 以采到冷启动的 WAL 重放峰值，见 O-P2-3）。它做四件事：
 
-```
-docker inspect -f '{{.RestartCount}} {{.State.OOMKilled}}' prometheus
-```
+1. 执行决策 002 的起床命令（三文件，override 最后）；
+2. **等 flagd 真的能应答** —— 循环查 OFREP 直到返回 variant，上限 120 s；
+   等容器 `running` 是不够的，`depends_on: service_started` 只保证容器起来了，
+   不保证 flagd 进程的监听器已就绪；
+3. **无条件重启全部 flag 消费方**（`ad cart checkout email frontend payment
+   product-catalog recommendation shipping load-generator`，清单取自
+   [flag_catalog.md](flag_catalog.md) 的读取方列）—— 这是兜底：即使昨天忘了
+   `shutdown.sh`，重启也能让它们的 provider 连上一个活着的 flagd；
+4. **过门**，三项全绿才算起床成功：
+   - 25 个服务 `running`；
+   - `cart` 的 `RestartCount` = 0；
+   - `docker inspect -f '{{.RestartCount}} {{.State.OOMKilled}}' prometheus` = `0 false`
+     —— 这是开机时 WAL 重放发生 OOM 的**唯一可见证据**，之后任何一次手动重启都会把
+     计数器清零（见 resource_audit.md 2026-08-26 一节的 Addendum、O-P2-3）。
 
-结果不是 `0 false` —— **停下回报**。这是开机时 WAL 重放发生 OOM 的**唯一可见证据**：
-之后任何一次手动重启都会把计数器清零，开机那次事件就再也观测不到了
-（见 resource_audit.md 2026-08-26 一节的 Addendum，以及开放项 O-P2-3）。
+任一项不满足，脚本非零退出并打印 `compose ps` —— **停下回报，不要自行修复**。
 
 - **后台连跑**：多个周期合并为单个后台脚本串行连跑（`nohup` 或 `tmux`，不依赖前台终端）。用户在运行期间默认走开，只看批次结束后的汇总。
 - **串行不并行**：同一 testbed 上同一时刻**只允许一个原语处于 apply 状态**。并行注入会互相污染指纹。
