@@ -1,0 +1,60 @@
+{
+ "detected_at": "2026-08-27T20:04:12Z",
+ "window": {
+  "start": "2026-08-27T19:58:17Z",
+  "end": "2026-08-27T20:00:17Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-27T19:56:17Z",
+   "end": "2026-08-27T20:03:47Z"
+  },
+  "baseline": {
+   "start": "2026-08-27T19:57:17Z",
+   "end": "2026-08-27T19:58:17Z"
+  },
+  "inject": {
+   "start": "2026-08-27T19:58:17Z",
+   "end": "2026-08-27T20:00:17Z"
+  },
+  "recover": {
+   "start": "2026-08-27T20:00:17Z",
+   "end": "2026-08-27T20:01:17Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>"
+ },
+ "alerts": [
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on checkout",
+   "service": "checkout",
+   "baseline": {
+    "p95_ms": 97.5,
+    "window": {
+     "start": "2026-08-27T19:57:17Z",
+     "end": "2026-08-27T19:58:17Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 990.0,
+    "threshold_ms": 195.0,
+    "window": {
+     "start": "2026-08-27T19:58:17Z",
+     "end": "2026-08-27T20:00:17Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T19:58:17Z",
+    "end": "2026-08-27T20:00:17Z"
+   },
+   "deviation": 10.154
+  }
+ ],
+ "no_alert": false,
+ "card_id": "latency-email-800"
+}

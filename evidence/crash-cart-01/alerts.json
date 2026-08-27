@@ -1,25 +1,25 @@
 {
- "detected_at": "2026-08-27T18:52:22Z",
+ "detected_at": "2026-08-27T19:29:56Z",
  "window": {
-  "start": "2026-08-27T18:06:26Z",
-  "end": "2026-08-27T18:08:26Z"
+  "start": "2026-08-27T19:24:03Z",
+  "end": "2026-08-27T19:26:04Z"
  },
  "windows": {
   "pack": {
-   "start": "2026-08-27T18:04:25Z",
-   "end": "2026-08-27T18:11:56Z"
+   "start": "2026-08-27T19:22:03Z",
+   "end": "2026-08-27T19:29:34Z"
   },
   "baseline": {
-   "start": "2026-08-27T18:05:25Z",
-   "end": "2026-08-27T18:06:26Z"
+   "start": "2026-08-27T19:23:03Z",
+   "end": "2026-08-27T19:24:03Z"
   },
   "inject": {
-   "start": "2026-08-27T18:06:26Z",
-   "end": "2026-08-27T18:08:26Z"
+   "start": "2026-08-27T19:24:03Z",
+   "end": "2026-08-27T19:26:04Z"
   },
   "recover": {
-   "start": "2026-08-27T18:08:26Z",
-   "end": "2026-08-27T18:09:26Z"
+   "start": "2026-08-27T19:26:04Z",
+   "end": "2026-08-27T19:27:04Z"
   }
  },
  "rules": {
@@ -30,115 +30,90 @@
  },
  "alerts": [
   {
-   "rule": "p95_jump",
-   "message": "elevated p95 latency on frontend",
-   "service": "frontend",
-   "baseline": {
-    "p95_ms": 40.42,
-    "window": {
-     "start": "2026-08-27T18:05:25Z",
-     "end": "2026-08-27T18:06:26Z"
-    }
-   },
-   "observed": {
-    "p95_ms": 4217.86,
-    "threshold_ms": 80.84,
-    "window": {
-     "start": "2026-08-27T18:06:26Z",
-     "end": "2026-08-27T18:08:26Z"
-    }
-   },
-   "window": {
-    "start": "2026-08-27T18:06:26Z",
-    "end": "2026-08-27T18:08:26Z"
-   },
-   "deviation": 104.354
-  },
-  {
    "rule": "traffic_zero",
    "message": "traffic dropped to zero on cart",
    "service": "cart",
    "baseline": {
-    "request_rate_per_s": 0.9508,
+    "request_rate_per_s": 1.65,
     "window": {
-     "start": "2026-08-27T18:05:25Z",
-     "end": "2026-08-27T18:06:26Z"
+     "start": "2026-08-27T19:23:03Z",
+     "end": "2026-08-27T19:24:03Z"
     }
    },
    "observed": {
-    "request_rate_per_s": 0.0,
-    "rate_ceiling_per_s": 0.0951,
+    "request_rate_per_s": 0.0496,
+    "rate_ceiling_per_s": 0.165,
     "consecutive_zero_samples": 7,
     "zero_span_s": 105,
-    "expected_calls_in_zero_span": 99.84,
+    "expected_calls_in_zero_span": 173.25,
     "min_expected_calls": 5,
-    "samples_in_window": 8,
+    "samples_in_window": 9,
     "window": {
-     "start": "2026-08-27T18:06:26Z",
-     "end": "2026-08-27T18:08:26Z"
+     "start": "2026-08-27T19:24:03Z",
+     "end": "2026-08-27T19:26:04Z"
     }
    },
    "window": {
-    "start": "2026-08-27T18:06:26Z",
-    "end": "2026-08-27T18:08:26Z"
+    "start": "2026-08-27T19:24:03Z",
+    "end": "2026-08-27T19:26:04Z"
    },
-   "deviation": 99.84,
+   "deviation": 173.25,
    "deviation_unit": "expected calls missed"
   },
   {
    "rule": "p95_jump",
-   "message": "elevated p95 latency on frontend-proxy",
-   "service": "frontend-proxy",
+   "message": "elevated p95 latency on frontend",
+   "service": "frontend",
    "baseline": {
-    "p95_ms": 42.09,
+    "p95_ms": 42.27,
     "window": {
-     "start": "2026-08-27T18:05:25Z",
-     "end": "2026-08-27T18:06:26Z"
+     "start": "2026-08-27T19:23:03Z",
+     "end": "2026-08-27T19:24:03Z"
     }
    },
    "observed": {
-    "p95_ms": 3271.87,
-    "threshold_ms": 84.17,
+    "p95_ms": 3491.67,
+    "threshold_ms": 84.55,
     "window": {
-     "start": "2026-08-27T18:06:26Z",
-     "end": "2026-08-27T18:08:26Z"
+     "start": "2026-08-27T19:24:03Z",
+     "end": "2026-08-27T19:26:04Z"
     }
    },
    "window": {
-    "start": "2026-08-27T18:06:26Z",
-    "end": "2026-08-27T18:08:26Z"
+    "start": "2026-08-27T19:24:03Z",
+    "end": "2026-08-27T19:26:04Z"
    },
-   "deviation": 77.741
+   "deviation": 82.596
   },
   {
    "rule": "traffic_zero",
    "message": "traffic dropped to zero on shipping",
    "service": "shipping",
    "baseline": {
-    "request_rate_per_s": 0.1639,
+    "request_rate_per_s": 0.3667,
     "window": {
-     "start": "2026-08-27T18:05:25Z",
-     "end": "2026-08-27T18:06:26Z"
+     "start": "2026-08-27T19:23:03Z",
+     "end": "2026-08-27T19:24:03Z"
     }
    },
    "observed": {
-    "request_rate_per_s": 0.0,
-    "rate_ceiling_per_s": 0.0164,
+    "request_rate_per_s": 0.0083,
+    "rate_ceiling_per_s": 0.0367,
     "consecutive_zero_samples": 7,
     "zero_span_s": 105,
-    "expected_calls_in_zero_span": 17.21,
+    "expected_calls_in_zero_span": 38.5,
     "min_expected_calls": 5,
-    "samples_in_window": 8,
+    "samples_in_window": 9,
     "window": {
-     "start": "2026-08-27T18:06:26Z",
-     "end": "2026-08-27T18:08:26Z"
+     "start": "2026-08-27T19:24:03Z",
+     "end": "2026-08-27T19:26:04Z"
     }
    },
    "window": {
-    "start": "2026-08-27T18:06:26Z",
-    "end": "2026-08-27T18:08:26Z"
+    "start": "2026-08-27T19:24:03Z",
+    "end": "2026-08-27T19:26:04Z"
    },
-   "deviation": 17.21,
+   "deviation": 38.5,
    "deviation_unit": "expected calls missed"
   },
   {
@@ -146,61 +121,30 @@
    "message": "traffic dropped to zero on quote",
    "service": "quote",
    "baseline": {
-    "request_rate_per_s": 0.0984,
+    "request_rate_per_s": 0.2333,
     "window": {
-     "start": "2026-08-27T18:05:25Z",
-     "end": "2026-08-27T18:06:26Z"
+     "start": "2026-08-27T19:23:03Z",
+     "end": "2026-08-27T19:24:03Z"
     }
    },
    "observed": {
-    "request_rate_per_s": 0.0,
-    "rate_ceiling_per_s": 0.0098,
+    "request_rate_per_s": 0.0083,
+    "rate_ceiling_per_s": 0.0233,
     "consecutive_zero_samples": 7,
     "zero_span_s": 105,
-    "expected_calls_in_zero_span": 10.33,
+    "expected_calls_in_zero_span": 24.5,
     "min_expected_calls": 5,
-    "samples_in_window": 8,
+    "samples_in_window": 9,
     "window": {
-     "start": "2026-08-27T18:06:26Z",
-     "end": "2026-08-27T18:08:26Z"
+     "start": "2026-08-27T19:24:03Z",
+     "end": "2026-08-27T19:26:04Z"
     }
    },
    "window": {
-    "start": "2026-08-27T18:06:26Z",
-    "end": "2026-08-27T18:08:26Z"
+    "start": "2026-08-27T19:24:03Z",
+    "end": "2026-08-27T19:26:04Z"
    },
-   "deviation": 10.33,
-   "deviation_unit": "expected calls missed"
-  },
-  {
-   "rule": "traffic_zero",
-   "message": "traffic dropped to zero on payment",
-   "service": "payment",
-   "baseline": {
-    "request_rate_per_s": 0.0656,
-    "window": {
-     "start": "2026-08-27T18:05:25Z",
-     "end": "2026-08-27T18:06:26Z"
-    }
-   },
-   "observed": {
-    "request_rate_per_s": 0.0,
-    "rate_ceiling_per_s": 0.0066,
-    "consecutive_zero_samples": 7,
-    "zero_span_s": 105,
-    "expected_calls_in_zero_span": 6.89,
-    "min_expected_calls": 5,
-    "samples_in_window": 8,
-    "window": {
-     "start": "2026-08-27T18:06:26Z",
-     "end": "2026-08-27T18:08:26Z"
-    }
-   },
-   "window": {
-    "start": "2026-08-27T18:06:26Z",
-    "end": "2026-08-27T18:08:26Z"
-   },
-   "deviation": 6.89,
+   "deviation": 24.5,
    "deviation_unit": "expected calls missed"
   },
   {
@@ -208,83 +152,87 @@
    "message": "traffic dropped to zero on email",
    "service": "email",
    "baseline": {
-    "request_rate_per_s": 0.0492,
+    "request_rate_per_s": 0.1333,
     "window": {
-     "start": "2026-08-27T18:05:25Z",
-     "end": "2026-08-27T18:06:26Z"
+     "start": "2026-08-27T19:23:03Z",
+     "end": "2026-08-27T19:24:03Z"
     }
    },
    "observed": {
     "request_rate_per_s": 0.0,
-    "rate_ceiling_per_s": 0.0049,
-    "consecutive_zero_samples": 7,
-    "zero_span_s": 105,
-    "expected_calls_in_zero_span": 5.16,
+    "rate_ceiling_per_s": 0.0133,
+    "consecutive_zero_samples": 8,
+    "zero_span_s": 120,
+    "expected_calls_in_zero_span": 16.0,
     "min_expected_calls": 5,
-    "samples_in_window": 8,
+    "samples_in_window": 9,
     "window": {
-     "start": "2026-08-27T18:06:26Z",
-     "end": "2026-08-27T18:08:26Z"
+     "start": "2026-08-27T19:24:03Z",
+     "end": "2026-08-27T19:26:04Z"
     }
    },
    "window": {
-    "start": "2026-08-27T18:06:26Z",
-    "end": "2026-08-27T18:08:26Z"
+    "start": "2026-08-27T19:24:03Z",
+    "end": "2026-08-27T19:26:04Z"
    },
-   "deviation": 5.16,
+   "deviation": 16.0,
    "deviation_unit": "expected calls missed"
   },
   {
-   "rule": "error_rate_jump",
-   "message": "elevated error rate on checkout",
-   "service": "checkout",
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on payment",
+   "service": "payment",
    "baseline": {
-    "error_count": 0.0,
-    "error_count_scaled_to_inject": 0.0,
-    "request_rate_per_s": 0.0656,
+    "request_rate_per_s": 0.1333,
     "window": {
-     "start": "2026-08-27T18:05:25Z",
-     "end": "2026-08-27T18:06:26Z"
+     "start": "2026-08-27T19:23:03Z",
+     "end": "2026-08-27T19:24:03Z"
     }
    },
    "observed": {
-    "error_count": 5.0,
-    "threshold_N": 5,
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0133,
+    "consecutive_zero_samples": 8,
+    "zero_span_s": 120,
+    "expected_calls_in_zero_span": 16.0,
+    "min_expected_calls": 5,
+    "samples_in_window": 9,
     "window": {
-     "start": "2026-08-27T18:06:26Z",
-     "end": "2026-08-27T18:08:26Z"
+     "start": "2026-08-27T19:24:03Z",
+     "end": "2026-08-27T19:26:04Z"
     }
    },
    "window": {
-    "start": "2026-08-27T18:06:26Z",
-    "end": "2026-08-27T18:08:26Z"
+    "start": "2026-08-27T19:24:03Z",
+    "end": "2026-08-27T19:26:04Z"
    },
-   "deviation": 5.0
+   "deviation": 16.0,
+   "deviation_unit": "expected calls missed"
   },
   {
    "rule": "p95_jump",
-   "message": "elevated p95 latency on cart",
-   "service": "cart",
+   "message": "elevated p95 latency on payment",
+   "service": "payment",
    "baseline": {
-    "p95_ms": 3.89,
+    "p95_ms": 1.9,
     "window": {
-     "start": "2026-08-27T18:05:25Z",
-     "end": "2026-08-27T18:06:26Z"
+     "start": "2026-08-27T19:23:03Z",
+     "end": "2026-08-27T19:24:03Z"
     }
    },
    "observed": {
-    "p95_ms": 8.2,
-    "threshold_ms": 7.78,
+    "p95_ms": 5.2,
+    "threshold_ms": 3.8,
     "window": {
-     "start": "2026-08-27T18:06:26Z",
-     "end": "2026-08-27T18:08:26Z"
+     "start": "2026-08-27T19:24:03Z",
+     "end": "2026-08-27T19:26:04Z"
     }
    },
    "window": {
-    "start": "2026-08-27T18:06:26Z",
-    "end": "2026-08-27T18:08:26Z"
+    "start": "2026-08-27T19:24:03Z",
+    "end": "2026-08-27T19:26:04Z"
    },
-   "deviation": 2.107
+   "deviation": 2.737
   }
  ],
  "no_alert": false,

@@ -1,0 +1,38 @@
+{
+ "card_id": "misconfig-checkout-on",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T20:33:06Z",
+   "end": "2026-08-27T20:35:07Z"
+  },
+  "detected_at": "2026-08-27T20:38:59Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "error_rate_jump",
+    "message": "elevated error rate on checkout",
+    "service": "checkout",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.0323,
+     "window": {
+      "start": "2026-08-27T20:32:04Z",
+      "end": "2026-08-27T20:33:06Z"
+     }
+    },
+    "observed": {
+     "error_count": 5.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-27T20:33:06Z",
+      "end": "2026-08-27T20:35:07Z"
+     }
+    },
+    "deviation": 5.0
+   }
+  ]
+ },
+ "evidence_dir": "evidence/misconfig-checkout-on",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

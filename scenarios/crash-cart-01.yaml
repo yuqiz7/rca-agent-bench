@@ -24,13 +24,13 @@ cycle:
 param_validated: true
 batch: 1
 production:
-  t_start: "2026-08-27T18:05:25Z"
-  t_inject: "2026-08-27T18:06:26Z"
-  t_revert: "2026-08-27T18:08:26Z"
-  t_end: "2026-08-27T18:09:26Z"
+  t_start: "2026-08-27T19:23:03Z"
+  t_inject: "2026-08-27T19:24:03Z"
+  t_revert: "2026-08-27T19:26:04Z"
+  t_end: "2026-08-27T19:27:04Z"
   settle_s: 150
-  t_harvest: "2026-08-27T18:11:56Z"
-  batch_dir: scripts/out/20260827T180800Z_e2e_crash-cart-01
+  t_harvest: "2026-08-27T19:29:34Z"
+  batch_dir: scripts/out/batch1_20260827T190241Z
   probe:
     injected: true
     symptom: true
@@ -41,187 +41,153 @@ production:
   evidence_dir: evidence/crash-cart-01
   packed: true
   manifest_sha256:
-    logs.jsonl: c9519807280963e44d2fb4789116501a01b42b3d7ac113b1b37bc839c1800f65
-    metrics.json: 225417cbd59ef0c03ddf60998f4acae60482a8c210f7dbbfda194bdee93b44ce
-    traces.json: a298707cdf2c9bc6e33ed10e2413acc17ccebdd5a8dd39217892598e6a5ed613
+    logs.jsonl: d4dc594a3729c6433e29e62c591849bd6400437720cf05eaa878f458ccd02c2c
+    metrics.json: 685d9f2e4131724f816ed70cb01e9e006f27fd9a14a62f2812be10555056a470
+    traces.json: 425450bf0b0dbc667ff17fff34670241c186571ea7ce887732beac16ec2a1452
     config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
     topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
-  alerts: 9
+  alerts: 7
 agent_visible_symptom:
   window:
-    start: "2026-08-27T18:06:26Z"
-    end: "2026-08-27T18:08:26Z"
-  detected_at: "2026-08-27T18:52:22Z"
+    start: "2026-08-27T19:24:03Z"
+    end: "2026-08-27T19:26:04Z"
+  detected_at: "2026-08-27T19:29:56Z"
   no_alert: false
   alerts:
-    -
-      rule: p95_jump
-      message: elevated p95 latency on frontend
-      service: frontend
-      baseline:
-        p95_ms: 40.42
-        window:
-          start: "2026-08-27T18:05:25Z"
-          end: "2026-08-27T18:06:26Z"
-      observed:
-        p95_ms: 4217.86
-        threshold_ms: 80.84
-        window:
-          start: "2026-08-27T18:06:26Z"
-          end: "2026-08-27T18:08:26Z"
-      deviation: 104.354
     -
       rule: traffic_zero
       message: traffic dropped to zero on cart
       service: cart
       baseline:
-        request_rate_per_s: 0.9508
+        request_rate_per_s: 1.65
         window:
-          start: "2026-08-27T18:05:25Z"
-          end: "2026-08-27T18:06:26Z"
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
       observed:
-        request_rate_per_s: 0.0
-        rate_ceiling_per_s: 0.0951
+        request_rate_per_s: 0.0496
+        rate_ceiling_per_s: 0.165
         consecutive_zero_samples: 7
         zero_span_s: 105
-        expected_calls_in_zero_span: 99.84
+        expected_calls_in_zero_span: 173.25
         min_expected_calls: 5
-        samples_in_window: 8
+        samples_in_window: 9
         window:
-          start: "2026-08-27T18:06:26Z"
-          end: "2026-08-27T18:08:26Z"
-      deviation: 99.84
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 173.25
     -
       rule: p95_jump
-      message: elevated p95 latency on frontend-proxy
-      service: frontend-proxy
+      message: elevated p95 latency on frontend
+      service: frontend
       baseline:
-        p95_ms: 42.09
+        p95_ms: 42.27
         window:
-          start: "2026-08-27T18:05:25Z"
-          end: "2026-08-27T18:06:26Z"
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
       observed:
-        p95_ms: 3271.87
-        threshold_ms: 84.17
+        p95_ms: 3491.67
+        threshold_ms: 84.55
         window:
-          start: "2026-08-27T18:06:26Z"
-          end: "2026-08-27T18:08:26Z"
-      deviation: 77.741
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 82.596
     -
       rule: traffic_zero
       message: traffic dropped to zero on shipping
       service: shipping
       baseline:
-        request_rate_per_s: 0.1639
+        request_rate_per_s: 0.3667
         window:
-          start: "2026-08-27T18:05:25Z"
-          end: "2026-08-27T18:06:26Z"
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
       observed:
-        request_rate_per_s: 0.0
-        rate_ceiling_per_s: 0.0164
+        request_rate_per_s: 0.0083
+        rate_ceiling_per_s: 0.0367
         consecutive_zero_samples: 7
         zero_span_s: 105
-        expected_calls_in_zero_span: 17.21
+        expected_calls_in_zero_span: 38.5
         min_expected_calls: 5
-        samples_in_window: 8
+        samples_in_window: 9
         window:
-          start: "2026-08-27T18:06:26Z"
-          end: "2026-08-27T18:08:26Z"
-      deviation: 17.21
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 38.5
     -
       rule: traffic_zero
       message: traffic dropped to zero on quote
       service: quote
       baseline:
-        request_rate_per_s: 0.0984
+        request_rate_per_s: 0.2333
         window:
-          start: "2026-08-27T18:05:25Z"
-          end: "2026-08-27T18:06:26Z"
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
       observed:
-        request_rate_per_s: 0.0
-        rate_ceiling_per_s: 0.0098
+        request_rate_per_s: 0.0083
+        rate_ceiling_per_s: 0.0233
         consecutive_zero_samples: 7
         zero_span_s: 105
-        expected_calls_in_zero_span: 10.33
+        expected_calls_in_zero_span: 24.5
         min_expected_calls: 5
-        samples_in_window: 8
+        samples_in_window: 9
         window:
-          start: "2026-08-27T18:06:26Z"
-          end: "2026-08-27T18:08:26Z"
-      deviation: 10.33
-    -
-      rule: traffic_zero
-      message: traffic dropped to zero on payment
-      service: payment
-      baseline:
-        request_rate_per_s: 0.0656
-        window:
-          start: "2026-08-27T18:05:25Z"
-          end: "2026-08-27T18:06:26Z"
-      observed:
-        request_rate_per_s: 0.0
-        rate_ceiling_per_s: 0.0066
-        consecutive_zero_samples: 7
-        zero_span_s: 105
-        expected_calls_in_zero_span: 6.89
-        min_expected_calls: 5
-        samples_in_window: 8
-        window:
-          start: "2026-08-27T18:06:26Z"
-          end: "2026-08-27T18:08:26Z"
-      deviation: 6.89
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 24.5
     -
       rule: traffic_zero
       message: traffic dropped to zero on email
       service: email
       baseline:
-        request_rate_per_s: 0.0492
+        request_rate_per_s: 0.1333
         window:
-          start: "2026-08-27T18:05:25Z"
-          end: "2026-08-27T18:06:26Z"
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
       observed:
         request_rate_per_s: 0.0
-        rate_ceiling_per_s: 0.0049
-        consecutive_zero_samples: 7
-        zero_span_s: 105
-        expected_calls_in_zero_span: 5.16
+        rate_ceiling_per_s: 0.0133
+        consecutive_zero_samples: 8
+        zero_span_s: 120
+        expected_calls_in_zero_span: 16.0
         min_expected_calls: 5
-        samples_in_window: 8
+        samples_in_window: 9
         window:
-          start: "2026-08-27T18:06:26Z"
-          end: "2026-08-27T18:08:26Z"
-      deviation: 5.16
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 16.0
     -
-      rule: error_rate_jump
-      message: elevated error rate on checkout
-      service: checkout
+      rule: traffic_zero
+      message: traffic dropped to zero on payment
+      service: payment
       baseline:
-        error_count: 0.0
-        error_count_scaled_to_inject: 0.0
-        request_rate_per_s: 0.0656
+        request_rate_per_s: 0.1333
         window:
-          start: "2026-08-27T18:05:25Z"
-          end: "2026-08-27T18:06:26Z"
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
       observed:
-        error_count: 5.0
-        threshold_N: 5
+        request_rate_per_s: 0.0
+        rate_ceiling_per_s: 0.0133
+        consecutive_zero_samples: 8
+        zero_span_s: 120
+        expected_calls_in_zero_span: 16.0
+        min_expected_calls: 5
+        samples_in_window: 9
         window:
-          start: "2026-08-27T18:06:26Z"
-          end: "2026-08-27T18:08:26Z"
-      deviation: 5.0
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 16.0
     -
       rule: p95_jump
-      message: elevated p95 latency on cart
-      service: cart
+      message: elevated p95 latency on payment
+      service: payment
       baseline:
-        p95_ms: 3.89
+        p95_ms: 1.9
         window:
-          start: "2026-08-27T18:05:25Z"
-          end: "2026-08-27T18:06:26Z"
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
       observed:
-        p95_ms: 8.2
-        threshold_ms: 7.78
+        p95_ms: 5.2
+        threshold_ms: 3.8
         window:
-          start: "2026-08-27T18:06:26Z"
-          end: "2026-08-27T18:08:26Z"
-      deviation: 2.107
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 2.737

@@ -1,0 +1,36 @@
+{
+ "card_id": "memleak-email-1000x",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T20:12:11Z",
+   "end": "2026-08-27T20:14:12Z"
+  },
+  "detected_at": "2026-08-27T20:18:08Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on email",
+    "service": "email",
+    "baseline": {
+     "p95_ms": 7.7,
+     "window": {
+      "start": "2026-08-27T20:11:11Z",
+      "end": "2026-08-27T20:12:11Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 47.0,
+     "threshold_ms": 15.4,
+     "window": {
+      "start": "2026-08-27T20:12:11Z",
+      "end": "2026-08-27T20:14:12Z"
+     }
+    },
+    "deviation": 6.104
+   }
+  ]
+ },
+ "evidence_dir": "evidence/memleak-email-1000x",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

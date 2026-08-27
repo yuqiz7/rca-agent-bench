@@ -24,5 +24,100 @@ cycle:
   settle_s: 150
 param_validated: true
 batch: 1
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-08-27T19:43:21Z"
+  t_inject: "2026-08-27T19:44:22Z"
+  t_revert: "2026-08-27T19:46:22Z"
+  t_end: "2026-08-27T19:47:22Z"
+  settle_s: 150
+  t_harvest: "2026-08-27T19:49:52Z"
+  batch_dir: scripts/out/batch1_20260827T190241Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/latency-cart-800
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 5ec2a87bab8122d60860fe573acb5e3ee2589ae3dfaa31bc00733d1eb1318042
+    metrics.json: d5a31b6514a9ab37c30f5f4c174d365b7eb3db74557bd31c554d12a417be25c6
+    traces.json: d4017e9ebce035564fdeae7a1d3aa4c80bfeed160c5098393f27342094ece2a3
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 4
+agent_visible_symptom:
+  window:
+    start: "2026-08-27T19:44:22Z"
+    end: "2026-08-27T19:46:22Z"
+  detected_at: "2026-08-27T19:50:19Z"
+  no_alert: false
+  alerts:
+    -
+      rule: p95_jump
+      message: elevated p95 latency on checkout
+      service: checkout
+      baseline:
+        p95_ms: 48.0
+        window:
+          start: "2026-08-27T19:43:21Z"
+          end: "2026-08-27T19:44:22Z"
+      observed:
+        p95_ms: 1970.0
+        threshold_ms: 96.0
+        window:
+          start: "2026-08-27T19:44:22Z"
+          end: "2026-08-27T19:46:22Z"
+      deviation: 41.042
+    -
+      rule: p95_jump
+      message: elevated p95 latency on frontend
+      service: frontend
+      baseline:
+        p95_ms: 40.03
+        window:
+          start: "2026-08-27T19:43:21Z"
+          end: "2026-08-27T19:44:22Z"
+      observed:
+        p95_ms: 1563.38
+        threshold_ms: 80.06
+        window:
+          start: "2026-08-27T19:44:22Z"
+          end: "2026-08-27T19:46:22Z"
+      deviation: 39.056
+    -
+      rule: p95_jump
+      message: elevated p95 latency on frontend-proxy
+      service: frontend-proxy
+      baseline:
+        p95_ms: 41.7
+        window:
+          start: "2026-08-27T19:43:21Z"
+          end: "2026-08-27T19:44:22Z"
+      observed:
+        p95_ms: 1219.78
+        threshold_ms: 83.4
+        window:
+          start: "2026-08-27T19:44:22Z"
+          end: "2026-08-27T19:46:22Z"
+      deviation: 29.25
+    -
+      rule: memory_over_line
+      message: memory rising on payment
+      service: payment
+      baseline:
+        memory_mib: 83.0
+        window:
+          start: "2026-08-27T19:43:21Z"
+          end: "2026-08-27T19:44:22Z"
+      observed:
+        memory_mib: 114.0
+        growth_mib: 31.0
+        threshold_growth_mib: 30.0
+        monotonic: true
+        window:
+          start: "2026-08-27T19:44:22Z"
+          end: "2026-08-27T19:46:22Z"
+      deviation: 1.034

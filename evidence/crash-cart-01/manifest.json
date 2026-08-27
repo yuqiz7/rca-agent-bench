@@ -1,28 +1,28 @@
 {
  "card_id": "crash-cart-01",
- "packed_at": "2026-08-27T18:12:57Z",
+ "packed_at": "2026-08-27T19:29:56Z",
  "window": {
-  "start": "2026-08-27T18:04:25Z",
-  "end": "2026-08-27T18:11:56Z",
+  "start": "2026-08-27T19:22:03Z",
+  "end": "2026-08-27T19:29:34Z",
   "pre_pad_s": 60,
   "post_pad_s": 150
  },
  "windows": {
   "pack": {
-   "start": "2026-08-27T18:04:25Z",
-   "end": "2026-08-27T18:11:56Z"
+   "start": "2026-08-27T19:22:03Z",
+   "end": "2026-08-27T19:29:34Z"
   },
   "baseline": {
-   "start": "2026-08-27T18:05:25Z",
-   "end": "2026-08-27T18:06:26Z"
+   "start": "2026-08-27T19:23:03Z",
+   "end": "2026-08-27T19:24:03Z"
   },
   "inject": {
-   "start": "2026-08-27T18:06:26Z",
-   "end": "2026-08-27T18:08:26Z"
+   "start": "2026-08-27T19:24:03Z",
+   "end": "2026-08-27T19:26:04Z"
   },
   "recover": {
-   "start": "2026-08-27T18:08:26Z",
-   "end": "2026-08-27T18:09:26Z"
+   "start": "2026-08-27T19:26:04Z",
+   "end": "2026-08-27T19:27:04Z"
   }
  },
  "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
@@ -30,20 +30,20 @@
   {
    "name": "logs.jsonl",
    "path": "evidence/crash-cart-01/logs.jsonl",
-   "bytes": 2915723,
-   "sha256": "c9519807280963e44d2fb4789116501a01b42b3d7ac113b1b37bc839c1800f65"
+   "bytes": 3070382,
+   "sha256": "d4dc594a3729c6433e29e62c591849bd6400437720cf05eaa878f458ccd02c2c"
   },
   {
    "name": "metrics.json",
    "path": "evidence/crash-cart-01/metrics.json",
-   "bytes": 178110,
-   "sha256": "225417cbd59ef0c03ddf60998f4acae60482a8c210f7dbbfda194bdee93b44ce"
+   "bytes": 183869,
+   "sha256": "685d9f2e4131724f816ed70cb01e9e006f27fd9a14a62f2812be10555056a470"
   },
   {
    "name": "traces.json",
    "path": "evidence/crash-cart-01/traces.json",
-   "bytes": 7033234,
-   "sha256": "a298707cdf2c9bc6e33ed10e2413acc17ccebdd5a8dd39217892598e6a5ed613"
+   "bytes": 7261744,
+   "sha256": "425450bf0b0dbc667ff17fff34670241c186571ea7ce887732beac16ec2a1452"
   },
   {
    "name": "config_diff.txt",
@@ -60,17 +60,17 @@
  ],
  "stats": {
   "logs.jsonl": {
-   "lines": 8916,
+   "lines": 9169,
    "index_pattern": "otel-logs-*",
    "truncated": false,
    "page_size": 2000
   },
   "metrics.json": {
    "queries": 7,
-   "series": 103
+   "series": 107
   },
   "traces.json": {
-   "spans": 26294,
+   "spans": 27179,
    "limit_hit": false,
    "services_hitting_limit": []
   },

@@ -9,7 +9,7 @@
 --name-suffix 在文件名末尾追加一段（同一窗口查两次时区分快照，见决策 016），
 默认空、即文件名格式不变。
 """
-import json, os, sys, time, urllib.parse, urllib.request
+import json, os, re, sys, time, urllib.parse, urllib.request
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -69,6 +69,14 @@ PEER_KEYS = ("net.peer.name", "server.address", "peer.service")
 # 记在这里是为了让「为什么这两个靶子照样有数」这件事有出处（决策 018）。
 NO_SERVER_SPAN_TARGETS = ("valkey-cart", "astronomy-db")
 
+# targeting 型开关（productCatalogFailure）只让**一个业务实体**的请求失败，
+# 按方法分组看不出来：GetProduct 整体报错率就是那个商品的流量份额（实测约 11%），
+# 与「注入没生效」在数字上难以区分。按业务 id 分组后，命中的那一支报错率接近 100%、
+# 其余支 0%，判据才有区分度（决策 021 修订 / O-P2-13）。
+# 键名形如 demo.<entity>.id，实测有 demo.product.id / demo.order.id /
+# demo.shipping.tracking.id；用正则而不是清单，新的实体自动纳入。
+BUSINESS_ID_RE = re.compile(r"^demo\..+\.id$")
+
 
 def collect_traces(base, svc, t0, t1):
     """调用方打给 svc 的报错 span。
@@ -89,6 +97,7 @@ def collect_traces(base, svc, t0, t1):
     spans, hit_limit = {}, []
     down = {}                    # 下游边：svc 自己发出的 client span，按 peer 分组
     self_srv = {}                # svc 自己的 server span，按方法分组
+    self_by_id = {}              # 同上，但按业务 id 标签分组：{tag_key: {value: {spanID: (sp, tags)}}}
     for caller in query_list:
         q = urllib.parse.urlencode(
             {"service": caller, "start": us0, "end": us1, "limit": TRACE_LIMIT_PER_CALLER}
@@ -117,6 +126,10 @@ def collect_traces(base, svc, t0, t1):
                         mk = (tg.get("rpc.method") or tg.get("http.route")
                               or sp.get("operationName") or "?")
                         self_srv.setdefault(mk, {})[sp["spanID"]] = (sp, tg)
+                        for bk, bv in tg.items():
+                            if BUSINESS_ID_RE.match(bk) and bv is not None:
+                                (self_by_id.setdefault(bk, {}).setdefault(str(bv), {})
+                                 [sp["spanID"]]) = (sp, tg)
                         continue
                     # svc 自己发出的下游调用：latency 类要靠它证明 sport 过滤
                     # 生效（下游没被误伤），见决策 014。
@@ -236,6 +249,12 @@ def collect_traces(base, svc, t0, t1):
                 1 for v in self_srv.values() for sp, tg in v.values()
                 if tg.get("error") is True
                 or str(tg.get("otel.status_code", "")).upper() == "ERROR"),
+            # targeting 型开关的判据落在这里：按业务 id 分组的自有 server span
+            # （决策 021 修订 / O-P2-13）。分组键是标签名，二级键是标签值。
+            "server_by_business_id": {
+                bk: {bv: edge_stats(list(items.values()))
+                     for bv, items in sorted(vals.items())}
+                for bk, vals in sorted(self_by_id.items())},
         },
     }
 

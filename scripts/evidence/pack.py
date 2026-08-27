@@ -56,6 +56,41 @@ COMPOSE_FILES = ["-f", "compose.yaml", "-f", "compose.observability.yaml",
 
 OPENSEARCH_INDEX = "otel-logs-*"   # index pattern, from three_signals.collect_logs
 
+# ── span tag whitelist (O-P2-16) ──────────────────────────────────────────
+# traces.json used to drop every tag, which made the pack unable to answer
+# "which product_id failed?" -- and Jaeger's in-memory store (MEMORY_MAX_TRACES
+# =25000, ~30 min of lookback here) means a question you cannot answer from the
+# pack you cannot answer at all once that window ages out.
+#
+# Whitelist, not everything: an unfiltered tag map roughly doubles traces.json,
+# and most of what it would carry (otel.scope.*, server.address, http.url,
+# upstream_cluster, ...) is invariant boilerplate. Keys below were taken from a
+# live 25-minute sample across all services, not guessed.
+#
+# Business ids: any `demo.<entity>.id`. Observed in that sample --
+#   demo.product.id (7332 spans), demo.order.id (1818), demo.shipping.tracking.id (606).
+# The regex, not the list, is the rule: a new demo.*.id starts being captured on
+# its own, which is what a targeting-style card needs.
+BUSINESS_ID_RE = re.compile(r"^demo\..+\.id$")
+
+# Error / exception message tags. Deliberately excludes the status-code family
+# (http.status_code, rpc.grpc.status_code, ...): those sit on tens of thousands of
+# healthy spans and carry no message. Each span already has its own `status`.
+ERROR_TAG_KEYS = (
+    "error",
+    "error.type",
+    "otel.status_code",
+    "otel.status_description",
+    "grpc.error_message",
+    "grpc.error_name",
+)
+
+
+def whitelisted_tags(tags):
+    out = {k: v for k, v in tags.items()
+           if k in ERROR_TAG_KEYS or BUSINESS_ID_RE.match(k)}
+    return dict(sorted(out.items()))
+
 
 def load_backends():
     env = {}
@@ -217,10 +252,14 @@ def pack_traces(base, t0, t1, out_path):
                     "operation": sp.get("operationName"),
                     "start": st, "duration": sp.get("duration"),
                     "status": status,
+                    "tags": whitelisted_tags(tags),
                 }
     ordered = sorted(spans.values(), key=lambda s: (s["start"], s["spanID"]))
     payload = {
         "window": {"start": iso(t0), "end": iso(t1)},
+        "tag_whitelist": {"business_id_pattern": BUSINESS_ID_RE.pattern,
+                          "error_keys": list(ERROR_TAG_KEYS),
+                          "note": "all other span tags are dropped (fault_schema §9)"},
         "jaeger_limit_per_service": JAEGER_TRACE_LIMIT,
         "services_hitting_limit": hit_limit,
         "limit_hit": bool(hit_limit),

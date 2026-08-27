@@ -1,0 +1,60 @@
+{
+ "detected_at": "2026-08-27T20:18:08Z",
+ "window": {
+  "start": "2026-08-27T20:12:11Z",
+  "end": "2026-08-27T20:14:12Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-27T20:10:11Z",
+   "end": "2026-08-27T20:17:42Z"
+  },
+  "baseline": {
+   "start": "2026-08-27T20:11:11Z",
+   "end": "2026-08-27T20:12:11Z"
+  },
+  "inject": {
+   "start": "2026-08-27T20:12:11Z",
+   "end": "2026-08-27T20:14:12Z"
+  },
+  "recover": {
+   "start": "2026-08-27T20:14:12Z",
+   "end": "2026-08-27T20:15:12Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>"
+ },
+ "alerts": [
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on email",
+   "service": "email",
+   "baseline": {
+    "p95_ms": 7.7,
+    "window": {
+     "start": "2026-08-27T20:11:11Z",
+     "end": "2026-08-27T20:12:11Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 47.0,
+    "threshold_ms": 15.4,
+    "window": {
+     "start": "2026-08-27T20:12:11Z",
+     "end": "2026-08-27T20:14:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T20:12:11Z",
+    "end": "2026-08-27T20:14:12Z"
+   },
+   "deviation": 6.104
+  }
+ ],
+ "no_alert": false,
+ "card_id": "memleak-email-1000x"
+}

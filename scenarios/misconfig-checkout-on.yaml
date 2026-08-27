@@ -25,5 +25,52 @@ cycle:
   settle_s: 150
 param_validated: true
 batch: 1
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-08-27T20:32:04Z"
+  t_inject: "2026-08-27T20:33:06Z"
+  t_revert: "2026-08-27T20:35:07Z"
+  t_end: "2026-08-27T20:36:07Z"
+  settle_s: 150
+  t_harvest: "2026-08-27T20:38:37Z"
+  batch_dir: scripts/out/batch1_20260827T190241Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/misconfig-checkout-on
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 2998c080bc3e4c5151f7ce15f79ecf7df990717f2e0dfae35cbaf468d161d5c9
+    metrics.json: c2fcf5625b8ce06c1eb887c3aa1fb870765b52b597668e1c9b26641c2c97101f
+    traces.json: 2334e62c7eeb43cccd37316f0b054643690bb177b7c90895823210ce14ea4a15
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 1
+agent_visible_symptom:
+  window:
+    start: "2026-08-27T20:33:06Z"
+    end: "2026-08-27T20:35:07Z"
+  detected_at: "2026-08-27T20:38:59Z"
+  no_alert: false
+  alerts:
+    -
+      rule: error_rate_jump
+      message: elevated error rate on checkout
+      service: checkout
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0323
+        window:
+          start: "2026-08-27T20:32:04Z"
+          end: "2026-08-27T20:33:06Z"
+      observed:
+        error_count: 5.0
+        threshold_N: 5
+        window:
+          start: "2026-08-27T20:33:06Z"
+          end: "2026-08-27T20:35:07Z"
+      deviation: 5.0

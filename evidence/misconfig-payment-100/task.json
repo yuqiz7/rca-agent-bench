@@ -1,0 +1,82 @@
+{
+ "card_id": "misconfig-payment-100",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T20:40:00Z",
+   "end": "2026-08-27T20:42:01Z"
+  },
+  "detected_at": "2026-08-27T20:45:57Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "error_rate_jump",
+    "message": "elevated error rate on checkout",
+    "service": "checkout",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.0164,
+     "window": {
+      "start": "2026-08-27T20:38:59Z",
+      "end": "2026-08-27T20:40:00Z"
+     }
+    },
+    "observed": {
+     "error_count": 6.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-27T20:40:00Z",
+      "end": "2026-08-27T20:42:01Z"
+     }
+    },
+    "deviation": 6.0
+   },
+   {
+    "rule": "error_rate_jump",
+    "message": "elevated error rate on payment",
+    "service": "payment",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.0328,
+     "window": {
+      "start": "2026-08-27T20:38:59Z",
+      "end": "2026-08-27T20:40:00Z"
+     }
+    },
+    "observed": {
+     "error_count": 6.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-27T20:40:00Z",
+      "end": "2026-08-27T20:42:01Z"
+     }
+    },
+    "deviation": 6.0
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on payment",
+    "service": "payment",
+    "baseline": {
+     "p95_ms": 1.9,
+     "window": {
+      "start": "2026-08-27T20:38:59Z",
+      "end": "2026-08-27T20:40:00Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 5.62,
+     "threshold_ms": 3.8,
+     "window": {
+      "start": "2026-08-27T20:40:00Z",
+      "end": "2026-08-27T20:42:01Z"
+     }
+    },
+    "deviation": 2.959
+   }
+  ]
+ },
+ "evidence_dir": "evidence/misconfig-payment-100",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

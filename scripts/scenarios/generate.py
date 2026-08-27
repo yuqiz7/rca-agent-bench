@@ -117,6 +117,15 @@ def main():
 
     rows = read_recipe()
     changed = []
+
+    # 配方里没有的卡由生成器删除，不手删 —— 手删迟早漏一张，而 scenarios/ 里
+    # 多出来的幽灵卡会被 --batch 选中、被泄漏测试遍历，静默进入量产。
+    wanted = {r["card_id"] for r in rows}
+    stale = [c for c in cards.all_card_ids() if c not in wanted]
+    for cid in stale:
+        changed.append(os.path.relpath(cards.card_path(cid), REPO) + "  (removed)")
+        if not a.check:
+            os.remove(cards.card_path(cid))
     for row in rows:
         path = cards.card_path(row["card_id"])
         existing = None

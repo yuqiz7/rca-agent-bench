@@ -8,7 +8,9 @@ not stable across versions, and the generator must be byte-identical on a rerun.
 
 Reading uses pyyaml: cards are plain YAML, any loader can consume them.
 """
+import csv
 import os
+import sys
 
 import yaml
 
@@ -137,9 +139,38 @@ def render(card):
     return HEADER + "\n".join(lines) + "\n"
 
 
+ADHOC_DIR = os.path.join(REPO, "scripts", "out", "_adhoc")
+_RECIPE_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipe.csv")
+
+
+def recipe_card_ids():
+    """card_id set from recipe.csv. Empty set if the file is missing -- the guard
+    below then lets everything through rather than blocking all writes."""
+    if not os.path.exists(_RECIPE_CSV):
+        return set()
+    with open(_RECIPE_CSV) as f:
+        return {r["card_id"] for r in csv.DictReader(f)}
+
+
 def save(card):
-    path = card_path(card["card_id"])
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    """Write scenarios/<card_id>.yaml -- but only for cards the recipe knows.
+
+    Anything else lands in scripts/out/_adhoc/ instead. `--scenarios <path>` takes
+    an arbitrary yaml while save() addresses by card_id, so a one-off card run from
+    outside the tree used to materialise a phantom file in scenarios/ that --batch
+    would then pick up and the leak test would iterate.
+    """
+    cid = card["card_id"]
+    known = recipe_card_ids()
+    if known and cid not in known:
+        os.makedirs(ADHOC_DIR, exist_ok=True)
+        path = os.path.join(ADHOC_DIR, f"{cid}.yaml")
+        print(f"warning: card_id {cid!r} is not in recipe.csv; "
+              f"writing to {os.path.relpath(path, REPO)} instead of scenarios/",
+              file=sys.stderr)
+    else:
+        path = card_path(cid)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         f.write(render(card))
     return path

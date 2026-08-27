@@ -1,0 +1,114 @@
+{
+ "detected_at": "2026-08-27T20:45:57Z",
+ "window": {
+  "start": "2026-08-27T20:40:00Z",
+  "end": "2026-08-27T20:42:01Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-27T20:37:59Z",
+   "end": "2026-08-27T20:45:31Z"
+  },
+  "baseline": {
+   "start": "2026-08-27T20:38:59Z",
+   "end": "2026-08-27T20:40:00Z"
+  },
+  "inject": {
+   "start": "2026-08-27T20:40:00Z",
+   "end": "2026-08-27T20:42:01Z"
+  },
+  "recover": {
+   "start": "2026-08-27T20:42:01Z",
+   "end": "2026-08-27T20:43:01Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>"
+ },
+ "alerts": [
+  {
+   "rule": "error_rate_jump",
+   "message": "elevated error rate on checkout",
+   "service": "checkout",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0164,
+    "window": {
+     "start": "2026-08-27T20:38:59Z",
+     "end": "2026-08-27T20:40:00Z"
+    }
+   },
+   "observed": {
+    "error_count": 6.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-27T20:40:00Z",
+     "end": "2026-08-27T20:42:01Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T20:40:00Z",
+    "end": "2026-08-27T20:42:01Z"
+   },
+   "deviation": 6.0
+  },
+  {
+   "rule": "error_rate_jump",
+   "message": "elevated error rate on payment",
+   "service": "payment",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0328,
+    "window": {
+     "start": "2026-08-27T20:38:59Z",
+     "end": "2026-08-27T20:40:00Z"
+    }
+   },
+   "observed": {
+    "error_count": 6.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-27T20:40:00Z",
+     "end": "2026-08-27T20:42:01Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T20:40:00Z",
+    "end": "2026-08-27T20:42:01Z"
+   },
+   "deviation": 6.0
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on payment",
+   "service": "payment",
+   "baseline": {
+    "p95_ms": 1.9,
+    "window": {
+     "start": "2026-08-27T20:38:59Z",
+     "end": "2026-08-27T20:40:00Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 5.62,
+    "threshold_ms": 3.8,
+    "window": {
+     "start": "2026-08-27T20:40:00Z",
+     "end": "2026-08-27T20:42:01Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T20:40:00Z",
+    "end": "2026-08-27T20:42:01Z"
+   },
+   "deviation": 2.959
+  }
+ ],
+ "no_alert": false,
+ "card_id": "misconfig-payment-100"
+}

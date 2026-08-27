@@ -10,7 +10,7 @@ scripts/runner/run_batch.sh 包 nohup。
 判定只在 runner 侧发生：agent 永远看不到本文件产出的 probes.json 与
 anchors.json（泄漏隔离，见 fault_schema §4 与决策 015）。
 """
-import argparse, fcntl, json, math, os, subprocess, sys, time
+import argparse, csv, fcntl, json, math, os, subprocess, sys, time
 from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # scripts/
@@ -91,6 +91,23 @@ FLAG_METHOD = {
 # flag -> 实际生效比例。variant 名带百分比的从名字解析；这里记的是**代码里额外
 # 的固定概率**（adFailure 即使 on 也只有 1/10 请求失败，见 AdService.java:238）。
 FLAG_EXTRA_RATIO = {"adFailure": 0.1}
+
+# ── targeting 型开关（O-P2-13，2026-08-27 落码）────────────────────────────
+# 标注来源：docs/flag_catalog.md 里「类型 = targeting 型」那一行。当前只有一个。
+# 值是该开关 targeting 条件用的业务 id 标签名，与 three_signals 的
+# self_edges.server_by_business_id 一级键对齐。
+FLAG_TARGETING_ID_KEY = {"productCatalogFailure": "demo.product.id"}
+
+# targeting 型的判据与概率型**不同**，不是把 ratio 换个数：
+# 概率型开关按 N = max(2, ⌈0.5 × ratio × 调用数⌉) 判绝对报错数，前提是
+# 「失败随机散布在全部调用上」；targeting 型不是那样 —— 它让**某一个业务实体**的
+# 调用 100% 失败、其余实体 0% 失败。用绝对数判就等于在判**压测器请求该商品的频率**，
+# 而那个频率由 LOAD_GENERATOR_VUS 与 k6 脚本决定，随时会漂（O-P2-13 待议 (b)）。
+# 实测：productCatalogFailure 注入完全正常时 GetProduct 报错 35/312 = 11.2%，
+# 恰好等于该商品的流量份额，而按 ratio=1.0 算出的阈值是 156 —— 把一次正常注入
+# 判成失败。改判「命中支自己的报错占比」后与份额无关。
+TARGETING_ERR_FRAC = 0.5
+TARGETING_ERR_FLOOR = 5
 
 # mem_leak：注入窗增长量阈值
 MEMLEAK_GROWTH_FLOOR_MIB = 10
@@ -232,10 +249,48 @@ SYMPTOM_SNAPSHOT = {"crash": "harvest", "blackhole": "immediate", "latency": "ha
                     "misconfig": "harvest", "mem_leak": "harvest"}
 
 
-def judge_symptom(cls, base, during, param):
+def judge_targeting(flag, variant, base, during, context_value):
+    """targeting 型开关的 symptom 判据（O-P2-13，2026-08-27）。
+
+    「命中该 id 的 span 中报错占比 >= 0.5 且绝对数 >= 5」，不再用
+    N = ⌈0.5 × r × 调用数⌉ —— 见 FLAG_TARGETING_ID_KEY 上方的注释。
+    基线侧同一支必须 0 报错，与概率型的 baseline 条件一致。
+    """
+    key = FLAG_TARGETING_ID_KEY[flag]
+    dsel = ((during["traces"].get("self_edges") or {})
+            .get("server_by_business_id") or {}).get(key) or {}
+    bsel = ((base["traces"].get("self_edges") or {})
+            .get("server_by_business_id") or {}).get(key) or {}
+    hit = dsel.get(context_value) or {}
+    spans = hit.get("spans") or 0
+    errs = hit.get("error_spans") or 0
+    frac = (errs / spans) if spans else None
+    base_errs = (bsel.get(context_value) or {}).get("error_spans") or 0
+    ok = (frac is not None and frac >= TARGETING_ERR_FRAC
+          and errs >= TARGETING_ERR_FLOOR and base_errs == 0)
+    # 未命中的其余支应当全绿；一起记下来，注入是否"只打中一个"一眼可见。
+    others = {k: v for k, v in dsel.items() if k != context_value}
+    other_errs = sum((v.get("error_spans") or 0) for v in others.values())
+    return ok, {
+        "snapshot": SYMPTOM_SNAPSHOT["misconfig"],
+        "rule": f"targeting flag: error_spans / spans on the targeted id "
+                f">= {TARGETING_ERR_FRAC} AND error_spans >= {TARGETING_ERR_FLOOR} "
+                f"AND baseline errors on that id == 0 (§6 / O-P2-13)",
+        "flag": flag, "variant": variant, "targeting_kind": "targeting",
+        "id_key": key, "targeted_id": context_value,
+        "targeted_spans": spans, "targeted_error_spans": errs,
+        "targeted_error_frac": round(frac, 4) if frac is not None else None,
+        "required_frac": TARGETING_ERR_FRAC, "required_abs": TARGETING_ERR_FLOOR,
+        "baseline_errors_on_targeted_id": base_errs,
+        "other_ids_seen": len(others), "other_ids_error_spans": other_errs,
+    }
+
+
+def judge_symptom(cls, base, during, param, context_value=None):
     """返回 (pass: bool, detail: dict)。base/during 是 three_signals 的 summary。
 
     调用方需按 SYMPTOM_SNAPSHOT[cls] 传入对应的注入窗快照。
+    context_value 只对 targeting 型开关有意义（被 targeting 的业务 id）。
     """
     bt, dt_ = base["traces"], during["traces"]
     if cls == "crash":
@@ -260,6 +315,8 @@ def judge_symptom(cls, base, during, param):
             "baseline_spans": b, "during_spans": d, "threshold": round(thr, 2)}
     if cls == "misconfig":
         flag, variant, ratio = parse_ratio(param)
+        if flag in FLAG_TARGETING_ID_KEY:
+            return judge_targeting(flag, variant, base, during, context_value)
         method = FLAG_METHOD.get(flag)
         bse, dse = bt.get("self_edges") or {}, dt_.get("self_edges") or {}
         dm = (dse.get("server_by_method") or {}).get(method) or {}
@@ -480,6 +537,11 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
     else:
         pargs = [svc]
     pargs += list(extra_args)
+    # targeting 型开关被 targeting 的业务 id：原语参数与判据用的是同一个值，
+    # 从 extra_args 里取而不是再传一个参数，免得两处走偏。
+    ea = list(extra_args)
+    context_value = (ea[ea.index("--context-value") + 1]
+                     if "--context-value" in ea else None)
 
     res = {"idx": idx, "primitive": prim, "service": svc, "class": cls,
            "tier": tier, "param": param,
@@ -612,7 +674,8 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
         sym_ok, sym_d = None, {"snapshot": SYMPTOM_SNAPSHOT[cls],
                                "rule": "observe-only: no verdict computed"}
     else:
-        sym_ok, sym_d = judge_symptom(cls, base, snap, param)
+        sym_ok, sym_d = judge_symptom(cls, base, snap, param,
+                                      context_value=context_value)
     res["symptom"] = sym_ok
     def snap_nums(d):
         t = d["traces"]
@@ -746,10 +809,23 @@ def write_summary(batch_dir, batch_id, rows, aborted):
 def load_scenarios(paths=None, batch=None):
     """--scenarios <yaml...> 或 --batch <n>：卡片取代手工周期行（决策 021）。"""
     if batch is not None:
+        # 顺序取自 recipe.csv 的 batch_order 列（首批即 recipe.md 第五节的顺序），
+        # 不是文件名字母序。顺序有意义：§5 的清单刻意把未验证卡打散，字母序会把
+        # 同类卡排到一起，几张未验证卡挨着失败就够碰「连续 3 张停批」。
+        order = {}
+        with open(os.path.join(SCENARIOS_MOD, "recipe.csv")) as f:
+            for r in csv.DictReader(f):
+                if r.get("batch_order"):
+                    order[r["card_id"]] = int(r["batch_order"])
         ids = [cid for cid in cards.all_card_ids()
                if (cards.load(cid).get("batch")) == batch]
         if not ids:
             raise SystemExit(f"error: no card with batch={batch} in scenarios/")
+        missing = [c for c in ids if c not in order]
+        if missing:
+            raise SystemExit(f"error: batch={batch} cards without batch_order in "
+                             f"recipe.csv: {missing}")
+        ids.sort(key=lambda c: order[c])
         return [cards.load(cid) for cid in ids]
     out = []
     for path in paths:

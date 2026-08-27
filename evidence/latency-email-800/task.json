@@ -1,0 +1,36 @@
+{
+ "card_id": "latency-email-800",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T19:58:17Z",
+   "end": "2026-08-27T20:00:17Z"
+  },
+  "detected_at": "2026-08-27T20:04:12Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on checkout",
+    "service": "checkout",
+    "baseline": {
+     "p95_ms": 97.5,
+     "window": {
+      "start": "2026-08-27T19:57:17Z",
+      "end": "2026-08-27T19:58:17Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 990.0,
+     "threshold_ms": 195.0,
+     "window": {
+      "start": "2026-08-27T19:58:17Z",
+      "end": "2026-08-27T20:00:17Z"
+     }
+    },
+    "deviation": 10.154
+   }
+  ]
+ },
+ "evidence_dir": "evidence/latency-email-800",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

@@ -25,5 +25,50 @@ cycle:
   settle_s: 150
 param_validated: true
 batch: 1
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-08-27T20:11:11Z"
+  t_inject: "2026-08-27T20:12:11Z"
+  t_revert: "2026-08-27T20:14:12Z"
+  t_end: "2026-08-27T20:15:12Z"
+  settle_s: 150
+  t_harvest: "2026-08-27T20:17:42Z"
+  batch_dir: scripts/out/batch1_20260827T190241Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/memleak-email-1000x
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 587b4def7f38fa5b7367f75277240695daa17a33cb021231ccf9454ffd33b9f4
+    metrics.json: 1595bf7d9ede564e36e637129ae5a94c177d70d0642fea291a144bb443cec2b5
+    traces.json: aa51a84ace73f1699d0e30bd9d075abbc861059338873213bc223dfd02b0d48c
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 1
+agent_visible_symptom:
+  window:
+    start: "2026-08-27T20:12:11Z"
+    end: "2026-08-27T20:14:12Z"
+  detected_at: "2026-08-27T20:18:08Z"
+  no_alert: false
+  alerts:
+    -
+      rule: p95_jump
+      message: elevated p95 latency on email
+      service: email
+      baseline:
+        p95_ms: 7.7
+        window:
+          start: "2026-08-27T20:11:11Z"
+          end: "2026-08-27T20:12:11Z"
+      observed:
+        p95_ms: 47.0
+        threshold_ms: 15.4
+        window:
+          start: "2026-08-27T20:12:11Z"
+          end: "2026-08-27T20:14:12Z"
+      deviation: 6.104

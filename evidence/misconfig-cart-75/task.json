@@ -1,0 +1,14 @@
+{
+ "card_id": "misconfig-cart-75",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T20:26:07Z",
+   "end": "2026-08-27T20:28:08Z"
+  },
+  "detected_at": "2026-08-27T20:32:04Z",
+  "no_alert": true,
+  "alerts": []
+ },
+ "evidence_dir": "evidence/misconfig-cart-75",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

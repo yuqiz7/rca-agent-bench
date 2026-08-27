@@ -1,0 +1,14 @@
+{
+ "card_id": "misconfig-ad-on",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T20:19:10Z",
+   "end": "2026-08-27T20:21:11Z"
+  },
+  "detected_at": "2026-08-27T20:25:06Z",
+  "no_alert": true,
+  "alerts": []
+ },
+ "evidence_dir": "evidence/misconfig-ad-on",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

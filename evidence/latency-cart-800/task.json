@@ -1,0 +1,101 @@
+{
+ "card_id": "latency-cart-800",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T19:44:22Z",
+   "end": "2026-08-27T19:46:22Z"
+  },
+  "detected_at": "2026-08-27T19:50:19Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on checkout",
+    "service": "checkout",
+    "baseline": {
+     "p95_ms": 48.0,
+     "window": {
+      "start": "2026-08-27T19:43:21Z",
+      "end": "2026-08-27T19:44:22Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 1970.0,
+     "threshold_ms": 96.0,
+     "window": {
+      "start": "2026-08-27T19:44:22Z",
+      "end": "2026-08-27T19:46:22Z"
+     }
+    },
+    "deviation": 41.042
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on frontend",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 40.03,
+     "window": {
+      "start": "2026-08-27T19:43:21Z",
+      "end": "2026-08-27T19:44:22Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 1563.38,
+     "threshold_ms": 80.06,
+     "window": {
+      "start": "2026-08-27T19:44:22Z",
+      "end": "2026-08-27T19:46:22Z"
+     }
+    },
+    "deviation": 39.056
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on frontend-proxy",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 41.7,
+     "window": {
+      "start": "2026-08-27T19:43:21Z",
+      "end": "2026-08-27T19:44:22Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 1219.78,
+     "threshold_ms": 83.4,
+     "window": {
+      "start": "2026-08-27T19:44:22Z",
+      "end": "2026-08-27T19:46:22Z"
+     }
+    },
+    "deviation": 29.25
+   },
+   {
+    "rule": "memory_over_line",
+    "message": "memory rising on payment",
+    "service": "payment",
+    "baseline": {
+     "memory_mib": 83.0,
+     "window": {
+      "start": "2026-08-27T19:43:21Z",
+      "end": "2026-08-27T19:44:22Z"
+     }
+    },
+    "observed": {
+     "memory_mib": 114.0,
+     "growth_mib": 31.0,
+     "threshold_growth_mib": 30.0,
+     "monotonic": true,
+     "window": {
+      "start": "2026-08-27T19:44:22Z",
+      "end": "2026-08-27T19:46:22Z"
+     }
+    },
+    "deviation": 1.034
+   }
+  ]
+ },
+ "evidence_dir": "evidence/latency-cart-800",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

@@ -25,5 +25,34 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: 1
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-08-27T20:25:06Z"
+  t_inject: "2026-08-27T20:26:07Z"
+  t_revert: "2026-08-27T20:28:08Z"
+  t_end: "2026-08-27T20:29:08Z"
+  settle_s: 150
+  t_harvest: "2026-08-27T20:31:38Z"
+  batch_dir: scripts/out/batch1_20260827T190241Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/misconfig-cart-75
+  packed: true
+  manifest_sha256:
+    logs.jsonl: f073c3186c40fe2bef92993b88df1ba6fb50aabe9e15e988b2873cc38f9aa8a3
+    metrics.json: 0f7cd2a5fd2083e421ccbb7af9a8311ae63d74b7a6df29943bfacec23e1677be
+    traces.json: 031a571a40c7ee0b1c804b8ad995b6d3a579b9d6725407d2a2f194eeca78f50e
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 0
+agent_visible_symptom:
+  window:
+    start: "2026-08-27T20:26:07Z"
+    end: "2026-08-27T20:28:08Z"
+  detected_at: "2026-08-27T20:32:04Z"
+  no_alert: true
+  alerts: []

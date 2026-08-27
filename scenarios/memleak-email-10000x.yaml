@@ -25,5 +25,66 @@ cycle:
   settle_s: 150
 param_validated: true
 batch: 1
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-08-27T20:04:12Z"
+  t_inject: "2026-08-27T20:05:14Z"
+  t_revert: "2026-08-27T20:07:15Z"
+  t_end: "2026-08-27T20:08:15Z"
+  settle_s: 150
+  t_harvest: "2026-08-27T20:10:45Z"
+  batch_dir: scripts/out/batch1_20260827T190241Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/memleak-email-10000x
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 03d4e76f069a93e2aabefc8ca90eebb174aa5a00ae3a60427f60b7586caf4321
+    metrics.json: c23c73a4d012a4bbe973acd63844e44dbfb87bf5c7998572321069405074af09
+    traces.json: 5c6a3d0d16df842771e34ce5367aeb6add6193aaff50b4c54953f7932627d430
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 2
+agent_visible_symptom:
+  window:
+    start: "2026-08-27T20:05:14Z"
+    end: "2026-08-27T20:07:15Z"
+  detected_at: "2026-08-27T20:11:11Z"
+  no_alert: false
+  alerts:
+    -
+      rule: p95_jump
+      message: elevated p95 latency on email
+      service: email
+      baseline:
+        p95_ms: 5.8
+        window:
+          start: "2026-08-27T20:04:12Z"
+          end: "2026-08-27T20:05:14Z"
+      observed:
+        p95_ms: 390.0
+        threshold_ms: 11.6
+        window:
+          start: "2026-08-27T20:05:14Z"
+          end: "2026-08-27T20:07:15Z"
+      deviation: 67.241
+    -
+      rule: p95_jump
+      message: elevated p95 latency on checkout
+      service: checkout
+      baseline:
+        p95_ms: 48.0
+        window:
+          start: "2026-08-27T20:04:12Z"
+          end: "2026-08-27T20:05:14Z"
+      observed:
+        p95_ms: 390.0
+        threshold_ms: 96.0
+        window:
+          start: "2026-08-27T20:05:14Z"
+          end: "2026-08-27T20:07:15Z"
+      deviation: 8.125

@@ -1,0 +1,71 @@
+[2026-08-27T19:02:42Z] batch batch1_20260827T190241Z start; 16 cycles -> /home/joezhang2175/projects/p2-rca/scripts/out/batch1_20260827T190241Z
+[2026-08-27T19:02:42Z] cycle 1 drop_inbound/cart tier=card param=None t0=2026-08-27T19:02:42Z
+[2026-08-27T19:06:42Z] cycle 1 settle 150s -> harvest at 2026-08-27T19:09:12Z
+[2026-08-27T19:09:24Z] cycle 1 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T19:09:33Z] card blackhole-cart-01: packed 5 files, 6 alerts
+[2026-08-27T19:09:33Z] cycle 2 drop_inbound/payment tier=card param=None t0=2026-08-27T19:09:33Z
+[2026-08-27T19:13:33Z] cycle 2 settle 150s -> harvest at 2026-08-27T19:16:03Z
+[2026-08-27T19:16:18Z] cycle 2 done injected=True symptom=False recovered=False residue_clean=True
+[2026-08-27T19:16:18Z] card blackhole-payment-01: probe gate FAILED, not packing
+[2026-08-27T19:16:18Z] card blackhole-payment-01: FAILED (probe gate failed); streak 1/3, continuing with the next card
+[2026-08-27T19:16:18Z] cycle 3 drop_inbound/valkey-cart tier=card param=None t0=2026-08-27T19:16:18Z
+[2026-08-27T19:20:18Z] cycle 3 settle 150s -> harvest at 2026-08-27T19:22:48Z
+[2026-08-27T19:23:03Z] cycle 3 done injected=True symptom=False recovered=False residue_clean=True
+[2026-08-27T19:23:03Z] card blackhole-valkey-cart-01: probe gate FAILED, not packing
+[2026-08-27T19:23:03Z] card blackhole-valkey-cart-01: FAILED (probe gate failed); streak 2/3, continuing with the next card
+[2026-08-27T19:23:03Z] cycle 4 kill_container/cart tier=card param=None t0=2026-08-27T19:23:03Z
+[2026-08-27T19:27:04Z] cycle 4 settle 150s -> harvest at 2026-08-27T19:29:34Z
+[2026-08-27T19:29:47Z] cycle 4 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T19:29:56Z] card crash-cart-01: packed 5 files, 7 alerts
+[2026-08-27T19:29:56Z] cycle 5 kill_container/frontend tier=card param=None t0=2026-08-27T19:29:56Z
+[2026-08-27T19:33:57Z] cycle 5 settle 150s -> harvest at 2026-08-27T19:36:27Z
+[2026-08-27T19:36:35Z] cycle 5 done injected=True symptom=False recovered=False residue_clean=True
+[2026-08-27T19:36:35Z] card crash-frontend-01: probe gate FAILED, not packing
+[2026-08-27T19:36:35Z] card crash-frontend-01: FAILED (probe gate failed); streak 1/3, continuing with the next card
+[2026-08-27T19:36:35Z] cycle 6 kill_container/payment tier=card param=None t0=2026-08-27T19:36:35Z
+[2026-08-27T19:40:36Z] cycle 6 settle 150s -> harvest at 2026-08-27T19:43:06Z
+[2026-08-27T19:43:21Z] cycle 6 done injected=True symptom=False recovered=False residue_clean=True
+[2026-08-27T19:43:21Z] card crash-payment-01: probe gate FAILED, not packing
+[2026-08-27T19:43:21Z] card crash-payment-01: FAILED (probe gate failed); streak 2/3, continuing with the next card
+[2026-08-27T19:43:21Z] cycle 7 delay_outbound/cart tier=card param=800 t0=2026-08-27T19:43:21Z
+[2026-08-27T19:47:22Z] cycle 7 settle 150s -> harvest at 2026-08-27T19:49:52Z
+[2026-08-27T19:50:08Z] cycle 7 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T19:50:19Z] card latency-cart-800: packed 5 files, 4 alerts
+[2026-08-27T19:50:19Z] cycle 8 delay_outbound/checkout tier=card param=800 t0=2026-08-27T19:50:19Z
+[2026-08-27T19:54:19Z] cycle 8 settle 150s -> harvest at 2026-08-27T19:56:49Z
+[2026-08-27T19:57:07Z] cycle 8 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T19:57:17Z] card latency-checkout-800: packed 5 files, 0 alerts
+[2026-08-27T19:57:17Z] cycle 9 delay_outbound/email tier=card param=800 t0=2026-08-27T19:57:17Z
+[2026-08-27T20:01:17Z] cycle 9 settle 150s -> harvest at 2026-08-27T20:03:47Z
+[2026-08-27T20:04:02Z] cycle 9 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T20:04:12Z] card latency-email-800: packed 5 files, 1 alerts
+[2026-08-27T20:04:12Z] cycle 10 set_flag/email tier=card param=emailMemoryLeak=10000x t0=2026-08-27T20:04:12Z
+[2026-08-27T20:08:15Z] cycle 10 settle 150s -> harvest at 2026-08-27T20:10:45Z
+[2026-08-27T20:11:00Z] cycle 10 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T20:11:11Z] card memleak-email-10000x: packed 5 files, 2 alerts
+[2026-08-27T20:11:11Z] cycle 11 set_flag/email tier=card param=emailMemoryLeak=1000x t0=2026-08-27T20:11:11Z
+[2026-08-27T20:15:12Z] cycle 11 settle 150s -> harvest at 2026-08-27T20:17:42Z
+[2026-08-27T20:17:58Z] cycle 11 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T20:18:08Z] card memleak-email-1000x: packed 5 files, 1 alerts
+[2026-08-27T20:18:08Z] cycle 12 set_flag/ad tier=card param=adFailure=on t0=2026-08-27T20:18:08Z
+[2026-08-27T20:22:11Z] cycle 12 settle 150s -> harvest at 2026-08-27T20:24:41Z
+[2026-08-27T20:24:56Z] cycle 12 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T20:25:06Z] card misconfig-ad-on: packed 5 files, 0 alerts
+[2026-08-27T20:25:06Z] cycle 13 set_flag/cart tier=card param=cartFailure=75% t0=2026-08-27T20:25:06Z
+[2026-08-27T20:29:08Z] cycle 13 settle 150s -> harvest at 2026-08-27T20:31:38Z
+[2026-08-27T20:31:54Z] cycle 13 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T20:32:04Z] card misconfig-cart-75: packed 5 files, 0 alerts
+[2026-08-27T20:32:04Z] cycle 14 set_flag/checkout tier=card param=paymentUnreachable=on t0=2026-08-27T20:32:04Z
+[2026-08-27T20:36:07Z] cycle 14 settle 150s -> harvest at 2026-08-27T20:38:37Z
+[2026-08-27T20:38:49Z] cycle 14 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T20:38:59Z] card misconfig-checkout-on: packed 5 files, 1 alerts
+[2026-08-27T20:38:59Z] cycle 15 set_flag/payment tier=card param=paymentFailure=100% t0=2026-08-27T20:38:59Z
+[2026-08-27T20:43:01Z] cycle 15 settle 150s -> harvest at 2026-08-27T20:45:31Z
+[2026-08-27T20:45:47Z] cycle 15 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-27T20:45:57Z] card misconfig-payment-100: packed 5 files, 3 alerts
+[2026-08-27T20:45:57Z] cycle 16 set_flag/product-catalog tier=card param=productCatalogFailure=on t0=2026-08-27T20:45:57Z
+[2026-08-27T20:50:00Z] cycle 16 settle 150s -> harvest at 2026-08-27T20:52:30Z
+[2026-08-27T20:52:47Z] cycle 16 done injected=True symptom=False recovered=True residue_clean=True
+[2026-08-27T20:52:47Z] card misconfig-pc-OLJCESPC7Z: probe gate FAILED, not packing
+[2026-08-27T20:52:47Z] card misconfig-pc-OLJCESPC7Z: FAILED (probe gate failed); streak 1/3, continuing with the next card
+[2026-08-27T20:52:47Z] batch batch1_20260827T190241Z finished; summary at /home/joezhang2175/projects/p2-rca/scripts/out/batch1_20260827T190241Z/summary.md

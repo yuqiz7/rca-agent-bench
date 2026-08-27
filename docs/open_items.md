@@ -449,7 +449,27 @@ paymentUnreachable 条目与 [fingerprints.md](fingerprints.md)「下游边消�
 
 ## O-P2-13　misconfig 阈值公式对 targeting 型开关不适用
 
-**状态：重开（2026-08-27 ET）—— 裁决已定但代码里没实现**
+**状态：关（2026-08-27 ET，判据已落码并实测复验）**
+
+**落码（2026-08-27 ET）**：`run_batch.py` 对 targeting 型开关改用**独立判据**，
+不再是「把 `ratio` 换个数」：
+
+> 被 targeting 的那个业务 id 上，注入窗内该 id 的自有 server span 中
+> **报错占比 ≥ 0.5 且报错绝对数 ≥ 5**，且基线窗内该 id 报错数为 0。
+
+理由是两类开关的失败**形状**不同：概率型把失败随机散布在全部调用上，绝对数正比于
+生效比例；targeting 型让某一个实体 100% 失败、其余 0%，此时方法级整体报错率
+**等于该实体的流量份额**，用绝对数判等于在判压测器的抽样频率 —— 那个频率由
+`LOAD_GENERATOR_VUS` 与 k6 脚本决定，随时会漂（即本条待议 (b) 指出的问题）。
+改判命中支自身的报错占比后与份额完全无关，(b) 不再成立，(a) 的预跑也不需要了。
+判据原文写进 [fault_schema.md](fault_schema.md) §6。
+
+分组数据由 `three_signals.py` 新增的
+`traces.self_edges.server_by_business_id[<tag>][<value>]` 提供，标签名形如
+`demo.<entity>.id`（正则匹配，新实体自动纳入）。判据同时记录未命中的其余 id 的
+报错数，「只打中一个」在证据里一眼可见。
+
+**（以下为重开时的记录，保留备查）**
 
 2026-08-26 裁定：targeting 型开关的阈值以**实测生效比例 r** 计算，不取 `ratio=1.0`
 （`productCatalogFailure`：r = 7.6%、阈值 14、实测 27 通过）。
@@ -517,7 +537,14 @@ r 从哪来，三条路都还在：
 
 ## O-P2-14　`set_flag.sh` 无法为 `productCatalogFailure` 指定 `product_id`
 
-**状态：部分关（2026-08-27 ET）—— 原语已修；保留卡数待裁：按份额分布决定保留 3–4 张，其余出库**
+**状态：关（2026-08-27 ET，原语已修 + 保留 3 张已落配方）**
+
+**裁决**：按份额分布保留 **3 张** —— `2ZYFJ3GM2N`（份额最高 11.4%）、
+`66VCHSJNUP`（最低 9.1%）、`OLJCESPC7Z`（9.3%，已有实测且在首批），
+其余 **7 张出库**。总卡数 **76 → 69**，misconfig **21 → 14**。
+已落 `recipe.csv`、[recipe.md](recipe.md) v1.1 与
+[decisions.md](decisions.md) 决策 021「修订 2026-08-27」；
+7 个 yaml 由 `generate.py` 自动删除（生成器负责清理，不手删）。
 
 **内容**
 决策 021 的配方里 `productCatalogFailure` 出 **10 张卡**，每张锁定一个不同的
@@ -693,7 +720,29 @@ ground truth 虽仍是 `(product-catalog, misconfig)`（服务与类别不变）
 
 ## O-P2-16　证据包丢 span 标签，且 Jaeger 只有约 30 分钟回溯窗
 
-**状态：open（2026-08-27 ET，做 O-P2-14 的份额表时撞到）**
+**状态：关（2026-08-27 ET，取 (a)：标签白名单 + 把 30 min 约束写进规格）**
+
+**裁决与落地**：取待议 (a)，不改 Jaeger 存储。
+`pack.py` 的 `traces.json` 每个 span 增加 `tags` 字段，按白名单保留 ——
+业务 id 走正则 `^demo\..+\.id$`（实测 `demo.product.id` / `demo.order.id` /
+`demo.shipping.tracking.id`），报错消息取 `error`、`error.type`、`otel.status_code`、
+`otel.status_description`、`grpc.error_message`、`grpc.error_name`，
+其余标签仍丢弃。键名全部取自 2026-08-27 跨全部服务 25 分钟的实测采样。
+**状态码族有意不收**（挂在数以万计健康 span 上、不含消息，且每个 span 已有 `status`）。
+白名单同时写进 `traces.json` 的 `tag_whitelist` 字段，包自带说明。
+
+**(b) 改 badger 落盘没有采纳**：那要重启整栈、并推翻决策 001 之外的一处环境事实，
+而 (a) 已经让包自洽 —— 包自洽之后「还能不能回头补」就不再是必须回答的问题。
+代价是 **30 min 的回溯窗成为硬约束**，已作为规格写进
+[fault_schema.md](fault_schema.md) §9「已知约束：打包必须在卡结束后 30 min 内完成」：
+打包必须紧跟周期（runner 就是这么做的），重打包超过 30 min 只能重跑那张卡。
+
+**已知缺口（不阻塞，记录在案）**：`exception.message` / `exception.type` /
+`exception.stacktrace` 是 **span 的 log 字段**而非标签，`traces.json` 不保留
+span logs 因此取不到。gRPC 路径的错误消息由 `otel.status_description` 与
+`grpc.error_message` 覆盖；HTTP 路径的异常堆栈目前只能从 `logs.jsonl` 里找。
+
+**（以下为开条时的记录，保留备查）**
 
 **内容**
 两件事叠在一起，使**证据包一旦打完，任何没进包的 span 属性就永久拿不回来**：
@@ -721,3 +770,56 @@ ground truth 虽仍是 `(product-catalog, misconfig)`（服务与类别不变）
 (c) 或两者都做 —— (a) 保证包自洽，(b) 保证还能回头补。
 在裁决之前，**打包必须紧跟周期**（runner 现在就是这么做的，harvest 之后立刻打包），
 而**已打完的包不可能再补标签**。
+
+---
+
+## O-P2-17　4 张过门的卡没有任何 agent 可见告警
+
+**状态：open（2026-08-27 ET，首批 16 卡实测发现）**
+
+**内容**
+首批跑完后，**12 张过门的卡里有 4 张 `agent_visible_symptom.no_alert = true`** ——
+证据包五件齐、探针门三项全过，但检测器一条告警都没出：
+
+| card_id | class | 靶子 | 探针门 | alerts |
+| --- | --- | --- | --- | ---: |
+| `latency-checkout-800` | latency | `checkout` | 通过 | **0** |
+| `misconfig-ad-on` | misconfig | `ad` | 通过 | **0** |
+| `misconfig-cart-75` | misconfig | `cart` | 通过 | **0** |
+| `misconfig-pc-OLJCESPC7Z` | misconfig | `product-catalog` | 通过（新判据） | **0** |
+
+这样的卡**对评测不可用**：agent 拿到的 `task.json` 只有那句固定 trigger
+（"Monitoring detected an anomaly in the system."）和一个空的 alerts 列表，
+没有任何可推理的起点。
+
+**为什么**
+生产侧判据（fault_schema §5，按靶子自身或调用方 span）与 agent 侧检测器
+（§10，按服务级 Prometheus 指标）**看的是两套东西**，在「小比例失败」上系统性分叉：
+
+- `misconfig-pc-OLJCESPC7Z` 重跑实测：命中支 **32 / 32 = 100%** 报错（判据强通过），
+  但 `product-catalog` 服务级基线速率约 3.4 /s，规则 1 的
+  `N = max(5, ⌈0.25 × 3.4 × 120⌉)` = **102**，32 < 102，不告警。
+- `misconfig-ad-on` 的实际生效比例只有 0.1、`misconfig-cart-75` 只作用于
+  占 cart 调用 5.7% 的 `EmptyCart` —— 同样是「靶子自己明显不对，服务级看不出来」。
+- `latency-checkout-800` 是另一种成因：延迟注在 `checkout` 的出口，
+  规则 3 比的是**服务自身 p95**，而 800 ms 相对 `checkout` 的基线 p95 未到 2 倍。
+
+**这不是检测器的 bug** —— 规则 1/3 按裁决实现且在 crash / blackhole 类上工作正常
+（`crash-cart-01` 7 条、`blackhole-cart-01` 6 条）。是**评测集设计的缺口**：
+决策 020 把 agent 的输入定成证据包，而「什么算可见症状」这条线目前只由 §10 四条规则
+划定，没有和 §5 的入库判据对齐过。
+
+**待议（需用户裁决）**
+(a) **`no_alert` 的卡不入库** —— 最干净，代价是 misconfig 类会大面积出局
+    （21 张里已知至少 3 张形态如此）；
+(b) **给检测器加「方法级 / 实体级」规则** —— 用证据包新增的 span 标签
+    （[O-P2-16](open_items.md) 已落）按 `operation` 与 `demo.*.id` 分组算报错率，
+    与 §5 判据同口径。这条最对症，但等于给 §10 加第五条规则；
+(c) **`no_alert` 的卡照样入库**，把「没有告警也要从三信号里找出问题」当作
+    更难的一档 —— 与决策 021 的难度轴 C（症状误导）同向，但那时 trigger
+    必须改写，否则 agent 无从下手；
+(d) 拉长注入窗以抬高绝对报错数 —— 推翻决策 012，且对
+    `latency-checkout-800` 那类比值判据无效。
+
+**在裁决之前**：这 4 张卡的证据包与 task.json 已落库，`no_alert: true` 如实记录，
+**没有为了让它们"有告警"而调低阈值**。

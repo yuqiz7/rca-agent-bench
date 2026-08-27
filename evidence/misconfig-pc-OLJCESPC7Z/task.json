@@ -1,0 +1,14 @@
+{
+ "card_id": "misconfig-pc-OLJCESPC7Z",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T21:15:34Z",
+   "end": "2026-08-27T21:17:35Z"
+  },
+  "detected_at": "2026-08-27T21:21:30Z",
+  "no_alert": true,
+  "alerts": []
+ },
+ "evidence_dir": "evidence/misconfig-pc-OLJCESPC7Z",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

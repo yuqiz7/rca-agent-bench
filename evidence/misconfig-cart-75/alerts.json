@@ -1,0 +1,34 @@
+{
+ "detected_at": "2026-08-27T20:32:04Z",
+ "window": {
+  "start": "2026-08-27T20:26:07Z",
+  "end": "2026-08-27T20:28:08Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-27T20:24:06Z",
+   "end": "2026-08-27T20:31:38Z"
+  },
+  "baseline": {
+   "start": "2026-08-27T20:25:06Z",
+   "end": "2026-08-27T20:26:07Z"
+  },
+  "inject": {
+   "start": "2026-08-27T20:26:07Z",
+   "end": "2026-08-27T20:28:08Z"
+  },
+  "recover": {
+   "start": "2026-08-27T20:28:08Z",
+   "end": "2026-08-27T20:29:08Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>"
+ },
+ "alerts": [],
+ "no_alert": true,
+ "card_id": "misconfig-cart-75"
+}

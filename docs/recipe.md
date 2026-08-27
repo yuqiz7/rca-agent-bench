@@ -1,11 +1,28 @@
-# 80 卡场景库配方（v1.0 定稿，2026-08-27 ET）
+# 场景库配方（v1.1，2026-08-27 ET）
 
-> **v1.0 定稿，见 [决策 021](decisions.md)。**
-> 本文的配方表由 `scripts/scenarios/recipe.csv` 生成（`scripts/scenarios/generate.py --write`），
+> **v1.1，见 [决策 021](decisions.md) 及其「修订 2026-08-27」。**
+> 本文的配方表由 `scripts/scenarios/recipe.csv` 生成（`scripts/scenarios/generate.py`），
 > csv 是唯一真源；改配方改 csv，不要手改本文第四节的表。
+> 配方里删掉的卡由生成器负责删除对应 yaml，**不要手删** `scenarios/`。
+
+**v1.0 → v1.1 差异摘要**：`productCatalogFailure` 由 **10 张减到 3 张**
+（`2ZYFJ3GM2N` / `66VCHSJNUP` / `OLJCESPC7Z`），总卡数 **76 → 69**，misconfig **21 → 14**。
+
+**修订理由**：[O-P2-14](open_items.md) 的份额实测（2026-08-27，27 min，n = 4154）显示
+10 个 `product_id` 的 `GetProduct` 份额**近乎均匀** —— 极差只有 **2.3 个百分点**
+（11.4% ~ 9.1%），是压测器 `user_browse_product` 均匀抽样的直接结果。
+份额均匀意味着这 10 张卡**在轴 B 上彼此不可分**：服务级失败比例都是 9–11%，
+三轴给出的分数只在 B=1 / B=2 那条 10% 的边界上被切成两组，而那条边界恰好落在
+分布正中间，属于人为切分而不是真实差异。**10 张里有 7 张是重复卡**，
+对 agent 是同一道题，却照样各吃 6.5 min 机器时间。
+保留的 3 张取份额**最高**（`2ZYFJ3GM2N` 11.4%）、**最低**（`66VCHSJNUP` 9.1%）、
+**已有实测且在首批**（`OLJCESPC7Z` 9.3%）各一张。
+
+`recipe.csv` 同时新增 **`batch_order` 列**：首批 16 张按本文第五节顺序编号 1–16，
+其余留空；`run_batch.py --batch N` 按该列排序，不再走文件名字母序。
 
 **v0.2 → v1.0 差异摘要**：配方经决策 021 定稿 —— 总卡数 **76**（crash 13／blackhole 13／
-latency 26／misconfig 21／mem_leak 3）；难度三轴与档位规则写入决策；`paymentFailure` 6 张
+latency 26／misconfig 21／mem_leak 3，v1.1 已改为 69）；难度三轴与档位规则写入决策；`paymentFailure` 6 张
 按裁决入卡、全部标未验证，首批带一张 `misconfig-payment-100` 做验证（不过门则整组出库）；
 首批 16 卡中 `crash-quote-01` 由 `misconfig-payment-100` 替换；配方表改由 csv 生成，
 第四节表格为生成物。
@@ -140,7 +157,7 @@ latency 26／misconfig 21／mem_leak 3）；难度三轴与档位规则写入决
 | `(product-catalog, misconfig)` B=2 | 1 | 1 | 2 | 0 | 3 | **中** |
 | `(email, mem_leak)` | 2 | 2 | 2 | 1 | 5 | **难** |
 
-### 四、配方表（全部卡，76 张）
+### 四、配方表（全部卡，69 张）
 
 下表由 `scripts/scenarios/generate.py` 从 `scripts/scenarios/recipe.csv` 生成，
 **不要手改**。`params` 列即卡片 yaml 的 `params` 字段（`key=value` 展开）。
@@ -214,15 +231,8 @@ latency 26／misconfig 21／mem_leak 3）；难度三轴与档位规则写入决
 | `misconfig-payment-100` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=100% | 2 | 0 | 0 | 2 | 中 | no | 1 | Charge 为 payment 唯一被调方法，服务级比例=100%；该开关无入库档实测，按决策 021 标未验证 |
 | `misconfig-checkout-on` | misconfig | `checkout` | `set_flag` | flag=paymentUnreachable variant=on | 1 | 0 | 2 | 3 | 难 | yes | 1 | 下游边消失形态；obs2card_001542 实测 PlaceOrder 11/11 报错 |
 | `misconfig-pc-2ZYFJ3GM2N` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=2ZYFJ3GM2N variant=on | 1 | 1 | 0 | 2 | 中 | no | — | targeting 变体；该 product 在基线 GetProduct 中占比 12.1%（20 min 实测 371/3072） |
-| `misconfig-pc-LS4PSXUNUM` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=LS4PSXUNUM variant=on | 1 | 1 | 0 | 2 | 中 | no | — | targeting 变体；该 product 在基线 GetProduct 中占比 10.5%（20 min 实测 324/3072） |
-| `misconfig-pc-1YMWWN1N4O` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=1YMWWN1N4O variant=on | 1 | 1 | 0 | 2 | 中 | no | — | targeting 变体；该 product 在基线 GetProduct 中占比 10.3%（20 min 实测 316/3072） |
-| `misconfig-pc-9SIQT8TOJO` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=9SIQT8TOJO variant=on | 1 | 2 | 0 | 3 | 中 | no | — | targeting 变体；该 product 在基线 GetProduct 中占比 9.9%（20 min 实测 305/3072） |
 | `misconfig-pc-66VCHSJNUP` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=66VCHSJNUP variant=on | 1 | 2 | 0 | 3 | 中 | no | — | targeting 变体；该 product 在基线 GetProduct 中占比 9.9%（20 min 实测 304/3072） |
-| `misconfig-pc-HQTGWGPNH4` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=HQTGWGPNH4 variant=on | 1 | 2 | 0 | 3 | 中 | no | — | targeting 变体；该 product 在基线 GetProduct 中占比 9.8%（20 min 实测 302/3072） |
 | `misconfig-pc-OLJCESPC7Z` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=OLJCESPC7Z variant=on | 1 | 2 | 0 | 3 | 中 | yes | 1 | targeting 变体；该 product 在基线 GetProduct 中占比 9.8%（20 min 实测 302/3072）；obs2card_001542 实测 r=7.6% |
-| `misconfig-pc-6E92ZMYYFZ` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=6E92ZMYYFZ variant=on | 1 | 2 | 0 | 3 | 中 | no | — | targeting 变体；该 product 在基线 GetProduct 中占比 9.4%（20 min 实测 289/3072） |
-| `misconfig-pc-L9ECAV7KIM` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=L9ECAV7KIM variant=on | 1 | 2 | 0 | 3 | 中 | no | — | targeting 变体；该 product 在基线 GetProduct 中占比 9.3%（20 min 实测 287/3072） |
-| `misconfig-pc-0PUK6V6EV0` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=0PUK6V6EV0 variant=on | 1 | 2 | 0 | 3 | 中 | no | — | targeting 变体；该 product 在基线 GetProduct 中占比 8.9%（20 min 实测 272/3072） |
 | `memleak-email-10000x` | mem_leak | `email` | `set_flag` | flag=emailMemoryLeak variant=10000x | 2 | 2 | 1 | 5 | 难 | yes | 1 | judge_222727 实测 +171.5 MiB/120s |
 | `memleak-email-1000x` | mem_leak | `email` | `set_flag` | flag=emailMemoryLeak variant=1000x | 2 | 2 | 1 | 5 | 难 | yes | 1 | judge_222727 实测 +35.5 MiB/120s |
 | `memleak-email-100x` | mem_leak | `email` | `set_flag` | flag=emailMemoryLeak variant=100x | 2 | 2 | 1 | 5 | 难 | no | — | 更低倍率，检验判据下限；待验证 |
@@ -264,16 +274,16 @@ latency 26／misconfig 21／mem_leak 3）；难度三轴与档位规则写入决
 
 ### 六、统计
 
-**总卡数 76**，与 80 的差 **-4**。
+**总卡数 69**（v1.0 为 76，`productCatalogFailure` 减 7 张）。
 
 | 类 | 卡数 |
 | --- | ---: |
 | `crash` | 13 |
 | `blackhole` | 13 |
 | `latency` | 26 |
-| `misconfig` | 21 |
+| `misconfig` | **14** |
 | `mem_leak` | 3 |
-| **合计** | **76** |
+| **合计** | **69** |
 
 **多变体开关清单**
 
@@ -283,7 +293,7 @@ latency 26／misconfig 21／mem_leak 3）；难度三轴与档位规则写入决
 | `cartFailure` | 3 | `75%` / `90%` / `100%`（`10%`/`25%`/`50%` 按 O-P2-9 排除） |
 | `paymentFailure` | 6 | `10%` / `25%` / `50%` / `75%` / `90%` / `100%` |
 | `paymentUnreachable` | 1 | `on` |
-| `productCatalogFailure` | 10 | 10 个 `product_id`（targeting 命中分支各一） |
+| `productCatalogFailure` | **3** | `2ZYFJ3GM2N`（份额最高 11.4%）／`66VCHSJNUP`（最低 9.1%）／`OLJCESPC7Z`（9.3%，已有实测、在首批）—— v1.1 由 10 减至 3，见头部修订理由 |
 | `emailMemoryLeak` | 3 | `10000x` / `1000x` / `100x`（`1x`/`10x` 未出卡，量级过低） |
 
 **难度直方图**
@@ -291,7 +301,7 @@ latency 26／misconfig 21／mem_leak 3）；难度三轴与档位规则写入决
 | 档位 | 卡数 | 目标 | 差 |
 | --- | ---: | ---: | ---: |
 | 易 | 25 | — | — |
-| 中 | 46 | — | — |
+| 中 | **39** | — | — |
 | 难 | 5 | ≥8 | -3 |
 
 **难卡 card_id 清单（5 张）**：`misconfig-payment-10`、`misconfig-checkout-on`、`memleak-email-10000x`、`memleak-email-1000x`、`memleak-email-100x`

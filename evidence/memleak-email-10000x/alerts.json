@@ -1,0 +1,85 @@
+{
+ "detected_at": "2026-08-27T20:11:11Z",
+ "window": {
+  "start": "2026-08-27T20:05:14Z",
+  "end": "2026-08-27T20:07:15Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-27T20:03:12Z",
+   "end": "2026-08-27T20:10:45Z"
+  },
+  "baseline": {
+   "start": "2026-08-27T20:04:12Z",
+   "end": "2026-08-27T20:05:14Z"
+  },
+  "inject": {
+   "start": "2026-08-27T20:05:14Z",
+   "end": "2026-08-27T20:07:15Z"
+  },
+  "recover": {
+   "start": "2026-08-27T20:07:15Z",
+   "end": "2026-08-27T20:08:15Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>"
+ },
+ "alerts": [
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on email",
+   "service": "email",
+   "baseline": {
+    "p95_ms": 5.8,
+    "window": {
+     "start": "2026-08-27T20:04:12Z",
+     "end": "2026-08-27T20:05:14Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 390.0,
+    "threshold_ms": 11.6,
+    "window": {
+     "start": "2026-08-27T20:05:14Z",
+     "end": "2026-08-27T20:07:15Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T20:05:14Z",
+    "end": "2026-08-27T20:07:15Z"
+   },
+   "deviation": 67.241
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on checkout",
+   "service": "checkout",
+   "baseline": {
+    "p95_ms": 48.0,
+    "window": {
+     "start": "2026-08-27T20:04:12Z",
+     "end": "2026-08-27T20:05:14Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 390.0,
+    "threshold_ms": 96.0,
+    "window": {
+     "start": "2026-08-27T20:05:14Z",
+     "end": "2026-08-27T20:07:15Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T20:05:14Z",
+    "end": "2026-08-27T20:07:15Z"
+   },
+   "deviation": 8.125
+  }
+ ],
+ "no_alert": false,
+ "card_id": "memleak-email-10000x"
+}

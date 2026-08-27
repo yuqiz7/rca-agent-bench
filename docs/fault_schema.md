@@ -245,6 +245,31 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 
 候选池按 **100 收 80**。
 
+### targeting 型开关的 symptom 判据（2026-08-27 ET，O-P2-13）
+
+**判据原文**：被 targeting 的那个业务 id 上，**注入窗内该 id 的自有 server span 中
+报错占比 ≥ 0.5，且报错绝对数 ≥ 5，且基线窗内该 id 报错数为 0。**
+
+不再用概率型的 `N = max(2, ⌈0.5 × ratio × 调用数⌉)`。理由是两类开关的失败形状
+根本不同：
+
+- **概率型**（`cartFailure` / `paymentFailure` / `adFailure`）把失败**随机散布在
+  全部调用上**，绝对报错数正比于生效比例，按 N 判成立；
+- **targeting 型**（`productCatalogFailure`）让**某一个业务实体**的调用 100% 失败、
+  其余实体 0% 失败。此时方法级的整体报错率**等于该实体的流量份额**，
+  用绝对数判就等于在判**压测器请求该实体的频率** —— 而那个频率由
+  `LOAD_GENERATOR_VUS` 与 k6 脚本决定，随时会漂。
+
+**实测依据**：2026-08-27 首批第 16 张 `misconfig-pc-OLJCESPC7Z`，注入完全正常
+（`injected=true`、残留干净），`GetProduct` 报错 **35 / 312 = 11.2%**，
+恰好等于该商品的流量份额；按 `ratio=1.0` 算出的阈值是 **156**，
+把一次正常注入判成失败。改判命中支自身的报错占比后与份额无关。
+
+分组数据来自 `three_signals.py` 的
+`traces.self_edges.server_by_business_id[<tag>][<value>]`，标签名形如
+`demo.<entity>.id`。判据同时记录**未命中的其余 id 的报错数**，
+「只打中一个」这件事在证据里一眼可见。
+
 ---
 
 ## §7 判分
@@ -303,12 +328,45 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 | --- | --- |
 | `logs.jsonl` | 打包窗内**全部服务**的日志，每行一个 JSON 对象：`ts`（`observedTimestamp`）、`service`（`resource.service.name`）、`body`、`severity`（`severity.text`）、`trace_id`、`span_id`。来源 OpenSearch，索引模式 `otel-logs-*`，按 `observedTimestamp` + `_id` 的 `search_after` 翻页（不用 scroll：无服务端游标状态可漏） |
 | `metrics.json` | 固定 PromQL 集合（`scripts/evidence/queries.py`，**所有卡共用**，与卡片的靶子/类别无关）的 `query_range` 结果，步长 **15 s**：每服务请求率 / 错误率 / p95 延迟（均取自 spanmetrics），每服务 `calls_total` / `errors_total` 原始计数器，每容器内存（`container_memory_usage_total_bytes`）与 CPU（`container_cpu_utilization_ratio`）。原始计数器与 `rate()` 同时收：前者是检测器的输入（计数器差分，决策 013 的口径），后者是给人看的仪表盘视角 |
-| `traces.json` | 按服务逐个查 Jaeger `/api/traces`（`start` / `end` 为打包窗，`limit` = 5000），合并去重后保留每个 span 的 `traceID` / `spanID` / `parentSpanID` / `service` / `operation` / `start` / `duration` / `status`。是否触顶记在 `limit_hit` 与 `services_hitting_limit`，**不静默截断** |
+| `traces.json` | 按服务逐个查 Jaeger `/api/traces`（`start` / `end` 为打包窗，`limit` = 5000），合并去重后保留每个 span 的 `traceID` / `spanID` / `parentSpanID` / `service` / `operation` / `start` / `duration` / `status` / **`tags`（白名单，见下）**。是否触顶记在 `limit_hit` 与 `services_hitting_limit`，**不静默截断** |
 | `config_diff.txt` | flagd 配置文件（`src/flagd/demo.flagd.json`）与 compose 环境变量（`docker compose <三文件> config` 的 environment 段，`service=KEY=VALUE` 排序）相对基线快照的 unified diff。基线快照存 `evidence/_baseline/`，不存在时由本步从当前干净状态生成一次 |
 | `topology.json` | 服务调用拓扑，**全局只生成一次**存 `evidence/_shared/topology.json`；各卡目录下的 `topology.json` 是**引用 + sha256**，不重复存图 |
 
 `manifest.json`（第六个文件，索引）：打包时刻、窗口起止与前后补长、三个子窗口、
 基线快照生成时刻、五件各自的 `name` / `path` / `bytes` / `sha256`、各步统计。
+
+### `traces.json` 的 span 标签白名单（2026-08-27 ET，O-P2-16）
+
+原先每个 span 的标签**全部丢弃**，于是「哪个 `product_id` 失败了」这类问题从包里
+根本答不出来 —— 而 Jaeger 是内存存储，答不出就是永远答不出（见下条约束）。
+现在按白名单保留，键名取自 2026-08-27 跨全部服务 25 分钟实测采样，不是推测：
+
+| 类 | 规则 / 键名 | 实测出现量 |
+| --- | --- | --- |
+| **业务 id** | 正则 `^demo\..+\.id$` | `demo.product.id`（7332 span）、`demo.order.id`（1818）、`demo.shipping.tracking.id`（606） |
+| **报错 / 异常消息** | `error`、`error.type`、`otel.status_code`、`otel.status_description`、`grpc.error_message`、`grpc.error_name` | 报错 span 上 `error` / `otel.status_code` 各 53，`otel.status_description` 16，`grpc.error_*` 各 7 |
+
+**其余标签仍然丢弃。** 用正则而不是清单管业务 id，是为了新的 `demo.*.id` 自动纳入。
+**状态码族**（`http.status_code`、`rpc.grpc.status_code`、`http.response.status_code` 等）
+**有意不收**：它们挂在数以万计的健康 span 上、且不含消息，而每个 span 自己已经有
+`status` 字段。白名单本身写在 `traces.json` 的 `tag_whitelist` 字段里，包自带说明。
+
+**已知缺口**：`exception.message` / `exception.type` / `exception.stacktrace`
+不是 span 标签，而是 **span 的 log 字段**，`traces.json` 不保留 span logs，
+因此这三个取不到。gRPC 路径的错误消息由 `otel.status_description` 与
+`grpc.error_message` 覆盖，HTTP 路径的异常堆栈目前**只能从 `logs.jsonl` 里找**。
+
+### 已知约束：打包必须在卡结束后 30 min 内完成
+
+Jaeger 用**内存存储**，`MEMORY_MAX_TRACES=25000`。在当前流量下实测可回溯窗口约
+**30–35 分钟**：50 分钟前的窗口查回来是 **0 条 trace**，30 分钟内的窗口正常返回。
+
+因此：
+
+- **打包必须紧跟周期**（`run_batch.py` 就是这么做的：harvest 之后立刻打包）；
+- **重打包同样受这 30 min 限制** —— 超过就再也拿不回来，只能重跑那张卡；
+- **包里没有的东西，30 分钟后连出题人也拿不到。** 决策 020 说「证据包里没有的，
+  agent 再聪明也拿不到」，这句话对生产侧自己同样成立。
 
 ### 拓扑的来源
 
