@@ -17,6 +17,8 @@ scripts/state/*
 # task.json（agent 的输入）、alerts.json（检测器输出）、config_diff.txt、
 # topology.json 引用，以及共享的 evidence/_baseline/ 与 evidence/_shared/。
 # 重建方式：scripts/evidence/pack.py（窗口见 manifest.json）。
-evidence/*/logs.jsonl
-evidence/*/metrics.json
-evidence/*/traces.json
+# `**` 不是可选的：证据目录有两层（evidence/<card>/ 与
+# evidence/_clean/<observe-ts>/），单星号只盖住第一层。
+evidence/**/logs.jsonl
+evidence/**/metrics.json
+evidence/**/traces.json

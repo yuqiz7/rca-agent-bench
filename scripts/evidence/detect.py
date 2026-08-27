@@ -47,6 +47,19 @@ ERR_N_FLOOR = 5
 ERR_N_FRAC = 0.25
 ERR_BASELINE_MULT = 2.0
 ZERO_RUN = 2                 # consecutive zero samples that count as "traffic gone"
+# Rule 2 guards, added 2026-08-27 (O-P2-15). At a 15s step a service called ~3/min
+# has empty samples as its *normal* state, so "2 consecutive zero samples" alone
+# fired on payment / checkout / email in a clean, uninjected window -- with their
+# inject-window rate essentially unchanged from baseline. Two conditions now have
+# to hold on top of the zero run:
+#   (a) the inject window's mean rate actually collapsed, same 10% cut decision
+#       016 uses for the blackhole symptom (caller spans < baseline x 0.10);
+#   (b) the zero span is long enough that the baseline rate predicts at least
+#       ZERO_MIN_EXPECTED calls should have landed in it -- i.e. the silence is
+#       statistically meaningful for *this* service's traffic level, not just
+#       longer than a fixed number of samples.
+ZERO_RATE_FRAC = 0.10
+ZERO_MIN_EXPECTED = 5
 P95_MULT = 2.0
 MEM_GROWTH_MIB = 30.0
 MEM_MONOTONIC_TOL_MIB = 0.5  # sampling jitter allowance for "monotonically rising"
@@ -153,8 +166,12 @@ def detect(metrics_path):
                 missing = expected - len(deltas)
                 if missing > 0:
                     zero_run = max(zero_run, missing)
-            if zero_run >= ZERO_RUN:
-                i_rate = counter_delta(i_calls_pts) / inject_s
+            i_rate = counter_delta(i_calls_pts) / inject_s
+            zero_span_s = zero_run * step
+            expected_missing = b_rate * zero_span_s
+            rate_collapsed = i_rate <= b_rate * ZERO_RATE_FRAC
+            enough_expected = expected_missing >= ZERO_MIN_EXPECTED
+            if zero_run >= ZERO_RUN and rate_collapsed and enough_expected:
                 alerts.append({
                     "rule": "traffic_zero",
                     "message": RULES["traffic_zero"].format(name=svc),
@@ -162,11 +179,22 @@ def detect(metrics_path):
                     "baseline": {"request_rate_per_s": round(b_rate, 4),
                                  "window": w["baseline"]},
                     "observed": {"request_rate_per_s": round(i_rate, 4),
+                                 "rate_ceiling_per_s": round(b_rate * ZERO_RATE_FRAC, 4),
                                  "consecutive_zero_samples": zero_run,
+                                 "zero_span_s": zero_span_s,
+                                 "expected_calls_in_zero_span": round(expected_missing, 2),
+                                 "min_expected_calls": ZERO_MIN_EXPECTED,
                                  "samples_in_window": len(i_calls_pts),
                                  "window": w["inject"]},
                     "window": w["inject"],
-                    "deviation": round(b_rate / max(i_rate, 1e-6), 3),
+                    # Rule 2's deviation is a *count* -- calls the baseline rate
+                    # says should have landed in the silence -- not a multiple.
+                    # Dividing baseline by an inject rate of exactly 0 produced
+                    # six-figure ratios that swamped every other rule in the sort
+                    # order and said nothing about how much traffic was actually
+                    # lost. Rules 1/3/4 keep their multiples.
+                    "deviation": round(expected_missing, 2),
+                    "deviation_unit": "expected calls missed",
                 })
 
     # ── rule 3: p95 latency ──

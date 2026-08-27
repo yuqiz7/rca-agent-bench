@@ -238,3 +238,39 @@ watcher 在手动重启**之前**取到的两个采样，对开机实例
 **O-P2-3 仍保留** —— 1.5 h 跨度不满足关闭条件 (b) 要求的 **≥ 2h40m**。
 自等待探针 `scripts/maintenance/prom_wal_restart_probe.sh` 已挂上，会在 head 跨度
 达标时自动抢锁重启一次并落 `prom_mem_<date>_walrestart.summary.txt`。
+
+---
+
+## 2026-08-27 自等待重启（Case C）—— O-P2-3 关闭
+
+`scripts/maintenance/prom_wal_restart_probe.sh` 每 30 s 读一次 Prometheus 自身
+`/metrics` 的 `prometheus_tsdb_head_min_time` / `_max_time`，等到 head 跨度过线才
+抢 runner 锁、重启一次、交给 `prom_mem_watch.sh` 采样。整个过程无人值守。
+
+| 项 | 值 |
+| --- | --- |
+| 触发时 head 跨度 | **9607 s**（2 h 40 min 07 s，门槛 9600 s） |
+| 重启时刻 | `2026-08-27T17:55:07Z` = 2026-08-27 13:55:07 EDT |
+| ready | **3 s**（上限 300 s） |
+| 峰值 | **327.4 MiB** |
+| 峰值占限额 | **15.9%**（限额 2048 MiB） |
+| OOMKilled（前 / 后） | **false / false** |
+| RestartCount（前 / 后） | 0 → 0 |
+| verdict | **PASS** |
+| 摘要文件 | `artifacts/resource_audit/prom_mem_2026-08-27_walrestart.summary.txt` |
+| 采样 CSV | `artifacts/resource_audit/prom_mem_2026-08-27_walrestart.csv` |
+| 探针日志 | `artifacts/resource_audit/prom_wal_probe_2026-08-27.log` |
+
+### 两件证据合起来的结论
+
+| Case | 场景 | WAL / head 跨度 | 峰值 | 占限额 | OOM |
+| --- | --- | --- | ---: | ---: | --- |
+| A | VM 冷启动开机重放 | 约 1.5 h | 407.6 MiB | **19.9%** | 否 |
+| C | head 跨度达标后主动重启 | 9607 s | 327.4 MiB | **15.9%** | 否 |
+
+**2 GiB 限额下最坏情况 < 1/6。** 峰值更高的是开机那次而不是 WAL 更长那次 ——
+决定峰值的是**冷启动时 25 个容器同时拉起的整机争抢**，不是 WAL 长度的线性函数。
+决策 013 把导出间隔降到 15 s（样本率 ×4）没有把重放推向限额；决策 008 记录的
+「200M 限额下重放 7 s 即被 OOM 杀、WAL 永不 checkpoint」自锁循环在 2 GiB 下不复现。
+
+**O-P2-3 于 2026-08-27 ET 关闭。**

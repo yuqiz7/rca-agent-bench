@@ -1,0 +1,86 @@
+{
+ "card_id": "observe-20260827T185059Z",
+ "packed_at": "2026-08-27T18:51:12Z",
+ "window": {
+  "start": "2026-08-27T18:39:00Z",
+  "end": "2026-08-27T18:46:30Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-27T18:39:00Z",
+   "end": "2026-08-27T18:46:30Z"
+  },
+  "baseline": {
+   "start": "2026-08-27T18:40:00Z",
+   "end": "2026-08-27T18:41:00Z"
+  },
+  "inject": {
+   "start": "2026-08-27T18:41:00Z",
+   "end": "2026-08-27T18:43:00Z"
+  },
+  "recover": {
+   "start": "2026-08-27T18:43:00Z",
+   "end": "2026-08-27T18:44:00Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T18:51:10Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/_clean/observe-20260827T185059Z/logs.jsonl",
+   "bytes": 3282647,
+   "sha256": "8ca7c09bcbe8aea19926c92c35b455ba7ef26107ab4939e4400fcd38e14c9c9d"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/_clean/observe-20260827T185059Z/metrics.json",
+   "bytes": 178313,
+   "sha256": "9bd9959fdc0aa9e97526857a9e54a2687de9bca5fb1ba744a7bd223af792192a"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/_clean/observe-20260827T185059Z/traces.json",
+   "bytes": 8000448,
+   "sha256": "3f4f4f95114ab24b4f14aecb2ebf1817f0bbe254a23bf9b1bda246b143df9e75"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/_clean/observe-20260827T185059Z/config_diff.txt",
+   "bytes": 135,
+   "sha256": "f8e5e19a84d82b03decdc45f72829db55429ee00b9e9c6e56487347038e089d3"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/_clean/observe-20260827T185059Z/topology.json",
+   "bytes": 378,
+   "sha256": "ddb29323e4e716ae7a3145c3aed5213daf01b99aa49a5c4dfce39c21800488d1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 9882,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 7,
+   "series": 103
+  },
+  "traces.json": {
+   "spans": 29910,
+   "limit_hit": false,
+   "services_hitting_limit": []
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T18:51:10Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "2c300ead6cd47dd45de7591f219b00a2fc41066db6e49976345588d6369883c3"
+  }
+ }
+}

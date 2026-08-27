@@ -3,9 +3,18 @@
 # class: misconfig | mem_leak（取决于 flag，见下表）
 #
 # 接口（比前三个原语多一个参数）：
-#   apply  <service> <flag>=<variant>   备份 json -> 改 defaultVariant -> 验证生效；打印 t_inject
-#   revert <service> <flag>=<variant>   恢复备份 -> 验证回原值 -> 删 state；打印 t_revert
-#   probe  <service> <flag>=<variant>   查当前 variant，等于 state 记的目标值即 injected=true
+#   apply  <service> <flag>=<variant> [--context-value <v>]
+#          备份 json -> 改 defaultVariant（或 targeting 命中分支）-> 验证生效；打印 t_inject
+#   revert <service> <flag>=<variant> [--context-value <v>]
+#          恢复备份 -> 验证回原值 -> 删 state；打印 t_revert
+#   probe  <service> <flag>=<variant> [--context-value <v>]
+#          查当前 variant，等于 state 记的目标值即 injected=true
+#
+# --context-value（2026-08-27，O-P2-14）：targeting 型开关的规则条件里写死了一个
+# 比较值（productCatalogFailure 是 product_id=OLJCESPC7Z）。给了这个参数，apply
+# 会把条件里的比较值一并改写成指定值，probe 用同一个值做求值上下文，revert 照旧
+# 从备份整体恢复（条件值与变体一起回原样）。不给则完全维持旧行为。
+# revert / probe 可以省略：apply 已把它记进 state 文件的 context= 字段。
 #
 # 实现方式（2026-08-24 查实，非假设）：
 #   compose 里 flagd 的 command 是 `start --uri file:./etc/flagd/demo.flagd.json`，
@@ -33,8 +42,26 @@ DEMO_DIR="$(cd "$SELF_DIR/../.." && pwd)/opentelemetry-demo"
 FLAG_JSON="$DEMO_DIR/src/flagd/demo.flagd.json"
 mkdir -p "$STATE_DIR"
 
-usage() { echo "usage: $0 {apply|revert|probe} <service> <flag>=<variant>" >&2; exit 2; }
+usage() {
+  echo "usage: $0 {apply|revert|probe} <service> <flag>=<variant> [--context-value <v>]" >&2
+  exit 2
+}
 ts()    { date -u +'%Y-%m-%dT%H:%M:%SZ'; }
+
+# --context-value overrides the value a targeting rule matches on (O-P2-14).
+# productCatalogFailure's rule is hard-coded to one product_id; without this the
+# recipe's 10 per-product cards would all inject the same rule and be duplicates.
+CTX_VALUE=""
+POSITIONAL=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --context-value) CTX_VALUE="${2:-}"; shift 2 ;;
+    --) shift; while [ $# -gt 0 ]; do POSITIONAL+=("$1"); shift; done ;;
+    -*) echo "error: unknown option '$1'" >&2; usage ;;
+    *) POSITIONAL+=("$1"); shift ;;
+  esac
+done
+set -- "${POSITIONAL[@]+"${POSITIONAL[@]}"}"
 
 [ $# -eq 3 ] || usage
 cmd="$1"; svc="$2"; spec="$3"
@@ -47,11 +74,29 @@ flag="${spec%%=*}"; variant="${spec#*=}"
 # 上下文才能看到真实结果。来源：各服务代码里传给 flag 求值的 EvaluationContext
 # （productCatalogFailure 见 product-catalog/main.go:420，传的是 product_id=请求的商品 ID；
 # 规则里写死的目标 ID 见 demo.flagd.json 的 targeting 条件）。
-flag_context() {
+# 每个 targeting 型开关的上下文变量名，以及没给 --context-value 时的缺省值
+# （缺省值 = demo.flagd.json 出厂条件里写死的那个，保持旧行为不变）。
+flag_context_key() {
   case "$1" in
-    productCatalogFailure) echo '{"product_id":"OLJCESPC7Z"}' ;;
-    *)                     echo '{}' ;;
+    productCatalogFailure) echo "product_id" ;;
+    *)                     echo "" ;;
   esac
+}
+flag_context_default() {
+  case "$1" in
+    productCatalogFailure) echo "OLJCESPC7Z" ;;
+    *)                     echo "" ;;
+  esac
+}
+
+# probe / current_variant 用的求值上下文。带 --context-value 时用它，否则用缺省值 ——
+# 求值上下文必须与 apply 写进规则条件的那个值一致，否则 probe 看到的是未命中分支。
+flag_context() {
+  local key val
+  key="$(flag_context_key "$1")"
+  [ -n "$key" ] || { echo '{}'; return; }
+  val="${CTX_VALUE:-$(flag_context_default "$1")}"
+  python3 -c "import json,sys;print(json.dumps({sys.argv[1]:sys.argv[2]}))" "$key" "$val"
 }
 
 # 该开关是否带 targeting 规则
@@ -117,6 +162,14 @@ wait_variant() {
 
 STATE_FILE="$STATE_DIR/$svc.flag"
 
+# revert / probe 可以不重复给 --context-value：apply 已经把它记进 state 文件。
+# 求值上下文必须与 apply 写进规则条件的那个值一致，否则 probe 会看到未命中分支
+# 并把一次成功的注入报成 injected=false。
+if [ -z "$CTX_VALUE" ] && [ "$cmd" != "apply" ] && [ -s "$STATE_FILE" ]; then
+  CTX_VALUE="$(sed -n 's/.*context=\([^ ]*\).*/\1/p' "$STATE_FILE")"
+  [ "$CTX_VALUE" = "none" ] && CTX_VALUE=""
+fi
+
 case "$cmd" in
   apply)
     [ -s "$STATE_FILE" ] && { echo "error: injection already applied for '$svc'" >&2; exit 1; }
@@ -132,16 +185,42 @@ if '$variant' not in d['flags']['$flag']['variants']:
     bak="$STATE_DIR/$svc.flag.bak.json"
     cp "$FLAG_JSON" "$bak"
     if flag_has_targeting "$flag"; then
-      # targeting 优先于 defaultVariant：改命中分支的变体，规则条件不动
-      python3 -c "
-import json,sys
-p='$FLAG_JSON'; d=json.load(open(p))
-t=d['flags']['$flag']['targeting']
-if 'if' not in t or len(t['if']) < 2:
-    sys.exit('unsupported targeting shape for $flag: expected an \'if\' with a match branch')
-t['if'][1]='$variant'          # 命中分支 -> 目标变体；条件与未命中分支保持原样
-json.dump(d,open(p,'w'),indent=2)
-" || { rm -f "$bak"; exit 1; }
+      # targeting 优先于 defaultVariant：改命中分支的变体。带 --context-value 时
+      # 连规则条件里的目标值一起改写（O-P2-14）—— 否则无论 defaultVariant 还是
+      # 命中分支怎么改，命中的永远是出厂写死的那一个值。
+      CTX_KEY="$(flag_context_key "$flag")" \
+      CTX_NEW="${CTX_VALUE:-}" \
+      FLAG_NAME="$flag" VARIANT="$variant" FLAG_PATH="$FLAG_JSON" \
+      python3 - <<'PYEOF' || { rm -f "$bak"; exit 1; }
+import json, os, sys
+
+path = os.environ["FLAG_PATH"]
+flag = os.environ["FLAG_NAME"]
+variant = os.environ["VARIANT"]
+key = os.environ.get("CTX_KEY") or ""
+new_val = os.environ.get("CTX_NEW") or ""
+
+d = json.load(open(path))
+t = d["flags"][flag].get("targeting") or {}
+if "if" not in t or len(t["if"]) < 2:
+    sys.exit(f"unsupported targeting shape for {flag}: expected an 'if' with a match branch")
+t["if"][1] = variant           # 命中分支 -> 目标变体
+
+if new_val:
+    if not key:
+        sys.exit(f"--context-value given but {flag} has no known context key")
+    cond = t["if"][0]
+    # 出厂形状是 {"==": [{"var": "<key>"}, "<value>"]}；只改比较的右操作数，
+    # 运算符与 var 名不动。形状不符就报错退出，不猜。
+    ops = cond.get("==") if isinstance(cond, dict) else None
+    if (not isinstance(ops, list) or len(ops) != 2
+            or not isinstance(ops[0], dict) or ops[0].get("var") != key):
+        sys.exit(f"unsupported targeting condition for {flag}: "
+                 f"expected {{'==': [{{'var': '{key}'}}, <value>]}}, got {json.dumps(cond)}")
+    ops[1] = new_val
+
+json.dump(d, open(path, "w"), indent=2)
+PYEOF
     else
       python3 -c "
 import json
@@ -153,9 +232,10 @@ json.dump(d,open(p,'w'),indent=2)
     got="$(wait_variant "$variant")" || {
       echo "error: flagd did not pick up '$variant' within 30s (got '$got'); rolling back" >&2
       cp "$bak" "$FLAG_JSON"; rm -f "$bak"; exit 1; }
-    printf 'flag=%s orig=%s target=%s backup=%s\n' "$flag" "$orig" "$variant" "$bak" > "$STATE_FILE"
+    printf 'flag=%s orig=%s target=%s backup=%s context=%s\n' \
+           "$flag" "$orig" "$variant" "$bak" "${CTX_VALUE:-none}" > "$STATE_FILE"
     echo "t_inject=$(ts)"
-    echo "service=$svc flag=$flag orig_variant=$orig variant=$got"
+    echo "service=$svc flag=$flag orig_variant=$orig variant=$got context=${CTX_VALUE:-none}"
     ;;
 
   revert)

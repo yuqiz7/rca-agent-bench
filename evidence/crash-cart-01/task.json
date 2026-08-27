@@ -5,119 +5,9 @@
    "start": "2026-08-27T18:06:26Z",
    "end": "2026-08-27T18:08:26Z"
   },
-  "detected_at": "2026-08-27T18:13:09Z",
+  "detected_at": "2026-08-27T18:52:22Z",
   "no_alert": false,
   "alerts": [
-   {
-    "rule": "traffic_zero",
-    "message": "traffic dropped to zero on cart",
-    "service": "cart",
-    "baseline": {
-     "request_rate_per_s": 0.9508,
-     "window": {
-      "start": "2026-08-27T18:05:25Z",
-      "end": "2026-08-27T18:06:26Z"
-     }
-    },
-    "observed": {
-     "request_rate_per_s": 0.0,
-     "consecutive_zero_samples": 7,
-     "samples_in_window": 8,
-     "window": {
-      "start": "2026-08-27T18:06:26Z",
-      "end": "2026-08-27T18:08:26Z"
-     }
-    },
-    "deviation": 950819.672
-   },
-   {
-    "rule": "traffic_zero",
-    "message": "traffic dropped to zero on shipping",
-    "service": "shipping",
-    "baseline": {
-     "request_rate_per_s": 0.1639,
-     "window": {
-      "start": "2026-08-27T18:05:25Z",
-      "end": "2026-08-27T18:06:26Z"
-     }
-    },
-    "observed": {
-     "request_rate_per_s": 0.0,
-     "consecutive_zero_samples": 7,
-     "samples_in_window": 8,
-     "window": {
-      "start": "2026-08-27T18:06:26Z",
-      "end": "2026-08-27T18:08:26Z"
-     }
-    },
-    "deviation": 163934.426
-   },
-   {
-    "rule": "traffic_zero",
-    "message": "traffic dropped to zero on quote",
-    "service": "quote",
-    "baseline": {
-     "request_rate_per_s": 0.0984,
-     "window": {
-      "start": "2026-08-27T18:05:25Z",
-      "end": "2026-08-27T18:06:26Z"
-     }
-    },
-    "observed": {
-     "request_rate_per_s": 0.0,
-     "consecutive_zero_samples": 7,
-     "samples_in_window": 8,
-     "window": {
-      "start": "2026-08-27T18:06:26Z",
-      "end": "2026-08-27T18:08:26Z"
-     }
-    },
-    "deviation": 98360.656
-   },
-   {
-    "rule": "traffic_zero",
-    "message": "traffic dropped to zero on payment",
-    "service": "payment",
-    "baseline": {
-     "request_rate_per_s": 0.0656,
-     "window": {
-      "start": "2026-08-27T18:05:25Z",
-      "end": "2026-08-27T18:06:26Z"
-     }
-    },
-    "observed": {
-     "request_rate_per_s": 0.0,
-     "consecutive_zero_samples": 7,
-     "samples_in_window": 8,
-     "window": {
-      "start": "2026-08-27T18:06:26Z",
-      "end": "2026-08-27T18:08:26Z"
-     }
-    },
-    "deviation": 65573.77
-   },
-   {
-    "rule": "traffic_zero",
-    "message": "traffic dropped to zero on email",
-    "service": "email",
-    "baseline": {
-     "request_rate_per_s": 0.0492,
-     "window": {
-      "start": "2026-08-27T18:05:25Z",
-      "end": "2026-08-27T18:06:26Z"
-     }
-    },
-    "observed": {
-     "request_rate_per_s": 0.0,
-     "consecutive_zero_samples": 7,
-     "samples_in_window": 8,
-     "window": {
-      "start": "2026-08-27T18:06:26Z",
-      "end": "2026-08-27T18:08:26Z"
-     }
-    },
-    "deviation": 49180.328
-   },
    {
     "rule": "p95_jump",
     "message": "elevated p95 latency on frontend",
@@ -140,6 +30,32 @@
     "deviation": 104.354
    },
    {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on cart",
+    "service": "cart",
+    "baseline": {
+     "request_rate_per_s": 0.9508,
+     "window": {
+      "start": "2026-08-27T18:05:25Z",
+      "end": "2026-08-27T18:06:26Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.0951,
+     "consecutive_zero_samples": 7,
+     "zero_span_s": 105,
+     "expected_calls_in_zero_span": 99.84,
+     "min_expected_calls": 5,
+     "samples_in_window": 8,
+     "window": {
+      "start": "2026-08-27T18:06:26Z",
+      "end": "2026-08-27T18:08:26Z"
+     }
+    },
+    "deviation": 99.84
+   },
+   {
     "rule": "p95_jump",
     "message": "elevated p95 latency on frontend-proxy",
     "service": "frontend-proxy",
@@ -159,6 +75,110 @@
      }
     },
     "deviation": 77.741
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on shipping",
+    "service": "shipping",
+    "baseline": {
+     "request_rate_per_s": 0.1639,
+     "window": {
+      "start": "2026-08-27T18:05:25Z",
+      "end": "2026-08-27T18:06:26Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.0164,
+     "consecutive_zero_samples": 7,
+     "zero_span_s": 105,
+     "expected_calls_in_zero_span": 17.21,
+     "min_expected_calls": 5,
+     "samples_in_window": 8,
+     "window": {
+      "start": "2026-08-27T18:06:26Z",
+      "end": "2026-08-27T18:08:26Z"
+     }
+    },
+    "deviation": 17.21
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on quote",
+    "service": "quote",
+    "baseline": {
+     "request_rate_per_s": 0.0984,
+     "window": {
+      "start": "2026-08-27T18:05:25Z",
+      "end": "2026-08-27T18:06:26Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.0098,
+     "consecutive_zero_samples": 7,
+     "zero_span_s": 105,
+     "expected_calls_in_zero_span": 10.33,
+     "min_expected_calls": 5,
+     "samples_in_window": 8,
+     "window": {
+      "start": "2026-08-27T18:06:26Z",
+      "end": "2026-08-27T18:08:26Z"
+     }
+    },
+    "deviation": 10.33
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on payment",
+    "service": "payment",
+    "baseline": {
+     "request_rate_per_s": 0.0656,
+     "window": {
+      "start": "2026-08-27T18:05:25Z",
+      "end": "2026-08-27T18:06:26Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.0066,
+     "consecutive_zero_samples": 7,
+     "zero_span_s": 105,
+     "expected_calls_in_zero_span": 6.89,
+     "min_expected_calls": 5,
+     "samples_in_window": 8,
+     "window": {
+      "start": "2026-08-27T18:06:26Z",
+      "end": "2026-08-27T18:08:26Z"
+     }
+    },
+    "deviation": 6.89
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on email",
+    "service": "email",
+    "baseline": {
+     "request_rate_per_s": 0.0492,
+     "window": {
+      "start": "2026-08-27T18:05:25Z",
+      "end": "2026-08-27T18:06:26Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.0049,
+     "consecutive_zero_samples": 7,
+     "zero_span_s": 105,
+     "expected_calls_in_zero_span": 5.16,
+     "min_expected_calls": 5,
+     "samples_in_window": 8,
+     "window": {
+      "start": "2026-08-27T18:06:26Z",
+      "end": "2026-08-27T18:08:26Z"
+     }
+    },
+    "deviation": 5.16
    },
    {
     "rule": "error_rate_jump",
@@ -184,28 +204,6 @@
     "deviation": 5.0
    },
    {
-    "rule": "traffic_zero",
-    "message": "traffic dropped to zero on ad",
-    "service": "ad",
-    "baseline": {
-     "request_rate_per_s": 0.1967,
-     "window": {
-      "start": "2026-08-27T18:05:25Z",
-      "end": "2026-08-27T18:06:26Z"
-     }
-    },
-    "observed": {
-     "request_rate_per_s": 0.0667,
-     "consecutive_zero_samples": 2,
-     "samples_in_window": 8,
-     "window": {
-      "start": "2026-08-27T18:06:26Z",
-      "end": "2026-08-27T18:08:26Z"
-     }
-    },
-    "deviation": 2.951
-   },
-   {
     "rule": "p95_jump",
     "message": "elevated p95 latency on cart",
     "service": "cart",
@@ -225,28 +223,6 @@
      }
     },
     "deviation": 2.107
-   },
-   {
-    "rule": "traffic_zero",
-    "message": "traffic dropped to zero on checkout",
-    "service": "checkout",
-    "baseline": {
-     "request_rate_per_s": 0.0656,
-     "window": {
-      "start": "2026-08-27T18:05:25Z",
-      "end": "2026-08-27T18:06:26Z"
-     }
-    },
-    "observed": {
-     "request_rate_per_s": 0.0417,
-     "consecutive_zero_samples": 2,
-     "samples_in_window": 8,
-     "window": {
-      "start": "2026-08-27T18:06:26Z",
-      "end": "2026-08-27T18:08:26Z"
-     }
-    },
-    "deviation": 1.574
    }
   ]
  },

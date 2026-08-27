@@ -119,9 +119,30 @@ WAL 仅 3.6M，`total_replay_duration` **118.97 ms** —— 这不构成对 2G �
 `restarted_during_watch=false`，stop_reason=stable。证据
 `artifacts/resource_audit/prom_mem_2026-08-27_boot.csv`。
 
-**结论：保留。** 今早开机 WAL 跨度约 1.5 h，不满足「head 跨度 ≥2h40m 重启峰值 ≤60%」
-条件；已挂自等待探针脚本（`scripts/maintenance/prom_wal_restart_probe.sh`），
-结果落 `artifacts/resource_audit/prom_mem_<date>_walrestart.summary.txt`，读到即裁。
+**2026-08-27 自等待探针（Case C）**：`prom_wal_restart_probe.sh` 等到 head 跨度
+**9607 s（2 h 40 min 07 s）** 时自动抢锁重启，`ready_sec=3`（上限 300），峰值
+**327.4 MiB = 15.9% of 2048 MiB**，`oom_killed_before/after` 均 false，
+`restart_count` 0 → 0，**verdict=PASS**。证据
+`artifacts/resource_audit/prom_mem_2026-08-27_walrestart.summary.txt`
+与同名 `.csv`。
+
+**状态：关（2026-08-27 ET）**
+
+2026-08-26 定的两条关闭条件**同时满足**：
+
+| 条件 | 证据 | 结果 |
+| --- | --- | --- |
+| (a) 开机重放不 OOM | **Case A**：WAL 跨度约 **1.5 h**，峰值 **407.6 MiB = 19.9%**，`OOMKilled=false`，`RestartCount` 0 → 0，stop_reason=stable | 满足 |
+| (b) head 跨度 ≥ 2h40m 时重启，峰值 ≤ 上限 60% | **Case C**：head 跨度 **9607 s**，`ready_sec=3`，峰值 **327.4 MiB = 15.9%**，无 OOM，PASS | 满足 |
+
+**结论：2 GiB 限额下最坏情况 < 1/6。** 两个 case 里峰值更高的是开机那次
+（407.6 MiB / 19.9%），比 60% 的告警线还差三倍多的余量；跨度达标的那次反而更低
+（327.4 MiB / 15.9%）—— 说明峰值主要由**冷启动时的整机争抢**决定，不由 WAL 长度
+线性决定，决策 013 的样本率 ×4 没有把重放推向限额。决策 008 记录的自锁循环
+（200M 限额下重放 7 s 即被 OOM 杀、WAL 永不 checkpoint）在 2 GiB 限额下不成立。
+
+**遗留**：探针脚本与 `prom_mem_watch.sh` 保留在仓库里，日后若再改导出间隔或
+retention，直接重跑一次即可复判，不需要重新设计观测方式。
 
 ---
 
@@ -428,9 +449,48 @@ paymentUnreachable 条目与 [fingerprints.md](fingerprints.md)「下游边消�
 
 ## O-P2-13　misconfig 阈值公式对 targeting 型开关不适用
 
-**状态：关（2026-08-26 ET）** —— targeting 型开关的阈值以**实测生效比例 r** 计算，
-不取 `ratio=1.0`。`productCatalogFailure` 入卡：r = 7.6%、阈值 14、实测 27 通过。
+**状态：重开（2026-08-27 ET）—— 裁决已定但代码里没实现**
+
+2026-08-26 裁定：targeting 型开关的阈值以**实测生效比例 r** 计算，不取 `ratio=1.0`
+（`productCatalogFailure`：r = 7.6%、阈值 14、实测 27 通过）。
 apply 语义见 [fault_schema.md](fault_schema.md) §5「targeting 型开关的 apply 语义」。
+
+**但 `run_batch.py` 的 `parse_ratio()` 至今仍对 `on`/`off` 型变体返回 `1.0`** ——
+那条裁决**从未落到代码里**。2026-08-27 用 `2ZYFJ3GM2N` 做 O-P2-14 的原语验证时撞到：
+
+| 项 | 值 |
+| --- | --- |
+| `effective_ratio`（代码算出的） | **1.0**（应为约 0.11） |
+| `GetProduct` 注入窗调用数 | 212 |
+| 阈值 `N = max(2, ⌈0.5 × 1.0 × 212⌉)` | **106** |
+| 实测报错 span | **24**（占 11.3%，与该商品份额 11.4% 吻合） |
+| `symptom` 判定 | **false** |
+
+注入完全正常（基线 0 报错、`injected` 探针 true、报错精确落在被 targeting 的商品上、
+撤除后残留干净），**只是阈值算错了**。按裁决的 r ≈ 0.113 重算：
+`N = max(2, ⌈0.5 × 0.113 × 212⌉)` = **12**，实测 24 ≥ 12 通过，且 24 ≥ 2×12 = 24
+恰好也满足入卡的「≥ 2 倍阈值」。
+
+**后果（要紧）**
+配方里 **10 张 `misconfig-pc-*` 卡**在 `parse_ratio()` 修好之前**全部会被判成
+`symptom=false`**，在批次模式下记 `production.probe.verdict=failed` 且不打包。
+首批 16 卡里的 `misconfig-pc-OLJCESPC7Z`（第 6 张）就是其中之一 ——
+它是首批唯一受此影响的卡，不会触发「连续 3 张失败停批」。
+
+**待议（需用户裁决）**
+r 从哪来，三条路都还在：
+(a) **预跑测 r** —— 每个 `product_id` 跑一次基线窗统计份额，写进卡片 `params`
+    供 runner 读；准，但每张卡多一次预跑；
+(b) **从本周期自己的基线窗现算 r** —— `three_signals` 已经有靶子自身的 server span
+    分组数据，不需要额外预跑，但要按标签（`demo.product.id`）分组，
+    而那正是 [O-P2-16](#o-p2-16证据包丢-span-标签且-jaeger-只有约-30-分钟回溯窗)
+    指出的、当前采集里丢掉的东西；
+(c) **对 targeting 型开关改判据** —— 不比绝对报错数，改比「被 targeting 的那一支
+    报错率 ≈ 100%、其余支 0%」，与份额无关，因此不受压测器配置漂移影响。
+    这条最稳，但要新写一条 §5 判据。
+
+**在裁决之前**，`misconfig-pc-*` 的卡按现状会失败；这是**已知的、有解释的失败**，
+不是系统异常。
 
 **内容**
 §5 的 misconfig 阈值 `N = max(2, ⌈0.5 × ratio × calls⌉)` 里，`ratio` 对 `on`/`off` 型开关
@@ -457,7 +517,7 @@ apply 语义见 [fault_schema.md](fault_schema.md) §5「targeting 型开关的 
 
 ## O-P2-14　`set_flag.sh` 无法为 `productCatalogFailure` 指定 `product_id`
 
-**状态：open（2026-08-27 ET，量产前必须解决）**
+**状态：部分关（2026-08-27 ET）—— 原语已修；保留卡数待裁：按份额分布决定保留 3–4 张，其余出库**
 
 **内容**
 决策 021 的配方里 `productCatalogFailure` 出 **10 张卡**，每张锁定一个不同的
@@ -484,14 +544,81 @@ ground truth 虽仍是 `(product-catalog, misconfig)`（服务与类别不变）
 目标 ID 一并改写、probe 时用同一个 ID 做上下文（备份/恢复机制不变，仍是整文件
 `cp` 回滚）。但这动的是**已在跑的注入原语**，且 `flag_context` 的签名要从
 「按 flag 查表」变成「按 flag + 卡片参数」，会牵连 runner 的传参路径。
-本轮未改（本轮任务范围是生成器 / 打包器 / 检测器 / runner 集成，且原语脚本
-正被后台探针占用）。**量产 `misconfig-pc-*` 之前必须先改，否则那 9 张卡是废卡。**
+**已修（2026-08-27 ET）**
+
+`set_flag.sh` 增加 `--context-value <v>`：
+
+- `apply` 时把 targeting 条件里的比较值改写为指定值（形状必须是
+  `{"==": [{"var": "<key>"}, <value>]}`，不符即报错退出、不猜），同时改命中分支的变体；
+- `probe` 用同一个值做求值上下文；值记进 `state/<svc>.flag` 的 `context=` 字段，
+  `revert` / `probe` 可以不重复传；
+- `revert` 照旧从备份整体 `cp` 回滚，条件值与变体一起回原样；
+- **不给该参数时行为与改前完全一致**（缺省值仍是出厂写死的 `OLJCESPC7Z`）。
+
+`generate.py` 生成的 `misconfig-pc-*` 卡片 `params` 本就带 `product_id`；
+`run_batch.py` 的 `card_to_cycle()` 现在把它透传为 `--context-value`。
+
+**实测验证（2026-08-27 ET，调试档 30/60/30）**
+
+用**非** `OLJCESPC7Z` 的 `2ZYFJ3GM2N` 跑一次注入：
+
+| 项 | 值 |
+| --- | --- |
+| 注入期间 targeting 条件 | `{"if": [{"==": [{"var": "product_id"}, "2ZYFJ3GM2N"]}, "on", "off"]}` |
+| `injected` 探针 | **true** |
+| `GetProduct` 调用数（注入窗，靶子自身 server span） | **212** |
+| 其中报错 span | **24** |
+| 实测报错占比 | **11.3%** |
+| `2ZYFJ3GM2N` 的基线份额（见下表） | **11.4%** |
+| `residue_clean` | true（条件值与变体均已恢复为 `OLJCESPC7Z` / `off`，flagd 工作区干净） |
+
+**11.3% 对 11.4%** 就是判据：报错落在 `2ZYFJ3GM2N` 这一支上，而不是出厂写死的
+`OLJCESPC7Z`（份额 9.3%）。原语已能按卡片参数注入任意一个 `product_id`。
+
+**`product_id` 份额分布（2026-08-27T18:28:09Z–18:55:09Z，27 min，n = 4154）**
+
+| # | product_id | GetProduct 调用数 | 份额 |
+| ---: | --- | ---: | ---: |
+| 1 | `2ZYFJ3GM2N` | 475 | 11.4% |
+| 2 | `9SIQT8TOJO` | 435 | 10.5% |
+| 3 | `6E92ZMYYFZ` | 431 | 10.4% |
+| 4 | `HQTGWGPNH4` | 419 | 10.1% |
+| 5 | `0PUK6V6EV0` | 418 | 10.1% |
+| 6 | `LS4PSXUNUM` | 409 | 9.8% |
+| 7 | `1YMWWN1N4O` | 404 | 9.7% |
+| 8 | `L9ECAV7KIM` | 396 | 9.5% |
+| 9 | `OLJCESPC7Z` | 387 | 9.3% |
+| 10 | `66VCHSJNUP` | 380 | 9.1% |
+
+**份额近乎均匀** —— 极差只有 **2.3 个百分点**（11.4% − 9.1%），10 个商品各占约
+1/10。这是压测器 `user_browse_product` 均匀抽样的直接结果，不是巧合。
+
+**保留卡数待裁**：均匀分布意味着这 10 张卡在**轴 B 上彼此几乎不可分**
+（服务级失败比例都是 9–11%），difficulty 三轴给出的分数也只在 B=1 / B=2 的
+边界上被份额差切成两组 —— 而那条边界（10%）恰好落在分布正中间，属于人为切分。
+按分布保留 **3–4 张**（取份额最高、中位、最低各一，可再加一张）足以覆盖该开关的
+全部行为，其余 **6–7 张出库**。**具体保留几张、留哪几个 `product_id`，需用户裁决。**
+本条未改 `recipe.md`、未动任何卡片 yaml —— 裁决落地前 10 张全部保留在配方里。
+
+**数据来源的一处偏差（未绕过）**：本表**不是**按要求从
+`evidence/crash-cart-01/traces.json` 的基线段统计的，原因有二，都是硬约束：
+
+1. **`traces.json` 不保留 span 标签。** 打包器按 fault_schema §9 只留
+   `traceID` / `spanID` / `parentSpanID` / `service` / `operation` / `start` /
+   `duration` / `status` 八个字段，`demo.product.id` 不在其中，从该文件根本算不出
+   按 `product_id` 的分布。
+2. **源窗口已被 Jaeger 淘汰。** Jaeger 用内存存储、`MEMORY_MAX_TRACES=25000`，
+   实测可回溯窗口约 **30–35 分钟**：`crash-cart-01` 的基线段（18:05:25–18:06:26，
+   已是 50 分钟前）现在查回来是 **0 条 trace**，而 30 分钟内的窗口正常返回。
+
+因此改用**同口径的新鲜窗口**重测，样本量（4154 次调用 / 27 min）也比原窗口
+（61 秒基线段，约 200 次调用）有意义得多。**这两点本身是需要跟进的问题，见 O-P2-16。**
 
 ---
 
 ## O-P2-15　流量消失规则对低流量服务假阳
 
-**状态：open（2026-08-27 ET，决策 021 的检测器实测发现）**
+**状态：关（2026-08-27 ET，规则已修订并实测复验）**
 
 **内容**
 `detect.py` 规则 2（决策 021 / fault_schema §10）写的是
@@ -524,5 +651,73 @@ ground truth 虽仍是 `(product-catalog, misconfig)`（服务与类别不变）
     symptom 判据（决策 016：caller span < 基线 10%）同口径；
 (d) 接受假阳，理由是 agent 本来就该在证据包里自行分辨。
 
-在裁决之前，`blackhole` / `crash` 类卡的 `agent_visible_symptom` 里会稳定多出
-`payment` / `checkout` / `email` 三条无关告警。
+**裁决与修订（2026-08-27 ET）**：取上列 (c) 与 (b) 的组合 —— 规则 2 现在要求
+零跨度之外**同时**满足两条：
+
+- **(a) 注入期平均速率 ≤ 基线速率 × 0.1** —— 与决策 016 的 `blackhole` symptom 同口径
+  （caller span < 基线 10%），要求速率真的塌了，而不是「恰好这两格没数」；
+- **(b) 零跨度内预期调用数 = 基线速率 × 零跨度秒数 ≥ 5** —— 把静默算不算数交给
+  该服务**自己的流量水平**判，而不是拿固定采样点数卡所有服务。
+
+`deviation` 同时由「基线速率 ÷ 注入期速率」改为**预期缺失调用数**（= 基线速率 ×
+零跨度秒数）。流量真归零时前者是除零，实测算出六位数比值，在排序里压过其余全部规则，
+而那个数字不说明丢了多少流量。规则 1 / 3 / 4 的 `deviation` 保持倍数不变，
+每条告警带 `deviation_unit` 标明自己的单位。
+
+**复验（2026-08-27 ET）**
+
+1. **干净窗口负对照**：`evidence/_clean/observe-20260827T185059Z/`
+   （2026-08-27T18:39:00Z–18:46:30Z，其间无任何注入）。
+   **修订后 0 条告警**（`no_alert: true`）。同一份 metrics 用旧规则复算，
+   `checkout` / `email` / `payment` 三条照旧会触发 —— 三者零跨度均为 2 个采样点，
+   但注入期速率 0.05 /s **高于**基线 0.0167 /s（条件 (a) 直接否掉），
+   且零跨度内预期调用数仅 **0.50 < 5**（条件 (b) 也否掉）。两条守卫各自独立生效。
+
+| 服务 | 基线速率 | 观测期速率 | 零跨度采样点 | 预期缺失调用 | 旧规则 | 新规则 |
+| --- | ---: | ---: | ---: | ---: | --- | --- |
+| `checkout` | 0.0167 /s | 0.0500 /s | 2 | 0.50 | **触发** | 不触发 |
+| `email` | 0.0167 /s | 0.0500 /s | 2 | 0.50 | **触发** | 不触发 |
+| `payment` | 0.0167 /s | 0.0500 /s | 2 | 0.50 | **触发** | 不触发 |
+| `ad` | 0.2833 /s | 0.2083 /s | 1 | 4.25 | 不触发 | 不触发 |
+| `quote` | 0.1000 /s | 0.1167 /s | 1 | 1.50 | 不触发 | 不触发 |
+| `shipping` | 0.1167 /s | 0.1667 /s | 1 | 1.75 | 不触发 | 不触发 |
+
+2. **真阳不丢**：`crash-cart-01` 由 **11 条降为 9 条**，掉的两条正是边界误报 ——
+   `ad`（注入期 0.0667 /s vs 基线 0.1967 /s，未达 10% 线）与
+   `checkout` 的 `traffic_zero`（0.0417 vs 0.0656，同样未达）。
+   靶子 `cart` 与其真实级联（`shipping` / `quote` / `payment` / `email`，
+   四者注入期速率均为**精确 0.0**）一条不少，`cart` 仍以预期缺失 **99.84** 次调用
+   排在 `traffic_zero` 组首位。
+
+---
+
+## O-P2-16　证据包丢 span 标签，且 Jaeger 只有约 30 分钟回溯窗
+
+**状态：open（2026-08-27 ET，做 O-P2-14 的份额表时撞到）**
+
+**内容**
+两件事叠在一起，使**证据包一旦打完，任何没进包的 span 属性就永久拿不回来**：
+
+1. **`traces.json` 只留 8 个字段**（fault_schema §9）：`traceID` / `spanID` /
+   `parentSpanID` / `service` / `operation` / `start` / `duration` / `status`。
+   span 标签一律丢弃 —— `demo.product.id`、`rpc.method`、`http.route`、
+   `otel.status_description` 等全部不在包里。
+2. **Jaeger 是内存存储**，`MEMORY_MAX_TRACES=25000`。实测回溯窗口约
+   **30–35 分钟**：50 分钟前的窗口查回来 0 条 trace，30 分钟内的窗口正常。
+
+**为什么要紧**
+- 决策 021 第七节要求「量产后按证据包**实测重算**轴 B 与轴 C」。轴 B 的定义是
+  「注入窗内目标自有 server span 的报错数 ÷ 总数」，**按方法分组**；分组键
+  （`rpc.method` / `http.route`）恰好是被丢掉的标签。用 `operation` 勉强能代，
+  但 `misconfig` 的方法级判据（决策 018）与 targeting 型开关的份额分析都需要
+  更细的标签。
+- 事后快照模式（决策 020）的全部前提是「证据包里没有的东西，agent 再聪明也拿不到」。
+  现在这句话对**生产侧自己**也成立了：包里没有的，30 分钟后连出题人也拿不到。
+
+**待议（需用户裁决）**
+(a) 给 `traces.json` 增加一个 `tags` 字段（可白名单若干键，避免体积爆炸 ——
+    当前单卡 traces.json 已 7.6 MB）；
+(b) 或改 Jaeger 存储为 badger 落盘，把回溯窗口拉到天级，代价是磁盘与一次栈重启；
+(c) 或两者都做 —— (a) 保证包自洽，(b) 保证还能回头补。
+在裁决之前，**打包必须紧跟周期**（runner 现在就是这么做的，harvest 之后立刻打包），
+而**已打完的包不可能再补标签**。

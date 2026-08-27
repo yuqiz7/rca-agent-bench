@@ -68,6 +68,12 @@ LATENCY_SHIFT_FRAC = 0.80         # §5: 耗时分布右移 ≥ delay_ms × 0.8
 # 数回到基线 50% 以上"实现，待 ⑤ 定稿后回填 §5。
 RECOVER_SPAN_FRAC = 0.50
 
+# 批次模式：连续多少张卡过不了探针门就停批（决策 021「首批执行补充」）。
+# 单张失败不停 —— 首批 16 张里 8 张 param_validated=false，个别失败是预期可能。
+# 连续 3 张则说明是系统性问题（testbed 挂了、flagd 不应答、后端查不动），
+# 再跑下去只是把机器时间喂给废数据。
+BATCH_ABORT_AFTER_FAILURES = 3
+
 # ── misconfig / mem_leak 判据（决策 018 第二部分）────────────────────────
 # misconfig：症状落在目标**自身** server span 上，不在调用方 span 上
 # （实测 cartFailure=50% 时调用方 0 报错、cart 自身 123 条里 2 条报错）。
@@ -357,15 +363,20 @@ def judge_recovered(cls, base, after, param):
 def card_to_cycle(card):
     prim, svc = card["primitive"], card["target"]
     p = card.get("params") or {}
+    extra = []
     if prim == "set_flag":
         param = f"{p['flag']}={p['variant']}"
+        # targeting 型开关的命中值（O-P2-14）。卡片的 params 带 product_id 时透传给
+        # 原语，否则规则条件里写死的那个值会让 10 张卡注入同一条规则。
+        if p.get("product_id"):
+            extra = ["--context-value", str(p["product_id"])]
     elif prim == "delay_outbound":
         param = str(p.get("delay_ms", 800))
     else:
         param = None
     c = card["cycle"]
     timing = {"pre": c["baseline_s"], "inject": c["inject_s"], "post": c["recover_s"]}
-    return prim, svc, param, timing, c["settle_s"]
+    return prim, svc, param, timing, c["settle_s"], extra
 
 
 def probe_gate(res, observe_only):
@@ -379,13 +390,14 @@ def probe_gate(res, observe_only):
             and res.get("recovered") is not False)
 
 
-def pack_and_view(card, res, anchors, observe_only, evidence_root=EVIDENCE_ROOT):
+def pack_and_view(card, res, anchors, observe_only, evidence_root=EVIDENCE_ROOT,
+                  force_failed=None):
     """harvest 之后的证据链：pack -> detect -> write_symptom -> task_view。
 
     门没过就不打包 —— 无效注入的证据包是废数据，进了库反而要人回头清（决策 015
     的「injected 失败即停」是同一条理由）。
     """
-    gate = probe_gate(res, observe_only)
+    gate = probe_gate(res, observe_only) and not force_failed
     production = {
         "t_start": anchors["t0"], "t_inject": anchors["t_apply"],
         "t_revert": anchors["t_revert"], "t_end": anchors["t_end"],
@@ -400,7 +412,8 @@ def pack_and_view(card, res, anchors, observe_only, evidence_root=EVIDENCE_ROOT)
         "evidence_dir": None, "packed": False,
     }
     if not gate:
-        production["note"] = "probe gate failed; evidence not packed (decision 021)"
+        production["note"] = (force_failed or
+                              "probe gate failed; evidence not packed (decision 021)")
         card["production"] = production
         cards.save(card)
         log(f"card {card['card_id']}: probe gate FAILED, not packing")
@@ -445,7 +458,15 @@ def git_head(path):
 
 
 def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=False,
-              timing=None, card=None, evidence_root=EVIDENCE_ROOT):
+              timing=None, card=None, evidence_root=EVIDENCE_ROOT, extra_args=(),
+              tolerate_failures=False):
+    """tolerate_failures：批次模式下单卡失败不停批（决策 021「首批执行补充」）。
+
+    决策 015 的「injected 失败即停」在 --cycles（单卡 / 指纹）模式下**不变** ——
+    那时一次无效注入意味着后面每个周期都在产废数据。批次模式不同：首批 16 张里有
+    8 张 param_validated=false，失败是**预期可能**而不是系统异常，停批等于把其余
+    十几张卡的机器时间一起赔掉。改为记账继续，连续 3 张才停（见 main）。
+    """
     cls = (FLAG_CLASS[param.split("=", 1)[0]] if prim == "set_flag" else CLASS_OF[prim])
     tm = timing or TIERS[tier]
     name = card["card_id"] if card else f"{prim}_{svc}"
@@ -458,15 +479,23 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
         pargs = [svc, str(param)]
     else:
         pargs = [svc]
+    pargs += list(extra_args)
 
     res = {"idx": idx, "primitive": prim, "service": svc, "class": cls,
            "tier": tier, "param": param,
            "injected": None, "symptom": None, "recovered": None,
-           "residue_clean": None, "aborted": None, "notes": [],
+           "residue_clean": None, "aborted": None, "failed": None, "notes": [],
            "verdict": "unjudged" if observe_only else None}
 
     t0 = now()
     log(f"cycle {idx} {prim}/{svc} tier={tier} param={param} t0={iso(t0)}")
+
+    def fail(reason):
+        """批次模式记 res['failed'] 让主循环继续；其余模式记 res['aborted'] 即停批。"""
+        key = "failed" if tolerate_failures else "aborted"
+        res[key] = reason
+        log(f"cycle {idx} {'FAILED (batch continues)' if tolerate_failures else 'ABORT'}: {reason}")
+        return res, None
 
     # 证据钩子（只 kill_container，只记录不判定）
     evidence = None
@@ -483,9 +512,8 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
     # ── apply ──
     rc, so, se = sh([script, "apply"] + pargs)
     if rc != 0:
-        res["aborted"] = f"apply rc={rc}: {se.strip()[:300]}"
         sh([script, "revert"] + pargs)
-        return res, None
+        return fail(f"apply rc={rc}: {se.strip()[:300]}")
     kv = parse_kv(so)
     t_apply = now()
 
@@ -501,10 +529,10 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
     rc, so, se = sh([script, "probe"] + pargs)
     res["injected"] = (parse_kv(so).get("injected") == "true")
     if not res["injected"] and not observe_only:
-        # injected 失败 = 无效注入，立刻 revert 并中止批次（§5 失败即停）
+        # injected 失败 = 无效注入。单卡模式立刻停批（§5 失败即停 / 决策 015）；
+        # 批次模式只记这一张，主循环继续下一张。
         sh([script, "revert"] + pargs)
-        res["aborted"] = "injected=false at mid-inject; batch aborted"
-        return res, None
+        return fail("injected=false at mid-inject")
     if not res["injected"]:
         res["notes"].append("observe-only: injected=false recorded, batch not aborted")
 
@@ -516,8 +544,7 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
     rc, so, se = sh([script, "revert"] + pargs)
     t_revert = now()
     if rc != 0:
-        res["aborted"] = f"revert rc={rc}: {se.strip()[:300]}"
-        return res, None
+        return fail(f"revert rc={rc}: {se.strip()[:300]}")
 
     # ── 注入窗快照①：immediate（t_revert 即刻）──
     # blackhole 的静音只在这一刻可见，撤除后积压请求就会回放填满注入窗。
@@ -525,8 +552,7 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
     during_imm, err = probe_signals(svc, during_win[0], during_win[1], cdir,
                                     suffix="_immediate")
     if err:
-        res["aborted"] = f"during(immediate) probe failed: {err}"
-        return res, None
+        return fail(f"during(immediate) probe failed: {err}")
     json.dump(during_imm,
               open(os.path.join(cdir, "window_during_immediate.json"), "w"), indent=1)
 
@@ -557,8 +583,7 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
 
     base, err = probe_signals(svc, base_win[0], base_win[1], cdir)
     if err:
-        res["aborted"] = f"baseline probe failed: {err}"
-        return res, None
+        return fail(f"baseline probe failed: {err}")
     json.dump(base, open(os.path.join(cdir, "window_baseline.json"), "w"), indent=1)
 
     # ── 注入窗快照②：harvest（t_end+settle）──
@@ -566,8 +591,7 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
     during_harv, err = probe_signals(svc, during_win[0], during_win[1], cdir,
                                      suffix="_harvest")
     if err:
-        res["aborted"] = f"during(harvest) probe failed: {err}"
-        return res, None
+        return fail(f"during(harvest) probe failed: {err}")
     json.dump(during_harv,
               open(os.path.join(cdir, "window_during_harvest.json"), "w"), indent=1)
 
@@ -575,8 +599,7 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
     if after_win is not None:
         after, err = probe_signals(svc, after_win[0], after_win[1], cdir)
         if err:
-            res["aborted"] = f"after probe failed: {err}"
-            return res, None
+            return fail(f"after probe failed: {err}")
         json.dump(after, open(os.path.join(cdir, "window_after.json"), "w"), indent=1)
     else:
         res["recovered"] = None
@@ -702,8 +725,8 @@ def write_summary(batch_dir, batch_id, rows, aborted):
         else:
             key = (f"内存 {d.get('first_mib')}→{d.get('last_mib')} MiB "
                    f"增长 {d.get('growth_mib')}（阈值 {d.get('threshold_mib')}）")
-        if r.get("aborted"):
-            key = r["aborted"]
+        if r.get("aborted") or r.get("failed"):
+            key = r.get("aborted") or f"failed: {r['failed']}"
         L.append(f"| {r['idx']} | `{r['primitive']}` | `{r['service']}` | {r['tier']} | "
                  f"{mark(r['injected'])} | {mark(r['symptom'])} | {mark(r['recovered'])} | "
                  f"{mark(r['residue_clean'])} | {key} |")
@@ -804,8 +827,8 @@ def main():
         scenario_cards = load_scenarios(a.scenarios, a.batch)
         cycles = []
         for c in scenario_cards:
-            prim, svc, param, timing, settle = card_to_cycle(c)
-            cycles.append((prim, svc, "card", param, timing, settle, c))
+            prim, svc, param, timing, settle, extra = card_to_cycle(c)
+            cycles.append((prim, svc, "card", param, timing, settle, c, extra))
         tier0 = f"batch{a.batch}" if a.batch is not None else "cards"
     batch_id = a.batch_id or f"{now().strftime('%Y%m%dT%H%M%SZ')}_{tier0}"
 
@@ -829,29 +852,55 @@ def main():
         if rc != 0:
             raise SystemExit(f"pre-batch hook failed rc={rc}: {se.strip()[:300]}")
 
-    rows, aborted, rec_fail_streak = [], None, 0
+    rows, aborted, rec_fail_streak, gate_fail_streak = [], None, 0, 0
     try:
         for i, spec in enumerate(cycles, 1):
             if scenario_cards is None:
                 prim, svc, tier, param = spec
-                timing, settle, card = None, a.settle_s, None
+                timing, settle, card, extra = None, a.settle_s, None, ()
             else:
-                prim, svc, tier, param, timing, settle, card = spec
+                prim, svc, tier, param, timing, settle, card, extra = spec
             r, _ = run_cycle(i, prim, svc, tier, param, batch_dir, settle,
                              observe_only=a.observe_only, timing=timing, card=card,
-                             evidence_root=a.evidence_root)
+                             evidence_root=a.evidence_root, extra_args=extra,
+                             tolerate_failures=scenario_cards is not None)
             if card is not None and "production" not in r:
                 # 中止路径（apply/revert/probe 失败）没走到 harvest，照样把门的结果落卡
                 r["production"] = pack_and_view(card, r, {
                     "t0": iso(now()), "t_apply": None, "t_revert": None,
                     "t_end": None, "settle_s": settle, "t_harvest": None,
                     "batch_dir": os.path.relpath(batch_dir, REPO)}, a.observe_only,
-                    evidence_root=a.evidence_root)
+                    evidence_root=a.evidence_root,
+                    force_failed=r.get("failed") or r.get("aborted")
+                    or "cycle ended before harvest; nothing to pack")
             rows.append(r)
             if r.get("aborted"):
                 aborted = f"cycle {i}: {r['aborted']}"
                 log(f"ABORT {aborted}")
                 break
+
+            # ── 批次模式的容错（决策 021「首批执行补充」）──
+            # 门没过的卡已经在 pack_and_view 里记了 production.probe.verdict=failed
+            # 且没打包；这里只管账：记一笔、继续下一张，连续 3 张才停批。
+            if scenario_cards is not None:
+                verdict = (((r.get("production") or {}).get("probe") or {})
+                           .get("verdict"))
+                if r.get("failed") or verdict == "failed":
+                    gate_fail_streak += 1
+                    why = r.get("failed") or "probe gate failed"
+                    log(f"card {card['card_id']}: FAILED ({why}); "
+                        f"streak {gate_fail_streak}/{BATCH_ABORT_AFTER_FAILURES}, "
+                        f"continuing with the next card")
+                    if gate_fail_streak >= BATCH_ABORT_AFTER_FAILURES:
+                        aborted = (f"{gate_fail_streak} consecutive card failures "
+                                   f"(limit {BATCH_ABORT_AFTER_FAILURES}); "
+                                   f"last: cycle {i} {card['card_id']}: {why}")
+                        log(f"ABORT {aborted}")
+                        break
+                else:
+                    gate_fail_streak = 0
+                continue
+
             if a.observe_only:
                 continue
             if r["recovered"] is False:

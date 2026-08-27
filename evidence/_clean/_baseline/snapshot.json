@@ -1,0 +1,9 @@
+{
+ "created_at": "2026-08-27T18:51:10Z",
+ "flagd_path": "opentelemetry-demo/src/flagd/demo.flagd.json",
+ "flagd_sha256": "bef4fa5da0ad8b1f64cc0d66fc66afaf7b9877c85895b78bf47d9a97577f9983",
+ "compose_env_sha256": "2c9b92bfae71d23490f07961807e20d5958c4f40ee543d4fb67f5eeb9e2fdf4b",
+ "compose_files": "-f compose.yaml -f compose.observability.yaml -f compose.override.yaml",
+ "flagd_worktree_dirty": false,
+ "note": "baseline snapshot taken from the live clean state; config_diff.txt in every card is a unified diff against these two files"
+}
