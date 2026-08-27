@@ -137,7 +137,12 @@ flagd 中 targeting 的优先级高于 `defaultVariant`，因此把 `defaultVari
 **判定：不入卡。** 判据第一条（client 侧报错数 ≥ N）不满足 —— 实测 **0 < 5**。
 另两条反而都满足（`payment` 容器 running、`payment` 自有 span 报错 0），
 但那是因为**注入压根没有生效**：checkout 全程正常向真实的 payment 收费，
-`badAddress` 从未出现。见 [open_items.md](open_items.md) O-P2-10。
+`badAddress` 从未出现。
+
+**根因已于 2026-08-26 查明**：开机时 `checkout` 比 flagd 的 8013 监听器早 5.9 秒启动，
+其非阻塞的 `openfeature.SetProvider` 首次连接失败后该进程实例一直用默认值。
+**重启 checkout 后注入立即生效**（`PlaceOrder` 10 条 / 5 报错），运行时改值两个方向
+都正常。详见 [open_items.md](open_items.md) O-P2-10（含取证、B1/B2 实验与修法建议）。
 
 ---
 

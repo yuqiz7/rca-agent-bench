@@ -244,36 +244,71 @@ span 时长而不是观测点。
 
 ---
 
-## O-P2-10　paymentUnreachable 开启后 checkout 行为未改变
+## O-P2-10　paymentUnreachable 开启后 checkout 行为未改变（根因已查明，待裁决修法）
 
-**状态：open（2026-08-26）**
+**状态：open（2026-08-26）—— 根因已定位，修法待用户裁决**
 
-**内容**
-`set_flag checkout paymentUnreachable=on` 在入库档观察批（`obs2card_233337`）里
-**注入生效但系统行为不变**：`probe` 返回 `injected=true`（flagd 的 OFREP 确实返回 `on`），
-而注入期 120 s 内 `checkout → payment` 8 条调用**全部成功**、`checkout` 自有
-`PlaceOrder` 8 条 **0 报错**、`payment` 自有 8 条 **0 报错**、`badAddress` 在 checkout
-全量日志里出现 **0** 次。
+**现象（`obs2card_233337`，入库档 observe-only）**
+`probe` 返回 `injected=true`（OFREP 确返回 `on`），但注入期 120 s 内
+`checkout → payment` 8 条调用全部成功、`PlaceOrder` 8 条 0 报错、
+`payment` 自有 8 条 0 报错、`badAddress` 在 checkout 日志出现 0 次。
 
-**代码预期**
-`src/checkout/main.go:567-571`：`chargeCard` 在 flag 为真时把 payment 客户端换成指向
-`badAddress:50051` 的连接，`Charge` 应因名字解析失败返回错误，`PlaceOrder` 随之失败。
-实测完全没有发生。
+### 取证（2026-08-26 只读）
 
-**假设（未验证）**
-checkout 用的是 flagd Go provider（`src/checkout/main.go:30`，指向 `FLAGD_HOST=flagd`
-/ `FLAGD_PORT=8013`），该 provider 带求值缓存。若缓存失效依赖的推送通道没工作、
-或 TTL 长于 120 s 的注入窗，checkout 就会在整个窗口里继续用旧值。
-**这只是假设** —— 没有直接证据，需要单独验证。
+| 项 | 结果 |
+| --- | --- |
+| 容器启动时刻 | `checkout` **22:33:55.020**、`flagd` **22:33:55.012**（相差 8 ms，实质同时） |
+| flagd 进程与监听器就绪 | 进程 **22:34:00.802**，`Flag IResolver listening at [::]:8013` **22:34:00.957** |
+| **关键时间差** | checkout 比 flagd 的 8013 监听器**早 5.9 秒**启动 |
+| checkout 的 flagd 环境变量 | `FLAGD_HOST=flagd`、`FLAGD_PORT=8013`（存在且正确） |
+| checkout 日志 | **全量 0 行** —— 日志走 OTLP 不落 stdout，provider 连接失败不可见 |
+| flagd 日志 | 注入/撤除时刻均有 `filepath event: ... WRITE`，flagd 侧工作正常 |
+| checkout provider 初始化 | `main.go:197` `flagd.NewProvider()`（无选项）+ `main.go:202` **`openfeature.SetProvider(provider)`** —— **非阻塞版**，不等待连接就绪 |
+| 对照 `product-catalog` | `main.go:147/152` **完全相同**的写法（同样非阻塞） |
+| 对照 `payment`（Node） | `charge.js:37` 用的是 **`await OpenFeature.setProviderAndWait(...)`** —— 会等 |
+| provider 库版本 | `github.com/open-feature/go-sdk-contrib/providers/flagd v0.6.0` |
 
-**怎么验**
-拉长注入窗看 checkout 是否最终切换；或在注入期间直接观测 checkout 与 flagd 之间的
-连接（checkout 在 Jaeger 依赖图里**没有** `checkout → flagd` 边，说明它不是每请求
-RPC 求值）；或对照另一个同样由 checkout 读取的 flag（`kafkaQueueProblems`）看是否同样不生效。
+### 实验（B1 / B2，调试档时长）
 
-**影响**
-`paymentUnreachable` 目前**不入卡**。它原本是唯一一个症状落在**调用方 client span**
-上的 misconfig 候选（区别于其余四个落在目标自有 span 上），这条"症状误导"路线暂时没有可用素材。
+| 实验 | 操作 | `PlaceOrder` | `payment` 边 | 结论 |
+| --- | --- | ---: | --- | --- |
+| **B1-c** | apply `on` → **重启 checkout** → 稳定 60 s → 采 120 s | **10 条 / 5 报错** | 重启后窗口内 `payment` 自有 span **0** | **重启后注入生效** |
+| **B1-d** | revert `off`，**不重启**，采 revert 之后的干净窗 | **7 条 / 0 报错** | `payment` 恢复 7 条 0 报错 | **运行时撤除生效，无需重启** |
+| **B2** | 不重启直接 apply `on`，等 20 s，采干净窗 | **2 条 / 2 报错** | `payment` peer **消失** | **运行时注入生效，无需重启** |
+
+### 归因
+
+| 假设 | 判定 | 依据 |
+| --- | --- | --- |
+| **A 开机顺序** —— checkout 先于 flagd 启动，provider 首次连接失败后未恢复 | **支持** | checkout 比 flagd 的 8013 监听器早 5.9 秒启动；checkout 用**非阻塞**的 `SetProvider`，首次连接失败不会阻塞启动也没有可见日志；重启 checkout（此时 flagd 已就绪）后 B1-c / B2 两个方向都立刻生效 |
+| **B 运行时不失效** —— provider 缓存未被事件流失效 | **否定** | B1-d 不重启即恢复（7/0）、B2 不重启即生效（2/2）。缓存失效通道在连接健康时工作正常 |
+| **C 配置 / 评估错误** —— env 缺失或评估持续报错走默认 false | **否定** | `FLAGD_HOST` / `FLAGD_PORT` 均存在且正确；同一进程重启后评估完全正常 |
+
+**根因**：`checkout` 与 `flagd` 由 compose 的 `depends_on: service_started` 约束，
+只保证 flagd **容器**已启动，不保证 flagd **进程的 8013 监听器**已就绪。开机时两者
+相差 5.9 秒，checkout 的 flagd provider 在监听器就绪前发起首次连接并失败；因为用的是
+非阻塞的 `openfeature.SetProvider`，失败既不阻塞启动、也不产生可见日志，该进程实例
+此后一直用默认值 `false`。**这不是 flagd 的问题，也不是 `set_flag.sh` 的问题** ——
+两者都工作正常。
+
+### 修法建议（**未实施，待裁决**）
+
+**建议 1（推荐）：收工用 `docker compose stop`，让开机不自动复活，由起床命令按依赖顺序拉起。**
+`docker compose up -d` 会按 `depends_on` 顺序启动并给 flagd 留出就绪时间，避免 VM 开机
+时 25 个容器几乎同时被 restart policy 拉起。代价是每天必须记得 stop，且忘记 stop 时
+问题会静默复现 —— 而它**没有任何可见症状**（checkout 零日志），只会让 flag 类的卡
+静默失效。
+
+**建议 2：checkout 类开关的注入序列加一步重启。**
+`set_flag.sh apply` 之后、观察窗开始之前重启目标服务。代价是重启本身会制造一段
+空窗与一次冷启动尖峰，污染基线；且 `misconfig` 卡的语义会从"改配置"变成"改配置 + 重启"。
+
+**建议 3（仅记录，不推荐）：改 checkout 源码用 `SetProviderAndWait`。**
+那是测试床上游文件，破坏决策 001 的复现锚点。
+
+**影响面**：凡是用 `flagd.NewProvider()` + 非阻塞 `SetProvider` 的 Go 服务都可能中招 ——
+已确认 `checkout` 与 `product-catalog` 写法相同。做 flag 类卡之前，应对每个靶子先验证
+"运行时改值是否生效"。
 
 ---
 
