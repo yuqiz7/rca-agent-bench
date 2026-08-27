@@ -1,0 +1,77 @@
+card_id,class,target,primitive,params,gt_service,gt_class,axis_a,axis_b,axis_c,param_validated,batch,note
+crash-ad-01,crash,ad,kill_container,{},ad,crash,1,0,0,false,,
+crash-astronomy-db-01,crash,astronomy-db,kill_container,{},astronomy-db,crash,2,0,0,false,,
+crash-cart-01,crash,cart,kill_container,{},cart,crash,1,0,0,true,1,
+crash-checkout-01,crash,checkout,kill_container,{},checkout,crash,1,0,0,false,,
+crash-currency-01,crash,currency,kill_container,{},currency,crash,1,0,0,false,,
+crash-email-01,crash,email,kill_container,{},email,crash,2,0,0,false,,
+crash-frontend-01,crash,frontend,kill_container,{},frontend,crash,0,0,0,false,1,
+crash-payment-01,crash,payment,kill_container,{},payment,crash,2,0,0,false,1,
+crash-product-catalog-01,crash,product-catalog,kill_container,{},product-catalog,crash,1,0,0,false,,
+crash-quote-01,crash,quote,kill_container,{},quote,crash,2,0,0,false,,
+crash-recommendation-01,crash,recommendation,kill_container,{},recommendation,crash,1,0,0,false,,
+crash-shipping-01,crash,shipping,kill_container,{},shipping,crash,1,0,0,false,,
+crash-valkey-cart-01,crash,valkey-cart,kill_container,{},valkey-cart,crash,2,0,0,false,,
+blackhole-ad-01,blackhole,ad,drop_inbound,{},ad,blackhole,1,0,1,false,,
+blackhole-astronomy-db-01,blackhole,astronomy-db,drop_inbound,{},astronomy-db,blackhole,2,0,1,false,,
+blackhole-cart-01,blackhole,cart,drop_inbound,{},cart,blackhole,1,0,1,true,1,
+blackhole-checkout-01,blackhole,checkout,drop_inbound,{},checkout,blackhole,1,0,1,false,,
+blackhole-currency-01,blackhole,currency,drop_inbound,{},currency,blackhole,1,0,1,false,,
+blackhole-email-01,blackhole,email,drop_inbound,{},email,blackhole,2,0,1,false,,
+blackhole-frontend-01,blackhole,frontend,drop_inbound,{},frontend,blackhole,0,0,1,false,,
+blackhole-payment-01,blackhole,payment,drop_inbound,{},payment,blackhole,2,0,1,false,1,
+blackhole-product-catalog-01,blackhole,product-catalog,drop_inbound,{},product-catalog,blackhole,1,0,1,false,,
+blackhole-quote-01,blackhole,quote,drop_inbound,{},quote,blackhole,2,0,1,false,,
+blackhole-recommendation-01,blackhole,recommendation,drop_inbound,{},recommendation,blackhole,1,0,1,false,,
+blackhole-shipping-01,blackhole,shipping,drop_inbound,{},shipping,blackhole,1,0,1,false,,
+blackhole-valkey-cart-01,blackhole,valkey-cart,drop_inbound,{},valkey-cart,blackhole,2,0,1,false,1,
+latency-ad-800,latency,ad,delay_outbound,"{""delay_ms"":800}",ad,latency,1,0,0,false,,低档，入库档实测值
+latency-ad-3000,latency,ad,delay_outbound,"{""delay_ms"":3000}",ad,latency,1,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-astronomy-db-800,latency,astronomy-db,delay_outbound,"{""delay_ms"":800}",astronomy-db,latency,2,0,0,false,,低档，入库档实测值
+latency-astronomy-db-3000,latency,astronomy-db,delay_outbound,"{""delay_ms"":3000}",astronomy-db,latency,2,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-cart-800,latency,cart,delay_outbound,"{""delay_ms"":800}",cart,latency,1,0,0,true,1,低档，入库档实测值
+latency-cart-3000,latency,cart,delay_outbound,"{""delay_ms"":3000}",cart,latency,1,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-checkout-800,latency,checkout,delay_outbound,"{""delay_ms"":800}",checkout,latency,1,0,0,false,1,低档，入库档实测值
+latency-checkout-3000,latency,checkout,delay_outbound,"{""delay_ms"":3000}",checkout,latency,1,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-currency-800,latency,currency,delay_outbound,"{""delay_ms"":800}",currency,latency,1,0,0,false,,低档，入库档实测值
+latency-currency-3000,latency,currency,delay_outbound,"{""delay_ms"":3000}",currency,latency,1,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-email-800,latency,email,delay_outbound,"{""delay_ms"":800}",email,latency,2,0,0,false,1,低档，入库档实测值
+latency-email-3000,latency,email,delay_outbound,"{""delay_ms"":3000}",email,latency,2,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-frontend-800,latency,frontend,delay_outbound,"{""delay_ms"":800}",frontend,latency,0,0,0,false,,低档，入库档实测值
+latency-frontend-3000,latency,frontend,delay_outbound,"{""delay_ms"":3000}",frontend,latency,0,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-payment-800,latency,payment,delay_outbound,"{""delay_ms"":800}",payment,latency,2,0,0,false,,低档，入库档实测值
+latency-payment-3000,latency,payment,delay_outbound,"{""delay_ms"":3000}",payment,latency,2,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-product-catalog-800,latency,product-catalog,delay_outbound,"{""delay_ms"":800}",product-catalog,latency,1,0,0,false,,低档，入库档实测值
+latency-product-catalog-3000,latency,product-catalog,delay_outbound,"{""delay_ms"":3000}",product-catalog,latency,1,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-quote-800,latency,quote,delay_outbound,"{""delay_ms"":800}",quote,latency,2,0,0,false,,低档，入库档实测值
+latency-quote-3000,latency,quote,delay_outbound,"{""delay_ms"":3000}",quote,latency,2,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-recommendation-800,latency,recommendation,delay_outbound,"{""delay_ms"":800}",recommendation,latency,1,0,0,false,,低档，入库档实测值
+latency-recommendation-3000,latency,recommendation,delay_outbound,"{""delay_ms"":3000}",recommendation,latency,1,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-shipping-800,latency,shipping,delay_outbound,"{""delay_ms"":800}",shipping,latency,1,0,0,false,,低档，入库档实测值
+latency-shipping-3000,latency,shipping,delay_outbound,"{""delay_ms"":3000}",shipping,latency,1,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-valkey-cart-800,latency,valkey-cart,delay_outbound,"{""delay_ms"":800}",valkey-cart,latency,2,0,0,false,,低档，入库档实测值
+latency-valkey-cart-3000,latency,valkey-cart,delay_outbound,"{""delay_ms"":3000}",valkey-cart,latency,2,0,0,false,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+misconfig-ad-on,misconfig,ad,set_flag,"{""flag"":""adFailure"",""variant"":""on""}",ad,misconfig,1,2,0,true,1,实际比例 0.1（代码 nextInt(10)==0）；judge_222727 实测 GetAds 5/23
+misconfig-cart-75,misconfig,cart,set_flag,"{""flag"":""cartFailure"",""variant"":""75%""}",cart,misconfig,1,2,0,false,1,方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈4.3%；10%/25%/50% 三档按 O-P2-9 排除
+misconfig-cart-90,misconfig,cart,set_flag,"{""flag"":""cartFailure"",""variant"":""90%""}",cart,misconfig,1,2,0,false,,方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈5.1%；10%/25%/50% 三档按 O-P2-9 排除
+misconfig-cart-100,misconfig,cart,set_flag,"{""flag"":""cartFailure"",""variant"":""100%""}",cart,misconfig,1,2,0,false,,方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈5.7%；10%/25%/50% 三档按 O-P2-9 排除
+misconfig-payment-10,misconfig,payment,set_flag,"{""flag"":""paymentFailure"",""variant"":""10%""}",payment,misconfig,2,2,0,false,,Charge 为 payment 唯一被调方法，服务级比例=10%；该开关无入库档实测，按决策 021 标未验证
+misconfig-payment-25,misconfig,payment,set_flag,"{""flag"":""paymentFailure"",""variant"":""25%""}",payment,misconfig,2,1,0,false,,Charge 为 payment 唯一被调方法，服务级比例=25%；该开关无入库档实测，按决策 021 标未验证
+misconfig-payment-50,misconfig,payment,set_flag,"{""flag"":""paymentFailure"",""variant"":""50%""}",payment,misconfig,2,0,0,false,,Charge 为 payment 唯一被调方法，服务级比例=50%；该开关无入库档实测，按决策 021 标未验证
+misconfig-payment-75,misconfig,payment,set_flag,"{""flag"":""paymentFailure"",""variant"":""75%""}",payment,misconfig,2,0,0,false,,Charge 为 payment 唯一被调方法，服务级比例=75%；该开关无入库档实测，按决策 021 标未验证
+misconfig-payment-90,misconfig,payment,set_flag,"{""flag"":""paymentFailure"",""variant"":""90%""}",payment,misconfig,2,0,0,false,,Charge 为 payment 唯一被调方法，服务级比例=90%；该开关无入库档实测，按决策 021 标未验证
+misconfig-payment-100,misconfig,payment,set_flag,"{""flag"":""paymentFailure"",""variant"":""100%""}",payment,misconfig,2,0,0,false,1,Charge 为 payment 唯一被调方法，服务级比例=100%；该开关无入库档实测，按决策 021 标未验证
+misconfig-checkout-on,misconfig,checkout,set_flag,"{""flag"":""paymentUnreachable"",""variant"":""on""}",checkout,misconfig,1,0,2,true,1,下游边消失形态；obs2card_001542 实测 PlaceOrder 11/11 报错
+misconfig-pc-2ZYFJ3GM2N,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""2ZYFJ3GM2N"",""variant"":""on""}",product-catalog,misconfig,1,1,0,false,,targeting 变体；该 product 在基线 GetProduct 中占比 12.1%（20 min 实测 371/3072）
+misconfig-pc-LS4PSXUNUM,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""LS4PSXUNUM"",""variant"":""on""}",product-catalog,misconfig,1,1,0,false,,targeting 变体；该 product 在基线 GetProduct 中占比 10.5%（20 min 实测 324/3072）
+misconfig-pc-1YMWWN1N4O,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""1YMWWN1N4O"",""variant"":""on""}",product-catalog,misconfig,1,1,0,false,,targeting 变体；该 product 在基线 GetProduct 中占比 10.3%（20 min 实测 316/3072）
+misconfig-pc-9SIQT8TOJO,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""9SIQT8TOJO"",""variant"":""on""}",product-catalog,misconfig,1,2,0,false,,targeting 变体；该 product 在基线 GetProduct 中占比 9.9%（20 min 实测 305/3072）
+misconfig-pc-66VCHSJNUP,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""66VCHSJNUP"",""variant"":""on""}",product-catalog,misconfig,1,2,0,false,,targeting 变体；该 product 在基线 GetProduct 中占比 9.9%（20 min 实测 304/3072）
+misconfig-pc-HQTGWGPNH4,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""HQTGWGPNH4"",""variant"":""on""}",product-catalog,misconfig,1,2,0,false,,targeting 变体；该 product 在基线 GetProduct 中占比 9.8%（20 min 实测 302/3072）
+misconfig-pc-OLJCESPC7Z,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""OLJCESPC7Z"",""variant"":""on""}",product-catalog,misconfig,1,2,0,true,1,targeting 变体；该 product 在基线 GetProduct 中占比 9.8%（20 min 实测 302/3072）；obs2card_001542 实测 r=7.6%
+misconfig-pc-6E92ZMYYFZ,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""6E92ZMYYFZ"",""variant"":""on""}",product-catalog,misconfig,1,2,0,false,,targeting 变体；该 product 在基线 GetProduct 中占比 9.4%（20 min 实测 289/3072）
+misconfig-pc-L9ECAV7KIM,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""L9ECAV7KIM"",""variant"":""on""}",product-catalog,misconfig,1,2,0,false,,targeting 变体；该 product 在基线 GetProduct 中占比 9.3%（20 min 实测 287/3072）
+misconfig-pc-0PUK6V6EV0,misconfig,product-catalog,set_flag,"{""flag"":""productCatalogFailure"",""product_id"":""0PUK6V6EV0"",""variant"":""on""}",product-catalog,misconfig,1,2,0,false,,targeting 变体；该 product 在基线 GetProduct 中占比 8.9%（20 min 实测 272/3072）
+memleak-email-10000x,mem_leak,email,set_flag,"{""flag"":""emailMemoryLeak"",""variant"":""10000x""}",email,mem_leak,2,2,1,true,1,judge_222727 实测 +171.5 MiB/120s
+memleak-email-1000x,mem_leak,email,set_flag,"{""flag"":""emailMemoryLeak"",""variant"":""1000x""}",email,mem_leak,2,2,1,true,1,judge_222727 实测 +35.5 MiB/120s
+memleak-email-100x,mem_leak,email,set_flag,"{""flag"":""emailMemoryLeak"",""variant"":""100x""}",email,mem_leak,2,2,1,false,,更低倍率，检验判据下限；待验证

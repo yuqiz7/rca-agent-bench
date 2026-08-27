@@ -1,0 +1,290 @@
+{
+ "generated_at": "2026-08-27T18:12:57Z",
+ "baseline_window": {
+  "start": "2026-08-27T18:05:25Z",
+  "end": "2026-08-27T18:06:26Z"
+ },
+ "method": "spanmetrics CLIENT/SERVER span_name join, supplemented by Jaeger client-span peer tags for SDK-less and generic-HTTP peers",
+ "edges": [
+  {
+   "from": "ad",
+   "to": "flagd",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "cart",
+   "to": "flagd",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "cart",
+   "to": "frontend-proxy",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "cart",
+   "to": "valkey-cart",
+   "source": [
+    "jaeger_peer"
+   ]
+  },
+  {
+   "from": "checkout",
+   "to": "cart",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "checkout",
+   "to": "currency",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "checkout",
+   "to": "email",
+   "source": [
+    "jaeger_peer"
+   ]
+  },
+  {
+   "from": "checkout",
+   "to": "flagd",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "checkout",
+   "to": "frontend-proxy",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "checkout",
+   "to": "payment",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "checkout",
+   "to": "product-catalog",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "checkout",
+   "to": "shipping",
+   "source": [
+    "jaeger_peer"
+   ]
+  },
+  {
+   "from": "frontend",
+   "to": "ad",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend",
+   "to": "cart",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend",
+   "to": "checkout",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend",
+   "to": "currency",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend",
+   "to": "flagd",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend",
+   "to": "frontend-proxy",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend",
+   "to": "product-catalog",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend",
+   "to": "recommendation",
+   "source": [
+    "jaeger_peer",
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend",
+   "to": "shipping",
+   "source": [
+    "jaeger_peer"
+   ]
+  },
+  {
+   "from": "frontend-web",
+   "to": "flagd",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend-web",
+   "to": "frontend",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend-web",
+   "to": "frontend-proxy",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend-web",
+   "to": "image-provider",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "frontend-web",
+   "to": "telemetry-docs",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "payment",
+   "to": "flagd",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "product-catalog",
+   "to": "astronomy-db",
+   "source": [
+    "jaeger_peer"
+   ]
+  },
+  {
+   "from": "recommendation",
+   "to": "flagd",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "recommendation",
+   "to": "product-catalog",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "shipping",
+   "to": "flagd",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "shipping",
+   "to": "frontend-proxy",
+   "source": [
+    "spanmetrics"
+   ]
+  },
+  {
+   "from": "shipping",
+   "to": "quote",
+   "source": [
+    "jaeger_peer"
+   ]
+  }
+ ],
+ "edge_count": 33,
+ "spanmetrics_unresolved_client_calls": {
+  "ad": [
+   "resolve"
+  ],
+  "cart": [
+   "valkey-cart:6379"
+  ],
+  "frontend": [
+   "dns.lookup"
+  ],
+  "frontend-proxy": [
+   "router flagservice egress",
+   "router frontend egress",
+   "router image-provider egress"
+  ],
+  "load-generator": [
+   "browser_add_to_cart",
+   "browser_change_currency",
+   "feature_flag.evaluate",
+   "user_add_to_cart",
+   "user_browse_product",
+   "user_checkout_multi",
+   "user_checkout_single",
+   "user_get_ads",
+   "user_get_recommendations",
+   "user_index",
+   "user_session_start",
+   "user_view_cart"
+  ],
+  "payment": [
+   "dns.lookup"
+  ],
+  "product-catalog": [
+   "astronomy-db"
+  ]
+ },
+ "unresolved_peer_ips": []
+}

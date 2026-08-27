@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+"""detect.py -- the agent-visible symptom: four rules over evidence/<card>/metrics.json.
+
+This is what the agent is *told* ("monitoring says X"), so it must be derivable
+from metrics alone, the same way an on-call engineer's pager is. It therefore
+reads exactly one file -- metrics.json -- and nothing else.
+
+**It never touches scenarios/.** No import of the card modules, no open() of any
+scenarios/ path, anywhere in this file. A detector that could see ground_truth
+would eventually start agreeing with it, and the alert would stop being evidence
+(fault_schema §4 wall 1, decision 005). The write-back into the card's
+`agent_visible_symptom` is done by the caller -- run_batch.py, or
+scripts/scenarios/write_symptom.py for a standalone run -- from alerts.json.
+
+Four rules, scanned for every service / container present in the metrics:
+
+  1. elevated error rate    inject errors >= N = max(5, ceil(0.25 x baseline
+                            request rate x inject_s)) AND >= 2x the baseline
+                            error count scaled to the inject window
+  2. traffic dropped to zero  baseline request rate > 0 AND >= 2 consecutive
+                            zero samples inside the inject window
+  3. elevated p95 latency   inject p95 >= 2x baseline p95
+  4. memory rising          container memory >= baseline + 30 MiB AND rising
+                            monotonically across the inject window
+
+Alerts are sorted by deviation multiple, descending. An empty list is recorded
+as no_alert -- an explicit "the pager stayed quiet", not a missing field.
+
+Usage:
+  detect.py --card-id crash-cart-01 [--evidence-root evidence] [--stdout]
+"""
+import argparse
+import json
+import math
+import os
+import sys
+from datetime import datetime, timezone
+
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+EVIDENCE_ROOT = os.path.join(REPO, "evidence")
+
+# ── rule constants ────────────────────────────────────────────────────────
+# N floor and fraction are decision 018's crash threshold, reused: a fixed count
+# is only meaningful for a high-traffic target (email/payment/checkout are called
+# ~4.4/min, so 120s can never reach a fixed 20).
+ERR_N_FLOOR = 5
+ERR_N_FRAC = 0.25
+ERR_BASELINE_MULT = 2.0
+ZERO_RUN = 2                 # consecutive zero samples that count as "traffic gone"
+P95_MULT = 2.0
+MEM_GROWTH_MIB = 30.0
+MEM_MONOTONIC_TOL_MIB = 0.5  # sampling jitter allowance for "monotonically rising"
+
+RULES = {
+    "error_rate_jump": "elevated error rate on {name}",
+    "traffic_zero": "traffic dropped to zero on {name}",
+    "p95_jump": "elevated p95 latency on {name}",
+    "memory_over_line": "memory rising on {name}",
+}
+
+
+def _dt(s):
+    return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+
+
+def _in(series, t0, t1):
+    return [(ts, v) for ts, v in series if t0 <= ts <= t1 and v is not None]
+
+
+def counter_delta(points):
+    """Sum of positive increments -- counter resets (a restarted container zeroes
+    its spanmetrics counter) must not turn into a negative or a huge delta."""
+    total = 0.0
+    for (_, a), (_, b) in zip(points, points[1:]):
+        if b >= a:
+            total += b - a
+        else:
+            total += b            # reset: everything after the reset is new
+    return total
+
+
+def median(vals):
+    if not vals:
+        return None
+    s = sorted(vals)
+    n = len(s)
+    return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2.0
+
+
+def load_metrics(path):
+    with open(path) as f:
+        m = json.load(f)
+    by_name = {q["name"]: q for q in m["queries"]}
+    return m, by_name
+
+
+def detect(metrics_path):
+    m, q = load_metrics(metrics_path)
+    w = m["windows"]
+    b0, b1 = _dt(w["baseline"]["start"]), _dt(w["baseline"]["end"])
+    i0, i1 = _dt(w["inject"]["start"]), _dt(w["inject"]["end"])
+    base_s = max(b1 - b0, 1.0)
+    inject_s = max(i1 - i0, 1.0)
+    step = m.get("step_s") or 15
+
+    calls = q["calls_total"]["series"]
+    errors = q["errors_total"]["series"]
+    p95 = q["p95_latency_ms"]["series"]
+    mem = q["container_memory_mib"]["series"]
+
+    alerts = []
+
+    # ── rules 1-2: per service, off the raw counters ──
+    for svc in sorted(set(calls) | set(errors)):
+        b_calls = counter_delta(_in(calls.get(svc, []), b0, b1))
+        i_calls_pts = _in(calls.get(svc, []), i0, i1)
+        b_rate = b_calls / base_s
+        b_errs = counter_delta(_in(errors.get(svc, []), b0, b1))
+        i_errs = counter_delta(_in(errors.get(svc, []), i0, i1))
+        scaled_b_errs = b_errs * (inject_s / base_s)
+
+        n = max(ERR_N_FLOOR, math.ceil(ERR_N_FRAC * b_rate * inject_s))
+        if i_errs >= n and i_errs >= ERR_BASELINE_MULT * scaled_b_errs:
+            alerts.append({
+                "rule": "error_rate_jump",
+                "message": RULES["error_rate_jump"].format(name=svc),
+                "service": svc,
+                "baseline": {"error_count": round(b_errs, 2),
+                             "error_count_scaled_to_inject": round(scaled_b_errs, 2),
+                             "request_rate_per_s": round(b_rate, 4),
+                             "window": w["baseline"]},
+                "observed": {"error_count": round(i_errs, 2), "threshold_N": n,
+                             "window": w["inject"]},
+                "window": w["inject"],
+                "deviation": round(i_errs / max(scaled_b_errs, 1.0), 3),
+            })
+
+        # traffic disappearing: consecutive zero deltas inside the inject window.
+        # A series that vanishes entirely counts as zero too -- Prometheus keeps a
+        # dead target's last sample for 5 min of staleness, so a killed container
+        # normally shows as a flat counter (delta 0) rather than a gap; both read
+        # the same here on purpose.
+        if b_rate > 0:
+            expected = int(inject_s // step)
+            if len(i_calls_pts) < 2:
+                zero_run, deltas = max(expected, ZERO_RUN), []
+            else:
+                deltas = [b - a for (_, a), (_, b) in zip(i_calls_pts, i_calls_pts[1:])]
+                zero_run, run = 0, 0
+                for d in deltas:
+                    run = run + 1 if d <= 0 else 0
+                    zero_run = max(zero_run, run)
+                missing = expected - len(deltas)
+                if missing > 0:
+                    zero_run = max(zero_run, missing)
+            if zero_run >= ZERO_RUN:
+                i_rate = counter_delta(i_calls_pts) / inject_s
+                alerts.append({
+                    "rule": "traffic_zero",
+                    "message": RULES["traffic_zero"].format(name=svc),
+                    "service": svc,
+                    "baseline": {"request_rate_per_s": round(b_rate, 4),
+                                 "window": w["baseline"]},
+                    "observed": {"request_rate_per_s": round(i_rate, 4),
+                                 "consecutive_zero_samples": zero_run,
+                                 "samples_in_window": len(i_calls_pts),
+                                 "window": w["inject"]},
+                    "window": w["inject"],
+                    "deviation": round(b_rate / max(i_rate, 1e-6), 3),
+                })
+
+    # ── rule 3: p95 latency ──
+    for svc in sorted(p95):
+        bp = median([v for _, v in _in(p95[svc], b0, b1)])
+        ip = median([v for _, v in _in(p95[svc], i0, i1)])
+        if bp is None or ip is None or bp <= 0:
+            continue
+        if ip >= P95_MULT * bp:
+            alerts.append({
+                "rule": "p95_jump",
+                "message": RULES["p95_jump"].format(name=svc),
+                "service": svc,
+                "baseline": {"p95_ms": round(bp, 2), "window": w["baseline"]},
+                "observed": {"p95_ms": round(ip, 2),
+                             "threshold_ms": round(P95_MULT * bp, 2),
+                             "window": w["inject"]},
+                "window": w["inject"],
+                "deviation": round(ip / bp, 3),
+            })
+
+    # ── rule 4: container memory ──
+    for cont in sorted(mem):
+        bpts = [v for _, v in _in(mem[cont], b0, b1)]
+        ipts = [v for _, v in _in(mem[cont], i0, i1)]
+        if not bpts or len(ipts) < 2:
+            continue
+        base_mib = bpts[-1]
+        growth = ipts[-1] - base_mib
+        rising = all(b >= a - MEM_MONOTONIC_TOL_MIB for a, b in zip(ipts, ipts[1:]))
+        if growth >= MEM_GROWTH_MIB and rising:
+            alerts.append({
+                "rule": "memory_over_line",
+                "message": RULES["memory_over_line"].format(name=cont),
+                "service": cont,
+                "baseline": {"memory_mib": round(base_mib, 1), "window": w["baseline"]},
+                "observed": {"memory_mib": round(ipts[-1], 1),
+                             "growth_mib": round(growth, 1),
+                             "threshold_growth_mib": MEM_GROWTH_MIB,
+                             "monotonic": rising, "window": w["inject"]},
+                "window": w["inject"],
+                "deviation": round(growth / MEM_GROWTH_MIB, 3),
+            })
+
+    alerts.sort(key=lambda a: (-a["deviation"], a["rule"], a["service"]))
+    return {
+        "detected_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "window": w["inject"],
+        "windows": w,
+        "rules": {k: v.replace("{name}", "<service>") for k, v in RULES.items()},
+        "alerts": alerts,
+        "no_alert": not alerts,
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--card-id", required=True)
+    ap.add_argument("--evidence-root", default=EVIDENCE_ROOT)
+    ap.add_argument("--stdout", action="store_true", help="also print the result")
+    a = ap.parse_args()
+    cdir = os.path.join(a.evidence_root, a.card_id)
+    res = detect(os.path.join(cdir, "metrics.json"))
+    res["card_id"] = a.card_id
+    out = os.path.join(cdir, "alerts.json")
+    with open(out, "w") as f:
+        json.dump(res, f, indent=1)
+    if a.stdout:
+        print(json.dumps(res, indent=1, ensure_ascii=False))
+    else:
+        print(f"{a.card_id}: {len(res['alerts'])} alerts -> {os.path.relpath(out, REPO)}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

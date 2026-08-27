@@ -10,3 +10,13 @@ scripts/out/*
 # 原语的 restart 策略暂存：apply 时写、revert 时删，属运行时状态。
 scripts/state/*
 !scripts/state/.gitkeep
+
+# 证据包的三件大文件：单卡就约 10.7 MB（logs 3.1 MB + traces 7.6 MB + metrics
+# 0.17 MB），76 卡约 800 MB —— 是生成物不是源码，超过入库阈值（5 MB）不进版本库。
+# 入库的是每卡的 manifest.json（含五件的字节数与 sha256，可据此复算）、
+# task.json（agent 的输入）、alerts.json（检测器输出）、config_diff.txt、
+# topology.json 引用，以及共享的 evidence/_baseline/ 与 evidence/_shared/。
+# 重建方式：scripts/evidence/pack.py（窗口见 manifest.json）。
+evidence/*/logs.jsonl
+evidence/*/metrics.json
+evidence/*/traces.json

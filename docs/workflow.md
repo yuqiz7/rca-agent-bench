@@ -213,11 +213,11 @@ scripts/out/<batch-id>/
 | 项 | 内容 |
 | --- | --- |
 | 路径 | `scripts/runner/run_batch.py`（runner 本体）、`scripts/runner/run_batch.sh`（`nohup` 包装） |
-| CLI | `run_batch.py --cycles <文件> [--batch-id ID] [--settle-s 150] [--abort-after-recovered-failures 2] [--out-root DIR]` |
+| CLI | `run_batch.py (--cycles <文件> \| --scenarios <yaml…> \| --batch N) [--batch-id ID] [--settle-s 150] [--abort-after-recovered-failures 2] [--out-root DIR] [--evidence-root DIR] [--observe-only]`。三种输入**三选一**：`--cycles` 是手工周期清单（原有用法，未变）；`--scenarios` / `--batch` 走场景卡，周期参数取自卡片的 `primitive` / `params` / `cycle`，跑完自动打包证据（见 §7.6） |
 | 清单格式 | 每行 `primitive service tier [param]`，`#` 开头为注释。`primitive ∈ kill_container\|drop_inbound\|delay_outbound\|set_flag`，`tier ∈ debug\|full`。**第四列 `param`**：`delay_outbound` 用作延迟毫秒数（默认 800）；**`set_flag` 必填 `<flag>=<variant>`**（如 `cartFailure=50%`），类别由 flag 决定（`FLAG_CLASS` 表，决策 018）。现成清单：`cycles_debug_cart.txt`、`cycles_full_cart.txt`、`cycles_debug_flags.txt`、`cycles_full_flags.txt` |
 | 落盘 | `<out-root>/<batch-id>/<NN>_<primitive>_<service>/` 内：`window_baseline.json`、`window_during_immediate.json`、`window_during_harvest.json`、`window_after.json`、`anchors.json`（四锚点 + `settle_s` + `t_harvest` + testbed/本仓库 commit）、`probes.json`（三探针判定与依据数字 + 双快照 + `in_flight_at_revert`）、`evidence.json`（仅 `kill_container`）。批次级：`summary.json` + `summary.md` |
 | 启动 | `./scripts/runner/run_batch.sh <cycles-file> [batch-id]` → 打印 `batch_id` / `pid` / `log`；看进度 `tail -f scripts/out/<batch-id>.log` |
-| 串行保证 | `scripts/state/runner.lock` 存在即拒绝启动；`state/` 有任何原语 state 文件也拒绝启动 |
+| 串行保证 | `scripts/state/runner.lock` 上的 `flock(LOCK_EX\|LOCK_NB)`：拿不到即退出并提示。锁文件仍然「开始创建、结束删除」，兼容按存在性判断的 `prom_wal_restart_probe.sh`。`state/` 有任何原语 state 文件也拒绝启动 |
 | 失败规则 | `injected` 失败 → 立即 revert、写汇总、中止批次；`recovered` 失败 → 标红继续，连续 2 次中止；原语命令非零退出 → revert 后中止 |
 
 ## 7.5 WAL 重放峰值探针
@@ -260,6 +260,53 @@ nohup ./scripts/maintenance/prom_wal_restart_probe.sh > /tmp/prom_wal_probe.out 
 **指标来源注记**：`prometheus_tsdb_head_min_time` / `_max_time` **只在 Prometheus 自己的
 `/metrics` 端点上**，查询 API 取不到 —— 本部署没有任何 `scrape_configs`，
 Prometheus 不抓自己（决策 013：指标由 collector 经 OTLP 推入）。探针因此直接读 `/metrics`。
+
+---
+
+## 7.6 卡量产流程（决策 021）
+
+76 张卡的量产是一条五步链，每步一个脚本、输入输出都在文件系统上，
+中间任何一步都可以单独重跑。
+
+```
+scripts/scenarios/recipe.csv          ← 配方真源（决策 021）
+        │  generate.py
+        ▼
+scenarios/<card_id>.yaml   (76 张)
+        │  run_batch.py --scenarios <yaml...> | --batch 1
+        ▼
+scripts/out/<batch-id>/<NN>_<card_id>/   ← 三探针判定（agent 永不可见）
+        │  probe gate 通过才继续
+        ├─ pack.py     → evidence/<card_id>/ 五件 + manifest.json
+        ├─ detect.py   → evidence/<card_id>/alerts.json
+        ├─ write_symptom.py → 回写 yaml 的 agent_visible_symptom
+        └─ task_view.py → evidence/<card_id>/task.json  ← agent 的全部输入
+```
+
+| 步 | 脚本 | 输入 | 输出 |
+| --- | --- | --- | --- |
+| ① 生成器 | `scripts/scenarios/generate.py` | `scripts/scenarios/recipe.csv` | `scenarios/<card_id>.yaml` × 76；并回写 `docs/recipe.md` 第四节的配方表 |
+| ② runner | `scripts/runner/run_batch.py --scenarios <yaml…>` 或 `--batch 1` | 卡片 yaml 的 `primitive` / `params` / `cycle` | `scripts/out/<batch-id>/<NN>_<card_id>/`（`anchors.json` / `probes.json` / 四个窗口快照）；并把 `t_start` / `t_end` / `evidence_dir` / 探针结果写回卡片的 `production` |
+| ③ 打包器 | `scripts/evidence/pack.py --card-id … --t-start/--t-inject/--t-revert/--t-end` | 三后端（OpenSearch / Prometheus / Jaeger）+ flagd 配置 + compose | `evidence/<card_id>/` 五件 + `manifest.json`；首次运行还会生成 `evidence/_baseline/` 与 `evidence/_shared/topology.json` |
+| ④ 检测器 | `scripts/evidence/detect.py --card-id …` | **只有** `evidence/<card_id>/metrics.json` | `evidence/<card_id>/alerts.json` |
+| ④' 回写 | `scripts/scenarios/write_symptom.py --card-id …` | `alerts.json` | 卡片 yaml 的 `agent_visible_symptom` |
+| ⑤ 任务视图 | `scripts/harness/task_view.py --card-id …` / `--all` | 卡片 yaml（白名单三字段） | `evidence/<card_id>/task.json` |
+
+`run_batch.py` 在 harvest 快照之后按 ③ → ④ → ④' → ⑤ 依次调用，不需要手工串。
+
+**探针门**：`injected` 为真、`symptom` 与 `recovered` 都不为假才算过门
+（`--observe-only` 下只看 `injected`）。**过不了门的卡记
+`production.probe.verdict = failed` 且不打包** —— 无效注入的证据包是废数据。
+
+**为什么 ④ 单独成脚本、且不许碰 `scenarios/`**：`detect.py` 里没有任何
+`scenarios/` 路径、也不 import 卡片模块。检测器要是能看见 ground truth，
+告警迟早会开始"迎合"答案，那条告警就不再是证据（fault_schema §4 第一道墙）。
+回写因此拆到 ④'，方向单向：`alerts.json` → 卡片，卡片的任何字段都不回流到检测。
+
+**锁**：`run_batch.py` 对 `scripts/state/runner.lock` 先 `flock(LOCK_EX|LOCK_NB)`
+再写内容，拿不到锁即退出并提示；同时保留"开始创建、结束删除锁文件"的旧语义 ——
+`prom_wal_restart_probe.sh` 是先看文件在不在、再取 flock 的（见该脚本注释），
+改成纯 flock 会让它误判无人占用。
 
 ---
 

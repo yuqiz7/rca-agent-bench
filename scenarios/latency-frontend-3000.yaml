@@ -1,0 +1,28 @@
+# 故障场景卡（decision 021 / docs/recipe.md v1.0）
+# 由 scripts/scenarios/generate.py 从 scripts/scenarios/recipe.csv 生成。
+# production / agent_visible_symptom / difficulty_measured 由 runner 回填。
+card_id: latency-frontend-3000
+class: latency
+target: frontend
+primitive: delay_outbound
+params:
+  delay_ms: 3000
+ground_truth:
+  service: frontend
+  class: latency
+difficulty_predicted:
+  A: 0
+  B: 0
+  C: 0
+  total: 0
+  tier: 易
+difficulty_measured: null
+cycle:
+  baseline_s: 60
+  inject_s: 120
+  recover_s: 60
+  settle_s: 150
+param_validated: false
+batch: null
+production: null
+agent_visible_symptom: null

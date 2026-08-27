@@ -224,6 +224,8 @@ W3 harness 设计前必裁：agent 的 `trace_query` 工具查到的是哪个时
 
 ## O-P2-8　`recommendationCacheFailure` 在 120s 窗内不可判定
 
+**状态：open（配方口径已定，2026-08-27 ET，决策 021）** —— 该 flag 按本条排除，不进 76 卡配方；`mem_leak` 类三张卡全部落在 `email` 上。本条继续 open 的是「W3 若需要第二个 `mem_leak` 靶子怎么办」，与配方无关。
+
 **内容**
 `recommendationCacheFailure=on` 的内存增长实测 **+0.3 MiB / 120s = 0.1 MiB/min**
 （47.4 → 47.7 MiB），远低于 `mem_leak` 判据的 `max(10, 0.15 × first_mib)` ≈ 10 MiB。
@@ -245,7 +247,7 @@ cache miss 追加自身 1/4，几何增长），但两个因素同时压制：ca
 
 ## O-P2-9　cartFailure 的报错 span 存活时间超过 harvest 的 settle 窗
 
-**状态：open（2026-08-26）**
+**状态：open（2026-08-27 ET 更新）** —— **配方口径已由决策 021 定死**：`cartFailure` 只出 `75%` / `90%` / `100%` 三张，`10%` / `25%` / `50%` 不入 76 卡配方。本条继续 open 的是底层问题本身 —— harvest 的 settle=150 s 少算长挂起报错 span，以及「抬 settle 还是补阈值」的裁决。**该问题解决后可补回 3 张卡**，是 76 → 80 的四张缺口中唯一有明确来源的三张（决策 021 trade-off）。
 
 **内容**
 `cartFailure` 的报错 span 挂起时间远超 harvest 快照的等待时长。在
@@ -450,3 +452,77 @@ apply 语义见 [fault_schema.md](fault_schema.md) §5「targeting 型开关的 
     换 `LOAD_GENERATOR_VUS` 或 k6 脚本就会变，作为阈值输入不稳定；
 (c) 拉长 `observe_s` 以增加样本，让 27 这个绝对数上去 —— 但那推翻决策 012。
 **需用户裁决。**
+
+---
+
+## O-P2-14　`set_flag.sh` 无法为 `productCatalogFailure` 指定 `product_id`
+
+**状态：open（2026-08-27 ET，量产前必须解决）**
+
+**内容**
+决策 021 的配方里 `productCatalogFailure` 出 **10 张卡**，每张锁定一个不同的
+`product_id`（targeting 命中分支各一）。当前 `set_flag.sh` **做不到**，两处写死：
+
+1. `apply` 对 targeting 型开关只改**命中分支的变体**（`t['if'][1]='on'`），
+   **不动规则条件**；而 `demo.flagd.json` 的条件写死为
+   `{"==": [{"var":"product_id"}, "OLJCESPC7Z"]}`。
+2. `flag_context()` 里 probe 用的求值上下文同样写死 `{"product_id":"OLJCESPC7Z"}`。
+
+因此 10 张卡里**只有 `misconfig-pc-OLJCESPC7Z` 能按卡片 `params` 真实注入**，
+其余 9 张若照跑，实际注入的仍是 `OLJCESPC7Z` 那一条规则 —— 卡片的
+`params.product_id` 与系统里真正生效的 targeting 目标**不一致**，
+ground truth 虽仍是 `(product-catalog, misconfig)`（服务与类别不变），
+但「10 个不同 targeting 变体」这一配方前提不成立，等于 9 张重复卡。
+
+**依据**
+`scripts/primitives/set_flag.sh` 的 targeting 分支与 `flag_context()`；
+`~/projects/opentelemetry-demo/src/flagd/demo.flagd.json` 的
+`productCatalogFailure.targeting` 实读。
+
+**待议**
+改法本身不难 —— `set_flag.sh` 多收一个可选的 `product_id`，apply 时把条件里的
+目标 ID 一并改写、probe 时用同一个 ID 做上下文（备份/恢复机制不变，仍是整文件
+`cp` 回滚）。但这动的是**已在跑的注入原语**，且 `flag_context` 的签名要从
+「按 flag 查表」变成「按 flag + 卡片参数」，会牵连 runner 的传参路径。
+本轮未改（本轮任务范围是生成器 / 打包器 / 检测器 / runner 集成，且原语脚本
+正被后台探针占用）。**量产 `misconfig-pc-*` 之前必须先改，否则那 9 张卡是废卡。**
+
+---
+
+## O-P2-15　流量消失规则对低流量服务假阳
+
+**状态：open（2026-08-27 ET，决策 021 的检测器实测发现）**
+
+**内容**
+`detect.py` 规则 2（决策 021 / fault_schema §10）写的是
+「基线请求率 > 0 且注入期连续 ≥ 2 个采样点为 0 → `traffic dropped to zero`」。
+在**没有任何注入**的干净窗口上实测，该规则对三个低流量服务全部误报：
+
+| 服务 | 基线请求率 | 注入窗请求率 | 连续零采样点 | 窗内采样点 |
+| --- | ---: | ---: | ---: | ---: |
+| `payment` | 0.0500 /s | 0.0417 /s | 3 | 9 |
+| `checkout` | 0.0500 /s | 0.0500 /s | 3 | 9 |
+| `email` | 0.0500 /s | 0.0500 /s | 3 | 9 |
+
+**为什么**
+采样步长 15 s，而这三个服务被调约 **3 /min = 0.05 /s**，即平均每 20 s 才一次调用。
+「连续两个 15 s 采样点没有新调用」是这些服务的**常态**，不是故障。
+三例的请求率注入期与基线**几乎没变**（0.05 → 0.042 / 0.05 / 0.05），
+规则却照样触发。
+
+**没有绕过**
+规则按裁决**原样实现**，未私自加保护条件。`deviation` 字段能把真假两种情形分开 ——
+假阳的 `deviation` 是 1.0–1.2（速率基本没变），真的 blackhole 会是几个数量级，
+但**规则本身的触发条件里没有用到 `deviation`**，所以假阳照样进 `alerts` 列表、
+照样写进卡片的 `agent_visible_symptom`。
+
+**待议（需用户裁决）**
+(a) 加最低流量门槛：基线请求率低于某值（如 0.2 /s，即 12 /min）的服务不适用规则 2；
+(b) 把「连续零采样点」的门槛按基线速率算，而不是固定 2
+    （如 `max(2, ceil(3 / (基线速率 × 步长)))`）；
+(c) 规则 2 追加「注入期请求率 ≤ 基线 × 0.1」的与条件 —— 与 `blackhole` 的
+    symptom 判据（决策 016：caller span < 基线 10%）同口径；
+(d) 接受假阳，理由是 agent 本来就该在证据包里自行分辨。
+
+在裁决之前，`blackhole` / `crash` 类卡的 `agent_visible_symptom` 里会稳定多出
+`payment` / `checkout` / `email` 三条无关告警。

@@ -1,0 +1,30 @@
+# 故障场景卡（decision 021 / docs/recipe.md v1.0）
+# 由 scripts/scenarios/generate.py 从 scripts/scenarios/recipe.csv 生成。
+# production / agent_visible_symptom / difficulty_measured 由 runner 回填。
+card_id: misconfig-pc-2ZYFJ3GM2N
+class: misconfig
+target: product-catalog
+primitive: set_flag
+params:
+  flag: productCatalogFailure
+  product_id: 2ZYFJ3GM2N
+  variant: "on"
+ground_truth:
+  service: product-catalog
+  class: misconfig
+difficulty_predicted:
+  A: 1
+  B: 1
+  C: 0
+  total: 2
+  tier: 中
+difficulty_measured: null
+cycle:
+  baseline_s: 60
+  inject_s: 120
+  recover_s: 60
+  settle_s: 150
+param_validated: false
+batch: null
+production: null
+agent_visible_symptom: null

@@ -273,3 +273,79 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 - [x] `misconfig` / `mem_leak` 指纹核对（2026-08-24 入库档 `judge_222727`）
 - [x] `mem_leak` 类容器内存指标 —— `container_memory_usage_total_bytes`（docker_stats receiver，标签 `container_name`，实测 10s 一个点）
 - [x] flagd 内置故障开关清单 —— 15 个，逐个定位到服务代码判断处（决策 018）
+
+---
+
+## §9 证据包规格（决策 020 / 021）
+
+**编号说明**：本节原定编号为 §6，但 §6「准入门」/ §7「判分」/ §8「实测核对清单」
+早已被决策 015 / 016 / 018 与 `run_batch.py` 的注释按号引用，重排会让那些引用全部失准。
+故本节与下节顺延为 **§9 / §10**，内容不变。
+
+事后快照模式（决策 020）下，agent 与全部基线**只读证据包**，不查询实时系统。
+每张卡一个目录 `evidence/<card_id>/`，由 `scripts/evidence/pack.py` 生成。
+
+### 窗口
+
+打包窗口 = `[t_start − 60 s, t_end + 150 s]`。
+
+- **前 60 s**：给 `rate()[1m]` 留出回看量，同时把基线窗完整包住。
+- **后 150 s**：即决策 016 的 settle。span 只在结束时导出，注入期拨出、
+  `t_end` 之后才结束的调用必须落在包内，否则重演决策 016 修掉的那个错误。
+
+`manifest.json` 另记三个子窗口，供检测器与人对齐：
+`baseline = [t_start, t_inject]`、`inject = [t_inject, t_revert]`、
+`recover = [t_revert, t_end]`。
+
+### 五件
+
+| 文件 | 定义 |
+| --- | --- |
+| `logs.jsonl` | 打包窗内**全部服务**的日志，每行一个 JSON 对象：`ts`（`observedTimestamp`）、`service`（`resource.service.name`）、`body`、`severity`（`severity.text`）、`trace_id`、`span_id`。来源 OpenSearch，索引模式 `otel-logs-*`，按 `observedTimestamp` + `_id` 的 `search_after` 翻页（不用 scroll：无服务端游标状态可漏） |
+| `metrics.json` | 固定 PromQL 集合（`scripts/evidence/queries.py`，**所有卡共用**，与卡片的靶子/类别无关）的 `query_range` 结果，步长 **15 s**：每服务请求率 / 错误率 / p95 延迟（均取自 spanmetrics），每服务 `calls_total` / `errors_total` 原始计数器，每容器内存（`container_memory_usage_total_bytes`）与 CPU（`container_cpu_utilization_ratio`）。原始计数器与 `rate()` 同时收：前者是检测器的输入（计数器差分，决策 013 的口径），后者是给人看的仪表盘视角 |
+| `traces.json` | 按服务逐个查 Jaeger `/api/traces`（`start` / `end` 为打包窗，`limit` = 5000），合并去重后保留每个 span 的 `traceID` / `spanID` / `parentSpanID` / `service` / `operation` / `start` / `duration` / `status`。是否触顶记在 `limit_hit` 与 `services_hitting_limit`，**不静默截断** |
+| `config_diff.txt` | flagd 配置文件（`src/flagd/demo.flagd.json`）与 compose 环境变量（`docker compose <三文件> config` 的 environment 段，`service=KEY=VALUE` 排序）相对基线快照的 unified diff。基线快照存 `evidence/_baseline/`，不存在时由本步从当前干净状态生成一次 |
+| `topology.json` | 服务调用拓扑，**全局只生成一次**存 `evidence/_shared/topology.json`；各卡目录下的 `topology.json` 是**引用 + sha256**，不重复存图 |
+
+`manifest.json`（第六个文件，索引）：打包时刻、窗口起止与前后补长、三个子窗口、
+基线快照生成时刻、五件各自的 `name` / `path` / `bytes` / `sha256`、各步统计。
+
+### 拓扑的来源
+
+spanmetrics 只有 `(service_name, span_kind, span_name)`，**没有调用方/被调方的配对标签**，
+所以一条边是一次 join：A 有名为 X 的 CLIENT span、B 有归一化后同名的 SERVER span
+（归一化 = 去掉 `GET ` / `POST ` 等动词前缀与前导 `/`）。这能解出 gRPC 与具名 HTTP 路由。
+解不出两类，两类都由 Jaeger client span 的 peer 标签补（决策 018 对这两个靶子已在用同一手法）：
+
+- **无 SDK 的靶子**（`valkey-cart` / `astronomy-db`）根本没有 server 侧 spanmetrics；
+- **泛化的 HTTP client span**（span 名就叫 `POST`）归一化后是空串。
+
+每条边记 `source ∈ {spanmetrics, jaeger_peer}`；spanmetrics 解不出的 client span 名
+逐条列在 `spanmetrics_unresolved_client_calls`，**列出来而不是丢掉**。
+
+---
+
+## §10 告警检测器规则（决策 021）
+
+`scripts/evidence/detect.py`。**只读 `evidence/<card_id>/metrics.json`**，
+不 import 卡片模块、文件里没有任何 `scenarios/` 路径 —— 检测器要是能看见 ground truth，
+告警迟早会开始迎合答案，那条告警就不再是证据（§4 第一道墙）。
+回写卡片 `agent_visible_symptom` 的是 `scripts/scenarios/write_symptom.py`，方向单向。
+
+四条规则对**每个**服务（内存规则对每个容器）扫：
+
+| # | 规则 | 判据 | 告警文本 |
+| --- | --- | --- | --- |
+| 1 | 错误率跳升 | 注入期错误数 ≥ `N = max(5, ceil(0.25 × 基线请求速率 × inject_s))` **且** ≥ 2 × 基线错误数（按窗长折算到注入窗） | `elevated error rate on <service>` |
+| 2 | 流量消失 | 基线请求率 > 0 **且** 注入期连续 ≥ 2 个采样点为 0 | `traffic dropped to zero on <service>` |
+| 3 | 延迟跳升 | 注入期 p95 ≥ 2 × 基线 p95（两侧各取窗内样本的中位数） | `elevated p95 latency on <service>` |
+| 4 | 内存越线 | 容器内存相对基线 **+30 MiB** **且**注入期单调上升（采样抖动容差 0.5 MiB） | `memory rising on <container>` |
+
+- 规则 1 的 `N` 沿用决策 018 的相对阈值形式：固定值只对高流量靶子成立，
+  `email` / `payment` / `checkout` 被调约 4.4/min，120 s 窗内总共才约 9 次调用。
+- 规则 1 / 2 的计数一律走**原始计数器的正增量之和**，不走 `rate()`：
+  计数器归零（容器重启）不会变成负数或巨值，且流量骤停在计数器上是"不再前进"，
+  比 `rate()[1m]` 把一次硬停摊平到整整一分钟更利落。
+- 输出 `alerts` 列表，每条含 `rule` / `service` / `baseline` 值 / `observed` 值 / `window`，
+  **按偏离倍数 `deviation` 降序**。空列表记 `no_alert: true` ——
+  是明确的"呼机没响"，不是缺字段。

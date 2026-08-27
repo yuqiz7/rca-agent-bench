@@ -1,0 +1,241 @@
+# 故障场景卡（decision 021 / docs/recipe.md v1.0）
+# 由 scripts/scenarios/generate.py 从 scripts/scenarios/recipe.csv 生成。
+# production / agent_visible_symptom / difficulty_measured 由 runner 回填。
+card_id: crash-cart-01
+class: crash
+target: cart
+primitive: kill_container
+params: {}
+ground_truth:
+  service: cart
+  class: crash
+difficulty_predicted:
+  A: 1
+  B: 0
+  C: 0
+  total: 1
+  tier: 易
+difficulty_measured: null
+cycle:
+  baseline_s: 60
+  inject_s: 120
+  recover_s: 60
+  settle_s: 150
+param_validated: true
+batch: 1
+production:
+  t_start: "2026-08-27T18:05:25Z"
+  t_inject: "2026-08-27T18:06:26Z"
+  t_revert: "2026-08-27T18:08:26Z"
+  t_end: "2026-08-27T18:09:26Z"
+  settle_s: 150
+  t_harvest: "2026-08-27T18:11:56Z"
+  batch_dir: scripts/out/20260827T180800Z_e2e_crash-cart-01
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/crash-cart-01
+  packed: true
+  manifest_sha256:
+    logs.jsonl: c9519807280963e44d2fb4789116501a01b42b3d7ac113b1b37bc839c1800f65
+    metrics.json: 225417cbd59ef0c03ddf60998f4acae60482a8c210f7dbbfda194bdee93b44ce
+    traces.json: a298707cdf2c9bc6e33ed10e2413acc17ccebdd5a8dd39217892598e6a5ed613
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 11
+agent_visible_symptom:
+  window:
+    start: "2026-08-27T18:06:26Z"
+    end: "2026-08-27T18:08:26Z"
+  detected_at: "2026-08-27T18:13:09Z"
+  no_alert: false
+  alerts:
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on cart
+      service: cart
+      baseline:
+        request_rate_per_s: 0.9508
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        request_rate_per_s: 0.0
+        consecutive_zero_samples: 7
+        samples_in_window: 8
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 950819.672
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on shipping
+      service: shipping
+      baseline:
+        request_rate_per_s: 0.1639
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        request_rate_per_s: 0.0
+        consecutive_zero_samples: 7
+        samples_in_window: 8
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 163934.426
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on quote
+      service: quote
+      baseline:
+        request_rate_per_s: 0.0984
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        request_rate_per_s: 0.0
+        consecutive_zero_samples: 7
+        samples_in_window: 8
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 98360.656
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on payment
+      service: payment
+      baseline:
+        request_rate_per_s: 0.0656
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        request_rate_per_s: 0.0
+        consecutive_zero_samples: 7
+        samples_in_window: 8
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 65573.77
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on email
+      service: email
+      baseline:
+        request_rate_per_s: 0.0492
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        request_rate_per_s: 0.0
+        consecutive_zero_samples: 7
+        samples_in_window: 8
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 49180.328
+    -
+      rule: p95_jump
+      message: elevated p95 latency on frontend
+      service: frontend
+      baseline:
+        p95_ms: 40.42
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        p95_ms: 4217.86
+        threshold_ms: 80.84
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 104.354
+    -
+      rule: p95_jump
+      message: elevated p95 latency on frontend-proxy
+      service: frontend-proxy
+      baseline:
+        p95_ms: 42.09
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        p95_ms: 3271.87
+        threshold_ms: 84.17
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 77.741
+    -
+      rule: error_rate_jump
+      message: elevated error rate on checkout
+      service: checkout
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0656
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        error_count: 5.0
+        threshold_N: 5
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 5.0
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on ad
+      service: ad
+      baseline:
+        request_rate_per_s: 0.1967
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        request_rate_per_s: 0.0667
+        consecutive_zero_samples: 2
+        samples_in_window: 8
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 2.951
+    -
+      rule: p95_jump
+      message: elevated p95 latency on cart
+      service: cart
+      baseline:
+        p95_ms: 3.89
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        p95_ms: 8.2
+        threshold_ms: 7.78
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 2.107
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on checkout
+      service: checkout
+      baseline:
+        request_rate_per_s: 0.0656
+        window:
+          start: "2026-08-27T18:05:25Z"
+          end: "2026-08-27T18:06:26Z"
+      observed:
+        request_rate_per_s: 0.0417
+        consecutive_zero_samples: 2
+        samples_in_window: 8
+        window:
+          start: "2026-08-27T18:06:26Z"
+          end: "2026-08-27T18:08:26Z"
+      deviation: 1.574

@@ -1,0 +1,14 @@
+trigger_head_span_sec=9607
+restart_utc=2026-08-27T17:55:07Z
+restart_et=2026-08-27 13:55:07 EDT
+ready_sec=3
+ready_cap_sec=300
+peak_mib=327.4
+limit_mib=2048.0
+peak_pct_of_limit=15.9
+oom_killed_before=false
+oom_killed_after=false
+restart_count_before=0
+restart_count_after=0
+csv=/home/joezhang2175/projects/p2-rca/artifacts/resource_audit/prom_mem_2026-08-27_walrestart.csv
+verdict=PASS

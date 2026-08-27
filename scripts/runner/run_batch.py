@@ -10,7 +10,7 @@ scripts/runner/run_batch.sh 包 nohup。
 判定只在 runner 侧发生：agent 永远看不到本文件产出的 probes.json 与
 anchors.json（泄漏隔离，见 fault_schema §4 与决策 015）。
 """
-import argparse, json, math, os, subprocess, sys, time
+import argparse, fcntl, json, math, os, subprocess, sys, time
 from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # scripts/
@@ -19,6 +19,21 @@ PRIMITIVES = os.path.join(ROOT, "primitives")
 PROBE = os.path.join(ROOT, "probes", "three_signals.py")
 STATE_DIR = os.path.join(ROOT, "state")
 LOCK = os.path.join(STATE_DIR, "runner.lock")
+
+# 场景卡量产链（决策 021）：生成器写卡 -> runner 跑周期 -> 打包 -> 检测 -> 任务视图。
+SCENARIOS_MOD = os.path.join(ROOT, "scenarios")
+EVIDENCE_MOD = os.path.join(ROOT, "evidence")
+HARNESS_MOD = os.path.join(ROOT, "harness")
+for _p in (SCENARIOS_MOD, EVIDENCE_MOD, HARNESS_MOD):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+import cards            # noqa: E402  scripts/scenarios/cards.py
+import pack             # noqa: E402  scripts/evidence/pack.py
+import detect           # noqa: E402  scripts/evidence/detect.py
+import task_view        # noqa: E402  scripts/harness/task_view.py
+import write_symptom    # noqa: E402  scripts/scenarios/write_symptom.py
+
+EVIDENCE_ROOT = os.path.join(REPO, "evidence")
 
 # 档位时间表（秒）。来源：docs/workflow.md §3「周期双档」。
 TIERS = {
@@ -336,6 +351,86 @@ def judge_recovered(cls, base, after, param):
         "required_rate_per_s": round(brate * RECOVER_SPAN_FRAC, 4)}
 
 
+# ── 场景卡 -> 周期参数（决策 021）────────────────────────────────────────
+# 卡片的 params 是结构化的（yaml），原语的接口是位置参数 + 一个 <flag>=<variant>
+# 字符串。翻译只在这里做一次，判定逻辑照旧吃那个字符串，不必为卡片改判据。
+def card_to_cycle(card):
+    prim, svc = card["primitive"], card["target"]
+    p = card.get("params") or {}
+    if prim == "set_flag":
+        param = f"{p['flag']}={p['variant']}"
+    elif prim == "delay_outbound":
+        param = str(p.get("delay_ms", 800))
+    else:
+        param = None
+    c = card["cycle"]
+    timing = {"pre": c["baseline_s"], "inject": c["inject_s"], "post": c["recover_s"]}
+    return prim, svc, param, timing, c["settle_s"]
+
+
+def probe_gate(res, observe_only):
+    """三探针准入门（fault_schema §6 / 决策 015）。
+
+    观察模式下没有裁决可用，只看 injected —— 那一项仍是机械探针，与判据无关。
+    """
+    if observe_only:
+        return res.get("injected") is not False
+    return (res.get("injected") is True and res.get("symptom") is not False
+            and res.get("recovered") is not False)
+
+
+def pack_and_view(card, res, anchors, observe_only, evidence_root=EVIDENCE_ROOT):
+    """harvest 之后的证据链：pack -> detect -> write_symptom -> task_view。
+
+    门没过就不打包 —— 无效注入的证据包是废数据，进了库反而要人回头清（决策 015
+    的「injected 失败即停」是同一条理由）。
+    """
+    gate = probe_gate(res, observe_only)
+    production = {
+        "t_start": anchors["t0"], "t_inject": anchors["t_apply"],
+        "t_revert": anchors["t_revert"], "t_end": anchors["t_end"],
+        "settle_s": anchors["settle_s"], "t_harvest": anchors["t_harvest"],
+        "batch_dir": anchors.get("batch_dir"),
+        "probe": {
+            "injected": res.get("injected"), "symptom": res.get("symptom"),
+            "recovered": res.get("recovered"), "residue_clean": res.get("residue_clean"),
+            "verdict": "passed" if gate else "failed",
+            "observe_only": bool(observe_only),
+        },
+        "evidence_dir": None, "packed": False,
+    }
+    if not gate:
+        production["note"] = "probe gate failed; evidence not packed (decision 021)"
+        card["production"] = production
+        cards.save(card)
+        log(f"card {card['card_id']}: probe gate FAILED, not packing")
+        return production
+
+    cid = card["card_id"]
+    m = pack.pack(cid, pack.iso_to_dt(anchors["t0"]), pack.iso_to_dt(anchors["t_apply"]),
+                  pack.iso_to_dt(anchors["t_revert"]), pack.iso_to_dt(anchors["t_end"]),
+                  out_root=evidence_root)
+    res_alerts = detect.detect(os.path.join(evidence_root, cid, "metrics.json"))
+    res_alerts["card_id"] = cid
+    with open(os.path.join(evidence_root, cid, "alerts.json"), "w") as f:
+        json.dump(res_alerts, f, indent=1)
+    # detect.py 不碰 scenarios/，回写走 write_symptom（见 detect.py docstring）
+    card["production"] = production
+    cards.save(card)
+    write_symptom.write_back(cid, evidence_root)
+    task_view.write(cid, evidence_root)
+
+    card = cards.load(cid)
+    production["evidence_dir"] = os.path.relpath(os.path.join(evidence_root, cid), REPO)
+    production["packed"] = True
+    production["manifest_sha256"] = {f["name"]: f["sha256"] for f in m["files"]}
+    production["alerts"] = len(res_alerts["alerts"])
+    card["production"] = production
+    cards.save(card)
+    log(f"card {cid}: packed {len(m['files'])} files, {len(res_alerts['alerts'])} alerts")
+    return production
+
+
 def sleep_until(target):
     while True:
         left = (target - now()).total_seconds()
@@ -349,10 +444,12 @@ def git_head(path):
     return so.strip() if rc == 0 else "unknown"
 
 
-def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=False):
+def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=False,
+              timing=None, card=None, evidence_root=EVIDENCE_ROOT):
     cls = (FLAG_CLASS[param.split("=", 1)[0]] if prim == "set_flag" else CLASS_OF[prim])
-    tm = TIERS[tier]
-    cdir = os.path.join(batch_dir, f"{idx:02d}_{prim}_{svc}")
+    tm = timing or TIERS[tier]
+    name = card["card_id"] if card else f"{prim}_{svc}"
+    cdir = os.path.join(batch_dir, f"{idx:02d}_{name}")
     os.makedirs(cdir, exist_ok=True)
     script = os.path.join(PRIMITIVES, f"{prim}.sh")
     if prim == "set_flag":
@@ -531,6 +628,9 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
                            "commit": git_head(os.path.join(os.path.dirname(REPO),
                                                            "opentelemetry-demo"))},
                "p2_rca_commit": git_head(REPO)}
+    anchors["batch_dir"] = os.path.relpath(batch_dir, REPO)
+    if card is not None:
+        anchors["card_id"] = card["card_id"]
     json.dump(anchors, open(os.path.join(cdir, "anchors.json"), "w"), indent=1)
     json.dump(probes, open(os.path.join(cdir, "probes.json"), "w"), indent=1)
     if evidence is not None:
@@ -538,6 +638,9 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
     res["probes"] = probes
     log(f"cycle {idx} done injected={res['injected']} symptom={res['symptom']} "
         f"recovered={res['recovered']} residue_clean={res['residue_clean']}")
+    if card is not None:
+        res["production"] = pack_and_view(card, res, anchors, observe_only,
+                                          evidence_root=evidence_root)
     return res, probes
 
 
@@ -617,9 +720,60 @@ def write_summary(batch_dir, batch_id, rows, aborted):
     open(os.path.join(batch_dir, "summary.md"), "w").write("\n".join(L) + "\n")
 
 
+def load_scenarios(paths=None, batch=None):
+    """--scenarios <yaml...> 或 --batch <n>：卡片取代手工周期行（决策 021）。"""
+    if batch is not None:
+        ids = [cid for cid in cards.all_card_ids()
+               if (cards.load(cid).get("batch")) == batch]
+        if not ids:
+            raise SystemExit(f"error: no card with batch={batch} in scenarios/")
+        return [cards.load(cid) for cid in ids]
+    out = []
+    for path in paths:
+        if not os.path.exists(path):
+            raise SystemExit(f"error: no such scenario file: {path}")
+        c = cards.load_path(path)
+        if c["primitive"] not in PRIMS:
+            raise SystemExit(f"{path}: unknown primitive {c['primitive']!r}")
+        out.append(c)
+    return out
+
+
+def acquire_lock(batch_id):
+    """flock + 锁文件：两层是有意的。
+
+    flock 是真锁（进程死掉内核自动释放，不会留下需要人手删的僵尸锁）；锁文件的
+    「开始创建、结束删除」语义保留，因为 prom_wal_restart_probe.sh 先看文件存在
+    与否、再取 flock（见该脚本注释），改成纯 flock 会让它以为无人占用。
+    """
+    os.makedirs(STATE_DIR, exist_ok=True)
+    fh = open(LOCK, "a+")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        raise SystemExit(f"error: {LOCK} is flocked by another process; "
+                         f"another batch or probe is running -- wait for it to finish")
+    fh.seek(0)
+    fh.truncate()
+    fh.write(f"{batch_id}\npid={os.getpid()}\n")
+    fh.flush()
+    return fh
+
+
+def release_lock(fh):
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+    except OSError:
+        pass
+    fh.close()
+    if os.path.exists(LOCK):
+        os.remove(LOCK)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--cycles", required=True)
+    ap.add_argument("--cycles")
     ap.add_argument("--batch-id", default=None)
     ap.add_argument("--abort-after-recovered-failures", type=int, default=2)
     ap.add_argument("--out-root", default=os.path.join(ROOT, "out"))
@@ -629,22 +783,39 @@ def main():
     ap.add_argument("--pre-batch-hook", default="",
                     help="批次开始前执行一次的脚本（O-P2-7）。默认空=不执行。")
     ap.add_argument("--settle-s", type=int, default=SETTLE_S_DEFAULT,
-                    help="三个窗口统一推迟到 t_end+settle 查询（决策 016），默认 150")
+                    help="三个窗口统一推迟到 t_end+settle 查询（决策 016），默认 150；"
+                         "--scenarios / --batch 模式下由卡片的 cycle.settle_s 覆盖")
+    ap.add_argument("--scenarios", nargs="+", metavar="YAML",
+                    help="场景卡 yaml 路径列表；每卡按其 primitive/params/cycle 执行，"
+                         "跑完自动打包证据、检测告警、生成任务视图（决策 021）")
+    ap.add_argument("--batch", type=int, metavar="N",
+                    help="跑 scenarios/ 里 batch=N 的全部卡，等价于把它们列给 --scenarios")
+    ap.add_argument("--evidence-root", default=EVIDENCE_ROOT)
     a = ap.parse_args()
 
-    cycles = parse_cycles(a.cycles)
-    tier0 = cycles[0][2] if cycles else "debug"
+    if sum(bool(x) for x in (a.cycles, a.scenarios, a.batch is not None)) != 1:
+        ap.error("--cycles / --scenarios / --batch 三选一")
+
+    scenario_cards = None
+    if a.cycles:
+        cycles = parse_cycles(a.cycles)
+        tier0 = cycles[0][2] if cycles else "debug"
+    else:
+        scenario_cards = load_scenarios(a.scenarios, a.batch)
+        cycles = []
+        for c in scenario_cards:
+            prim, svc, param, timing, settle = card_to_cycle(c)
+            cycles.append((prim, svc, "card", param, timing, settle, c))
+        tier0 = f"batch{a.batch}" if a.batch is not None else "cards"
     batch_id = a.batch_id or f"{now().strftime('%Y%m%dT%H%M%SZ')}_{tier0}"
 
     # ── 串行保证（workflow.md §5：同一时刻只允许一个原语处于 apply）──
-    os.makedirs(STATE_DIR, exist_ok=True)
-    if os.path.exists(LOCK):
-        raise SystemExit(f"error: {LOCK} exists; another batch is running")
+    lock_fh = acquire_lock(batch_id)
     stale = [f for f in os.listdir(STATE_DIR)
              if f != ".gitkeep" and not f.endswith(".lock")]
     if stale:
+        release_lock(lock_fh)
         raise SystemExit(f"error: stale primitive state files present: {stale}")
-    open(LOCK, "w").write(f"{batch_id}\npid={os.getpid()}\n")
 
     batch_dir = os.path.join(a.out_root, batch_id)
     os.makedirs(batch_dir, exist_ok=True)
@@ -660,9 +831,22 @@ def main():
 
     rows, aborted, rec_fail_streak = [], None, 0
     try:
-        for i, (prim, svc, tier, param) in enumerate(cycles, 1):
-            r, _ = run_cycle(i, prim, svc, tier, param, batch_dir, a.settle_s,
-                             observe_only=a.observe_only)
+        for i, spec in enumerate(cycles, 1):
+            if scenario_cards is None:
+                prim, svc, tier, param = spec
+                timing, settle, card = None, a.settle_s, None
+            else:
+                prim, svc, tier, param, timing, settle, card = spec
+            r, _ = run_cycle(i, prim, svc, tier, param, batch_dir, settle,
+                             observe_only=a.observe_only, timing=timing, card=card,
+                             evidence_root=a.evidence_root)
+            if card is not None and "production" not in r:
+                # 中止路径（apply/revert/probe 失败）没走到 harvest，照样把门的结果落卡
+                r["production"] = pack_and_view(card, r, {
+                    "t0": iso(now()), "t_apply": None, "t_revert": None,
+                    "t_end": None, "settle_s": settle, "t_harvest": None,
+                    "batch_dir": os.path.relpath(batch_dir, REPO)}, a.observe_only,
+                    evidence_root=a.evidence_root)
             rows.append(r)
             if r.get("aborted"):
                 aborted = f"cycle {i}: {r['aborted']}"
@@ -682,8 +866,7 @@ def main():
                 rec_fail_streak = 0
     finally:
         write_summary(batch_dir, batch_id, rows, aborted)
-        if os.path.exists(LOCK):
-            os.remove(LOCK)
+        release_lock(lock_fh)
         log(f"batch {batch_id} finished; summary at {batch_dir}/summary.md")
     return 1 if aborted else 0
 

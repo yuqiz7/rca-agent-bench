@@ -1,0 +1,29 @@
+# 故障场景卡（decision 021 / docs/recipe.md v1.0）
+# 由 scripts/scenarios/generate.py 从 scripts/scenarios/recipe.csv 生成。
+# production / agent_visible_symptom / difficulty_measured 由 runner 回填。
+card_id: misconfig-cart-90
+class: misconfig
+target: cart
+primitive: set_flag
+params:
+  flag: cartFailure
+  variant: 90%
+ground_truth:
+  service: cart
+  class: misconfig
+difficulty_predicted:
+  A: 1
+  B: 2
+  C: 0
+  total: 3
+  tier: 中
+difficulty_measured: null
+cycle:
+  baseline_s: 60
+  inject_s: 120
+  recover_s: 60
+  settle_s: 150
+param_validated: false
+batch: null
+production: null
+agent_visible_symptom: null
