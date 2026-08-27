@@ -35,7 +35,7 @@ W2 的建库 harness 必须在场景批次之间清理 OpenSearch 的 `otel-logs
 | `otel-logs-2026-08-25` | 2 766 | 1.8 MB |
 | `otel-logs-2026-08-26` | 78 062 | 37.5 MB |
 
-**索引现状（2026-08-27 实测，`obs2card_001542` 的 pre-batch 报告）**：**5 个索引、
+**索引现状（2026-08-26 实测，`obs2card_001542` 的 pre-batch 报告）**：**5 个索引、
 共约 303 MB**：
 
 | 索引 | 文档数 | 大小 |
@@ -114,6 +114,15 @@ WAL 仅 3.6M，`total_replay_duration` **118.97 ms** —— 这不构成对 2G �
 **下次怎么补**：**先**启动监视器（它会以 `status=absent` 轮询等待），**再**重启容器，
 从新实例存在的第一秒开始采样。
 
+**2026-08-27 开机重放（Case A）**：峰值 **407.6 MiB = 19.9% of 2048 MiB** @ 启动后
+27.8 s，稳态 189.0 MiB，`OOMKilled=false`，`RestartCount` 0 → 0，
+`restarted_during_watch=false`，stop_reason=stable。证据
+`artifacts/resource_audit/prom_mem_2026-08-27_boot.csv`。
+
+**结论：保留。** 今早开机 WAL 跨度约 1.5 h，不满足「head 跨度 ≥2h40m 重启峰值 ≤60%」
+条件；已挂自等待探针脚本（`scripts/maintenance/prom_wal_restart_probe.sh`），
+结果落 `artifacts/resource_audit/prom_mem_<date>_walrestart.summary.txt`，读到即裁。
+
 ---
 
 ## O-P2-4　collector receiver 采集间隔是否统一到 15s
@@ -173,6 +182,11 @@ MAC，直到 `tcp_syn_retries=6` 的 127s 建连预算耗尽才报 `ETIMEDOUT`�
 ---
 
 ## O-P2-6　agent 评测观测点：实时（immediate）还是事后（harvest）
+
+**状态：closed（2026-08-26 ET，决策 020）** —— 评测采用**事后快照模式**：
+量产每张卡时落盘证据包五件，agent 与全部基线只读证据包、不查实时系统。
+观测点之争因此收敛为「证据包里放哪个快照」，属证据包设计问题。详见决策 020。
+
 
 **内容**
 决策 016 让 runner 在两个时刻各取一次注入窗快照。**agent 评测时拿到哪一个视角，
@@ -260,7 +274,7 @@ span 时长而不是观测点。
 
 ## O-P2-10　paymentUnreachable 开启后 checkout 行为未改变
 
-**状态：closed（2026-08-27，决策 019）**
+**状态：closed（2026-08-26 ET，决策 019）**
 
 **根因**：VM 开机时容器被 restart policy 同时拉起，`checkout` 比 flagd 的 8013 监听器
 早 5.9 秒启动，其非阻塞的 `openfeature.SetProvider` 首次连接失败后既不报错也不写日志，
@@ -335,7 +349,7 @@ span 时长而不是观测点。
 
 ## O-P2-11　productCatalogFailure 的 targeting 规则使其无法开启
 
-**状态：closed（2026-08-27）** —— `set_flag.sh` 已支持 targeting 型开关：`apply` 改
+**状态：closed（2026-08-26 ET）** —— `set_flag.sh` 已支持 targeting 型开关：`apply` 改
 命中分支的变体（`"if"` 第一个分支 `off` → `on`），规则条件与 `defaultVariant` 均不动；
 `probe` 按开关附带评估上下文查 OFREP。实测注入生效：`GetProduct` 355 条 / 27 报错
 （7.6%），撤除后归零。**未改测试床任何文件** —— `demo.flagd.json` 只在注入窗内被改，
@@ -372,7 +386,10 @@ flagd 中 targeting 优先于 `defaultVariant`，所以 `set_flag.sh` 改 `defau
 
 ## O-P2-12　paymentUnreachable 的症状落点与「客户端侧变体」假设不符
 
-**状态：open（2026-08-27）—— 待裁决是否按标准 misconfig 判据入卡**
+**状态：关（2026-08-26 ET）** —— 按标准 misconfig 判据入卡，ground truth
+`(checkout, misconfig)`、难度高。「客户端侧变体」假设已证伪：症状在目标自有 server span 上，
+独特之处是**下游边消失 + 下游零流量**。结论见 [flag_catalog.md](flag_catalog.md)
+paymentUnreachable 条目与 [fingerprints.md](fingerprints.md)「下游边消失形态」。
 
 **内容**
 决策 019 修掉开机竞态后，`paymentUnreachable` 的注入**确实生效了**
@@ -409,7 +426,9 @@ flagd 中 targeting 优先于 `defaultVariant`，所以 `set_flag.sh` 改 `defau
 
 ## O-P2-13　misconfig 阈值公式对 targeting 型开关不适用
 
-**状态：open（2026-08-27）**
+**状态：关（2026-08-26 ET）** —— targeting 型开关的阈值以**实测生效比例 r** 计算，
+不取 `ratio=1.0`。`productCatalogFailure` 入卡：r = 7.6%、阈值 14、实测 27 通过。
+apply 语义见 [fault_schema.md](fault_schema.md) §5「targeting 型开关的 apply 语义」。
 
 **内容**
 §5 的 misconfig 阈值 `N = max(2, ⌈0.5 × ratio × calls⌉)` 里，`ratio` 对 `on`/`off` 型开关

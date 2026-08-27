@@ -211,3 +211,30 @@ watcher 在手动重启**之前**取到的两个采样，对开机实例
 
 **先**启动 `scripts/maintenance/prom_mem_watch.sh` **再**重启容器 —— 它会以
 `status=absent` 轮询等待，因此能采到新实例的第一秒。
+
+
+---
+
+## 2026-08-27 开机重放（Case A）
+
+今早 VM 冷启动时由 `wakeup.sh --watch-prometheus` 在起床命令**之前**挂上监视器，
+因此采到了新实例存在的第一秒 —— 这是 2026-08-26 那次 Case B 缺的东西。
+
+| 项 | 值 |
+| --- | --- |
+| WAL 跨度 | 约 **1.5 h**（前一实例 `StartedAt 2026-08-26T22:37:25Z`，本次 `2026-08-27T16:14:23Z`） |
+| 峰值 | **407.6 MiB**，启动后 **27.8 s** |
+| 峰值占限额 | **19.9%**（限额 2048 MiB） |
+| 稳态 | 189.0 MiB |
+| OOMKilled | **false** |
+| RestartCount | 0 → 0 |
+| `restarted_during_watch` | false |
+| stop_reason | stable |
+| 证据 | `artifacts/resource_audit/prom_mem_2026-08-27_boot.csv`、`…csv.summary.txt` |
+
+对照 2026-08-26 的 Case B（3.6M WAL、重放 118.97 ms、峰值 88.0 MiB / 4.3%）：
+这次 WAL 跨度大得多，峰值也高了 4.6 倍，但仍只用掉限额的 **19.9%**。
+
+**O-P2-3 仍保留** —— 1.5 h 跨度不满足关闭条件 (b) 要求的 **≥ 2h40m**。
+自等待探针 `scripts/maintenance/prom_wal_restart_probe.sh` 已挂上，会在 head 跨度
+达标时自动抢锁重启一次并落 `prom_mem_<date>_walrestart.summary.txt`。

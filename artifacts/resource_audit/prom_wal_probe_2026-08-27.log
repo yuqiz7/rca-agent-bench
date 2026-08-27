@@ -1,0 +1,5 @@
+2026-08-27T16:57:00Z probe start: min_span=9600s poll=30s prom=http://localhost:9090 lock=/home/joezhang2175/projects/p2-rca/scripts/state/runner.lock
+2026-08-27T16:57:00Z span=6125s status=waiting need=9600s
+2026-08-27T16:57:03Z span=6127s status=waiting need=999999s
+2026-08-27T16:57:13Z span=6138s status=waiting need=999999s
+2026-08-27T16:57:30Z span=6155s status=waiting need=9600s

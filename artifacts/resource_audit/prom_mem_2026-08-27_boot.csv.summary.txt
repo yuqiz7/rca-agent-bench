@@ -1,0 +1,11 @@
+peak_mib=407.6
+peak_at_s=27.8
+steady_mib=189.0
+limit_mib=2048.0
+peak_pct_of_limit=19.9
+oom_killed=false
+restart_count_first=0
+restart_count_last=0
+restarted_during_watch=false
+stop_reason=stable
+samples=26

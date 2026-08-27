@@ -214,6 +214,20 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 `t_revert+6.48s` 与 `t_revert+12.42s` 结束）。从 `t_revert` 起算会把尾巴算进来，
 逼着把 N 抬高到尾巴之上，白白牺牲 symptom 的灵敏度。
 
+### targeting 型开关的 apply 语义（决策 018 附注，2026-08-27 ET 补）
+
+`demo.flagd.json` 里部分开关带 `targeting` 规则，而 flagd 中 **targeting 的优先级高于
+`defaultVariant`**。对这类开关：
+
+- `set_flag` 的 `apply` **不改 `defaultVariant`**，改的是 **`"if"` 命中分支的变体**
+  （`off` → `on`），规则条件保持不动；`revert` 照旧从备份整体恢复；
+- `probe` 查 OFREP 时**必须带上评估上下文**（`productCatalogFailure` 用
+  `{"product_id":"OLJCESPC7Z"}`），否则查到的是**未命中分支**的默认值，
+  会把已生效的注入误判成未生效；
+- **生效比例 `r` 由目标服务实际请求中命中分支的占比决定**，不是 1.0。
+  阈值必须以**实测 r** 计算 —— `productCatalogFailure` 实测 r = 7.6%，
+  按 `ratio=1.0` 算会得出 `N=178` 而把正常注入判成失败。
+
 **`in_flight_at_revert`**（决策 016 新增指纹字段）= `harvest` 条数 − `immediate` 条数，
 即注入期拨出、撤除后才结束的调用数。`blackhole` 该值等于被卡住的全部请求
 （实测 59），`crash` 与 `latency` 接近 0（实测 1 与 3）。

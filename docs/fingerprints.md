@@ -154,6 +154,26 @@ p50 分别为 **65 786 ms / 1 529 ms / 0.51 ms**，错误文字两种（**`ETIME
 —— **两轮反向偏移，确认为小样本抖动**（基线样本仅 8–18 条、绝对值全在 1–4ms 量级），
 不是注入误伤。真正的证据是 `valkey-cart`：三轮样本 105–218 条，偏移始终在 ±0.1ms 内。
 
+### misconfig 变体：下游边消失形态（2026-08-27 ET 定稿）
+
+代表卡：`set_flag checkout paymentUnreachable=on`。三条特征：
+
+1. **目标自有 span 报错** —— `checkout` 的 `PlaceOrder` 8/26 实测 **11/11 报错**，
+   错误原文 `... lookup badAddress on 127.0.0.11:53: server misbehaving`；
+2. **目标 → 下游的调用边在 trace 中整条消失** —— 不是报错、是**不存在**。
+   gRPC 对 `badAddress:50051` 的名字解析在建连之前就失败，不产生任何已完成的
+   client span，`badAddress` 也不作为 peer 出现；注入期 `checkout` 的
+   `client_by_peer` 里 `payment` 干净消失；
+3. **下游服务健康、零流量** —— `payment` 自有 server span **0 条**、容器 `running`、
+   `RestartCount=0`。
+
+**与标准 misconfig 形态的区别**：标准形态是「调用方全绿、目标自有 span 报错」；
+本形态在此之上**多了一条边消失 + 下游零流量**。agent 看到「checkout 报错、payment
+一条请求都没收到」，很容易误判成下游故障（payment 挂了 / 网络不通），
+而真因是 checkout 自己的配置被改。**因此难度标高。**
+
+---
+
 ### crash 错误形态 8/23 vs 8/24（结论待确认）
 
 同一原语、同一靶子，四轮测到**三种形态**：

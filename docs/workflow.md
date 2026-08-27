@@ -220,6 +220,49 @@ scripts/out/<batch-id>/
 | 串行保证 | `scripts/state/runner.lock` 存在即拒绝启动；`state/` 有任何原语 state 文件也拒绝启动 |
 | 失败规则 | `injected` 失败 → 立即 revert、写汇总、中止批次；`recovered` 失败 → 标红继续，连续 2 次中止；原语命令非零退出 → revert 后中止 |
 
+## 7.5 WAL 重放峰值探针
+
+**用途**：采集 O-P2-3 的证据 (b) —— 「head 跨度 ≥ 2h40m 时重启，峰值 ≤ 限额 60%」。
+证据 (a)（开机重放不 OOM）已由 2026-08-27 的 Case A 满足（峰值 407.6 MiB = 19.9%）。
+
+**启动**：
+
+```
+nohup ./scripts/maintenance/prom_wal_restart_probe.sh > /tmp/prom_wal_probe.out 2>&1 &
+```
+
+参数：`--min-span-sec`（默认 9600 = 2h40m）、`--poll-sec`（30）、
+`--ready-cap-sec`（300）、`--settle-sec`（60）。
+
+**行为**：每 30 秒读一次 Prometheus 的 head 跨度，写一行到轮询日志；跨度达标后抢锁、
+后台挂 `prom_mem_watch.sh`、**只重启 `prometheus` 一个容器**（不碰 flagd 与 flag 消费方）、
+轮询 `/-/ready`、稳定后算峰值并写摘要，成功或失败都退出，**不重复重启**。
+
+**结果文件**：
+
+| 文件 | 内容 |
+| --- | --- |
+| `artifacts/resource_audit/prom_wal_probe_<date>.log` | 每次轮询的跨度与状态 |
+| `artifacts/resource_audit/prom_mem_<date>_walrestart.csv` | 重启期间的内存采样 |
+| `artifacts/resource_audit/prom_mem_<date>_walrestart.summary.txt` | 触发跨度、重启时刻（UTC/ET）、ready 耗时、峰值 MiB / 限额 / 百分比、OOMKilled、RestartCount 前后、verdict |
+
+`verdict=PASS` 的条件：峰值 ≤ 60% **且** `OOMKilled=false` **且** ready 未超 cap。
+
+**与 runner 锁的关系**：探针在重启前抢 `scripts/state/runner.lock` —— 与
+`run_batch.py` **同一把锁**，因此探针重启期间批次进不来，批次运行期间探针也不会重启。
+
+> **实现注记**：`run_batch.py` 的锁是**文件存在性检查**（`os.path.exists` 后
+> `open(...,"w")`），不是 `flock`。探针两者都做：先检查文件存在、再对同一文件加
+> `flock -n`、并在持有期间创建该文件，使 `run_batch.py` 的存在性检查也能挡住它。
+> 两种机制不同，因此存在一个很小的 TOCTOU 窗口 —— 单用户主机上、探针 30 秒轮询的
+> 前提下可接受，但若将来 runner 改成真正的 `flock`，两边应统一。
+
+**指标来源注记**：`prometheus_tsdb_head_min_time` / `_max_time` **只在 Prometheus 自己的
+`/metrics` 端点上**，查询 API 取不到 —— 本部署没有任何 `scrape_configs`，
+Prometheus 不抓自己（决策 013：指标由 collector 经 OTLP 推入）。探针因此直接读 `/metrics`。
+
+---
+
 ## 8 待确认项
 
 | 项 | 现状 | 需要什么才能定 |
