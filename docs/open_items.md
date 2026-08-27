@@ -35,6 +35,20 @@ W2 的建库 harness 必须在场景批次之间清理 OpenSearch 的 `otel-logs
 | `otel-logs-2026-08-25` | 2 766 | 1.8 MB |
 | `otel-logs-2026-08-26` | 78 062 | 37.5 MB |
 
+**索引现状（2026-08-27 实测，`obs2card_001542` 的 pre-batch 报告）**：**5 个索引、
+共约 303 MB**：
+
+| 索引 | 文档数 | 大小 |
+| --- | ---: | ---: |
+| `otel-logs-2026-08-23` | 44 236 | 22.3 MB |
+| `otel-logs-2026-08-24` | 467 119 | 213.6 MB |
+| `otel-logs-2026-08-25` | 2 766 | 1.8 MB |
+| `otel-logs-2026-08-26` | 112 776 | 54.5 MB |
+| `otel-logs-2026-08-27` | 20 896 | 11.1 MB |
+
+08-26 一天最终 54.5 MB（跑了两个观察批 + 诊断实验），08-27 开始 15 分钟已 11.1 MB。
+按"跑满批次的一天约 200 MB"估，4G 限额仍可支撑约 20 个满负荷批次日。**未删任何索引。**
+
 **日增估算**：两日之间总量由 223 MB 增至约 275 MB，**约 +52 MB/两日 ≈ 26 MB/日**，
 但日增极不均匀 —— 取决于当天跑了多少批次（08-24 跑满批次 213.6 MB，08-25 几乎没跑
 1.8 MB）。按"跑满批次的一天约 200 MB"估，`opensearch` 的 4G 限额可支撑约 20 个满负荷
@@ -321,7 +335,13 @@ span 时长而不是观测点。
 
 ## O-P2-11　productCatalogFailure 的 targeting 规则使其无法开启
 
-**状态：open（2026-08-26）**
+**状态：closed（2026-08-27）** —— `set_flag.sh` 已支持 targeting 型开关：`apply` 改
+命中分支的变体（`"if"` 第一个分支 `off` → `on`），规则条件与 `defaultVariant` 均不动；
+`probe` 按开关附带评估上下文查 OFREP。实测注入生效：`GetProduct` 355 条 / 27 报错
+（7.6%），撤除后归零。**未改测试床任何文件** —— `demo.flagd.json` 只在注入窗内被改，
+撤除即从备份整体恢复。该卡的入库问题另见 O-P2-13。
+
+以下为原始记录。
 
 **内容**
 `demo.flagd.json` 里该 flag 的 targeting 规则**两个分支都返回 `off`**：
@@ -346,3 +366,68 @@ flagd 中 targeting 优先于 `defaultVariant`，所以 `set_flag.sh` 改 `defau
 (b) 走 `set_flag.sh` 之外的第二条通道（改 targeting 而非 defaultVariant），
     但那让原语的语义从"换变体"扩展到"改规则"；
 (c) 放弃该 flag。**需用户裁决**。
+
+
+---
+
+## O-P2-12　paymentUnreachable 的症状落点与「客户端侧变体」假设不符
+
+**状态：open（2026-08-27）—— 待裁决是否按标准 misconfig 判据入卡**
+
+**内容**
+决策 019 修掉开机竞态后，`paymentUnreachable` 的注入**确实生效了**
+（`obs2card_001542`：`PlaceOrder` 11 条 / **11 报错**，错误原文
+`... lookup badAddress on 127.0.0.11:53: server misbehaving`）。但它**不满足**
+为它设计的「客户端侧判据」第一条。
+
+**为什么不满足**
+判据要求「`checkout → payment` 边的报错数 ≥ N（=5）」，实测该边的报错数是 **0** ——
+因为**整条边在注入期不存在**。gRPC 对 `badAddress:50051` 的名字解析在建连之前就失败，
+不产生任何已完成的 client span；`badAddress` 也不会作为 peer 出现在
+`client_by_peer` 里。注入期 `checkout` 的 peer 只剩
+`172.18.0.24`/`172.18.0.4`/`172.18.0.5`/`shipping`，payment 干净消失。
+
+**症状实际在哪**
+在 `checkout` **自有 server span** 上（11/11 报错），与其余四个 misconfig flag **落点相同**。
+它真正的独特之处是另一回事：**下游边整个消失，而下游服务本身健康且零流量** ——
+`payment` 自有 server span **0 条**、容器 `running`、`RestartCount=0`。
+这依然是一张有价值的「症状误导」卡（agent 看到 checkout 报错、payment 完全正常），
+只是识别特征是「边消失」而不是「client span 报错」。
+
+**按标准判据能过**
+§5 现行 misconfig 判据：自有 server span 报错 ≥ `max(2, ⌈0.5×ratio×calls⌉)`
+= `max(2, ⌈0.5×1.0×11⌉)` = **6**，实测 **11 ≥ 6 通过**；基线自有报错 0，恢复窗 0。
+
+**待裁决**
+(a) 按标准 misconfig 判据入卡，ground truth 记 `(checkout, misconfig, flag=paymentUnreachable)`，
+    快照取 `harvest`（`in_flight_at_revert = 0`，两快照数字完全相同）；
+(b) 保留「客户端侧变体」这条线，但把判据从「client span 报错数」改成
+    「下游边消失 + 下游服务零流量且健康」，并在 runner 里实现该分支；
+(c) 放弃该卡。**需用户裁决。**
+
+---
+
+## O-P2-13　misconfig 阈值公式对 targeting 型开关不适用
+
+**状态：open（2026-08-27）**
+
+**内容**
+§5 的 misconfig 阈值 `N = max(2, ⌈0.5 × ratio × calls⌉)` 里，`ratio` 对 `on`/`off` 型开关
+一律取 **1.0**。这对 `productCatalogFailure` 不成立 —— 它只让**一个特定商品**
+（`OLJCESPC7Z`）的 `GetProduct` 失败，实测生效比例 **r = 27/355 = 7.6%**。
+
+**后果**
+按 `ratio=1.0` 算得 `N = max(2, ⌈0.5×1.0×355⌉)` = **178**，实测 27 远不及，
+卡被判成注入失败 —— 但注入其实完全正常（基线 0 报错、注入期 27 报错、恢复窗 0 报错，
+调用方同步报错 27 条）。
+
+**按真实比例重算仍差一条**
+`ratio = 0.076` → `N = max(2, ⌈0.5×0.076×355⌉)` = **14**，实测 **27 ≥ 14 通过**，
+但入卡还要求 ≥ 2 倍阈值，**27 < 28，差一条报错**。
+
+**待议**
+(a) 给 targeting 型开关引入「实测生效比例」作为 `ratio`，需要一次预跑来测 r；
+(b) 该 flag 的 r 由压测器请求 `OLJCESPC7Z` 的频率决定，不是常量，
+    换 `LOAD_GENERATOR_VUS` 或 k6 脚本就会变，作为阈值输入不稳定；
+(c) 拉长 `observe_s` 以增加样本，让 27 这个绝对数上去 —— 但那推翻决策 012。
+**需用户裁决。**

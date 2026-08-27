@@ -85,25 +85,30 @@
 | variant | `off` / `on` |
 | 实际生效比例 | **恒为 0** —— 见下方实测 |
 
-**2026-08-26 观察批实测：无法开启，不入卡。**
+**2026-08-26 首次观察批：无法开启** —— targeting 规则两分支都是 `off`，而 flagd 中
+targeting 优先于 `defaultVariant`。**2026-08-27 已由 `set_flag.sh` 支持**：对带
+`targeting` 的开关，`apply` 改的是**命中分支的变体**（`"if"` 的第一个分支 `off` → `on`），
+规则条件不动，`defaultVariant` 不改；`probe` 按开关附带评估上下文查 OFREP
+（`productCatalogFailure` 用 `{"product_id":"OLJCESPC7Z"}`，取自
+`product-catalog/main.go:420` 传入的 `product_id`）。
 
-`demo.flagd.json` 里该 flag 的 targeting 规则**两个分支都返回 `off`**：
+**2026-08-27 重跑（`obs2card_001542`，入库档，observe-only）：注入生效，但按 2 倍阈值不入卡。**
 
-```json
-"targeting": { "if": [ { "==": [ { "var": "product_id" }, "OLJCESPC7Z" ] }, "off", "off" ] }
-```
+| 项 | 基线（60s） | 注入期（120s，harvest） | 恢复窗（30s） |
+| --- | --- | --- | --- |
+| `GetProduct` | 158 条 / **0 报错** | **355 条 / 27 报错** | 75 条 / **0 报错** |
+| `product-catalog` 自有 server span | 196 / 0 | 433 / **27** | 94 / 0 |
+| `frontend → product-catalog` | 162 / 0 | 355 / **27**（调用方同步报错） | 80 / 0 |
+| `in_flight_at_revert` | — | 0 | — |
 
-flagd 中 targeting 的优先级高于 `defaultVariant`，因此把 `defaultVariant` 改成 `on`
-**不会改变求值结果**。OFREP 实测（带与不带 `product_id` 上下文各一次）均返回
-`{"value":false,"variant":"off","reason":"TARGETING_MATCH"}`。
+**实际生效比例 r = 27 / 355 = 7.6%** —— 即请求 `OLJCESPC7Z` 这一个商品的调用占
+`GetProduct` 全部调用的比例。
 
-`set_flag.sh apply` 因此正确失败并回滚：
-`error: flagd did not pick up 'on' within 30s (got 'off'); rolling back`，
-观察批在该周期中止。
-
-**判定：不入卡。** 要启用必须改 `demo.flagd.json` 的 targeting 规则本身，
-而那是测试床上游文件（决策 001 的复现锚点），本步只读不改。
-见 [open_items.md](open_items.md) O-P2-11。
+**判定：不入卡（差一条）。** §5 的 misconfig 阈值公式把 `on`/`off` 型开关的 `ratio`
+取作 1.0，算得 `N = max(2, ⌈0.5×1.0×355⌉)` = **178**，实测 27 远不及 —— 但这是
+**阈值模型不适用于 targeting 型开关**，不是注入没生效。按真实比例 r = 0.076 重算：
+`N = max(2, ⌈0.5×0.076×355⌉)` = **14**，实测 **27 ≥ 14 通过**，但 `27 < 2×14 = 28`，
+**差一条报错未达 2 倍门槛**。见 [open_items.md](open_items.md) O-P2-13。
 
 ### `paymentUnreachable` → `checkout`（注意靶子是 checkout 不是 payment）
 
@@ -120,33 +125,35 @@ flagd 中 targeting 的优先级高于 `defaultVariant`，因此把 `defaultVari
 > **这一项的症状落点与其余四项不同**，`self_edges.server_by_method` 上可能看不到，
 > 要看 `self_edges.client_by_peer`。
 
-**2026-08-26 观察批实测（`obs2card_233337`，入库档 60/120/60，observe-only）：不入卡。**
+**2026-08-26 首次观察批（`obs2card_233337`）：注入未生效** —— 根因是开机竞态
+（checkout 早于 flagd 监听器 5.9 秒启动），已由决策 019 修掉，留档见 O-P2-10。
 
-| 项 | 实测 |
-| --- | --- |
-| `set_flag probe` | `injected=true` —— flagd 的 OFREP 确实返回 `on` |
-| `checkout → payment`（`client_by_peer=172.18.0.18`） | 注入期 **8 条调用、0 报错**（基线 6 条 / 0 报错） |
-| `checkout` 自有 server span（`PlaceOrder`） | 注入期 **8 条、0 报错**（基线 6 条 / 0 报错） |
-| `frontend` 自有 server span | 注入期 996 条、**0 报错** |
-| `payment` 自有 server span | 注入期 **8 条、0 报错** |
-| `payment` 容器 | `Status=running`、`RestartCount=0` |
-| `badAddress` 出现次数（checkout 全量日志） | **0** |
-| `in_flight_at_revert` | 0 |
-| 基线速率 / 阈值 | 6/60s = 0.1/s → `N = max(5, ⌈0.25×0.1×120⌉)` = **5** |
+**2026-08-27 重跑（`obs2card_001542`，入库档 60/120/60，observe-only）：注入生效，但按客户端侧判据不入卡。**
 
-**判定：不入卡。** 判据第一条（client 侧报错数 ≥ N）不满足 —— 实测 **0 < 5**。
-另两条反而都满足（`payment` 容器 running、`payment` 自有 span 报错 0），
-但那是因为**注入压根没有生效**：checkout 全程正常向真实的 payment 收费，
-`badAddress` 从未出现。
+| 项 | 基线（60s） | 注入期（120s，harvest） | 恢复窗（30s） |
+| --- | --- | --- | --- |
+| `checkout` 自有 `PlaceOrder` | 2 条 / **0 报错** | **11 条 / 11 报错** | 3 条 / 0 报错 |
+| `frontend → checkout` | 2 条 / 0 报错 | **11 条 / 11 报错** | 3 条 / 0 报错 |
+| `checkout → payment` 边 | 2 条 / 0 报错 | **该边整个消失** | 3 条 / 0 报错 |
+| `payment` 自有 server span | — | **0 条 / 0 报错**（一条请求都没收到） | — |
+| `payment` 容器 | — | `running`、`RestartCount=0` | — |
+| `in_flight_at_revert` | — | **0** | — |
 
-**根因已于 2026-08-26 查明**：开机时 `checkout` 比 flagd 的 8013 监听器早 5.9 秒启动，
-其非阻塞的 `openfeature.SetProvider` 首次连接失败后该进程实例一直用默认值。
-**重启 checkout 后注入立即生效**（`PlaceOrder` 10 条 / 5 报错），运行时改值两个方向
-都正常。详见 [open_items.md](open_items.md) O-P2-10（含取证、B1/B2 实验与修法建议）。
+错误原文：
+`failed to charge card: could not charge the card: rpc error: code = Unavailable desc = dns: A record lookup error: lookup badAddress on 127.0.0.11:53: server misbehaving`
 
----
+基线速率 2/60s = 0.0333/s → `N = max(5, ⌈0.25×0.0333×120⌉)` = **5**。
 
-## mem_leak 两项
+**判定：按客户端侧判据不入卡** —— 第一条「client 侧报错数 ≥ N」不满足：注入期
+`checkout → payment` 这条边的报错数是 **0**，因为**整条边不存在**。gRPC 名字解析在
+建连前就失败，不产生任何已完成的 client span，`badAddress` 也不会作为 peer 出现。
+
+**但这条判据的前提本身被证伪了。** 该 flag 的症状**不在**调用方 client span 上，
+而在 `checkout` **自有 server span** 上（11/11 报错），与其余四个 misconfig flag 落点相同。
+它的独特之处是另一回事：**下游边整个消失，而下游服务本身健康且零流量**。
+按 §5 现行 misconfig 判据（自有 server span 报错 ≥ `max(2, ⌈0.5×ratio×calls⌉)`
+= `max(2, ⌈0.5×1.0×11⌉)` = **6**）：实测 **11 ≥ 6，通过**。
+是否据此入卡需裁决，见 [open_items.md](open_items.md) O-P2-12。
 
 ### `emailMemoryLeak` → `email`
 

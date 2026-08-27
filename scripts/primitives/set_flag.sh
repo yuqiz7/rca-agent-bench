@@ -16,6 +16,13 @@
 # 求值接口用 OFREP（容器 8016，宿主机端口由 docker port 动态取，因为 compose
 # 未钉死该端口）：POST /ofrep/v1/evaluate/flags/<key>
 #
+# targeting 型开关（决策 018 附注 / O-P2-11）：demo.flagd.json 里有些开关带
+# "targeting" 规则，而 flagd 中 targeting 的优先级**高于** defaultVariant ——
+# 改 defaultVariant 对它们完全无效。productCatalogFailure 出厂时两个分支都是
+# "off"（`"if": [<cond>, "off", "off"]`），所以怎么改 defaultVariant 都评估为 false。
+# 对这类开关，apply 改的是**命中分支的变体**（第一个分支 off -> on），规则条件不动；
+# revert 照旧从备份整体恢复。
+#
 # 运行在宿主机，不进容器、不需要 nsenter（flagd 走网络接口）。
 
 set -euo pipefail
@@ -36,6 +43,26 @@ flag="${spec%%=*}"; variant="${spec#*=}"
 
 # flag -> 影响服务映射表。来源：2026-08-24 对 src/ 各服务代码中 flag 判断处的
 # 逐个定位（见 decisions.md 018）。apply 时校验，防止把 flag 记到错的靶子上。
+# 开关 -> 求值上下文。targeting 规则按上下文变量做判断，probe 必须带上同样的
+# 上下文才能看到真实结果。来源：各服务代码里传给 flag 求值的 EvaluationContext
+# （productCatalogFailure 见 product-catalog/main.go:420，传的是 product_id=请求的商品 ID；
+# 规则里写死的目标 ID 见 demo.flagd.json 的 targeting 条件）。
+flag_context() {
+  case "$1" in
+    productCatalogFailure) echo '{"product_id":"OLJCESPC7Z"}' ;;
+    *)                     echo '{}' ;;
+  esac
+}
+
+# 该开关是否带 targeting 规则
+flag_has_targeting() {
+  python3 -c "
+import json,sys
+d=json.load(open('$FLAG_JSON'))
+sys.exit(0 if 'targeting' in d['flags'].get('$1',{}) else 1)
+"
+}
+
 flag_service() {
   case "$1" in
     adFailure|adHighCpu|adManualGc)            echo ad ;;
@@ -71,8 +98,9 @@ ofrep_base() {
 }
 
 current_variant() {
+  local ctx; ctx="$(flag_context "$flag")"
   curl -s --max-time 10 -X POST "$(ofrep_base)/ofrep/v1/evaluate/flags/$flag" \
-       -H 'Content-Type: application/json' -d '{"context":{}}' \
+       -H 'Content-Type: application/json' -d "{\"context\":$ctx}" \
     | python3 -c 'import sys,json;print(json.load(sys.stdin).get("variant",""))' 2>/dev/null || echo ""
 }
 
@@ -103,12 +131,25 @@ if '$variant' not in d['flags']['$flag']['variants']:
 " || exit 1
     bak="$STATE_DIR/$svc.flag.bak.json"
     cp "$FLAG_JSON" "$bak"
-    python3 -c "
+    if flag_has_targeting "$flag"; then
+      # targeting 优先于 defaultVariant：改命中分支的变体，规则条件不动
+      python3 -c "
+import json,sys
+p='$FLAG_JSON'; d=json.load(open(p))
+t=d['flags']['$flag']['targeting']
+if 'if' not in t or len(t['if']) < 2:
+    sys.exit('unsupported targeting shape for $flag: expected an \'if\' with a match branch')
+t['if'][1]='$variant'          # 命中分支 -> 目标变体；条件与未命中分支保持原样
+json.dump(d,open(p,'w'),indent=2)
+" || { rm -f "$bak"; exit 1; }
+    else
+      python3 -c "
 import json
 p='$FLAG_JSON'; d=json.load(open(p))
 d['flags']['$flag']['defaultVariant']='$variant'
 json.dump(d,open(p,'w'),indent=2)
 "
+    fi
     got="$(wait_variant "$variant")" || {
       echo "error: flagd did not pick up '$variant' within 30s (got '$got'); rolling back" >&2
       cp "$bak" "$FLAG_JSON"; rm -f "$bak"; exit 1; }
