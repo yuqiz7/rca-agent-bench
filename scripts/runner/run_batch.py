@@ -558,13 +558,28 @@ def judge_recovered(cls, base, after, param, prom_base=None, after_rate=None, sv
     asec = after["window"]["seconds"] or 1
     brate, arate = bs / bsec, as_ / asec
     span_back = brate > 0 and arate >= brate * RECOVER_SPAN_FRAC
+    arm = "caller_edge"
+    # 「回到基线」和「变哑」是同一个零分母问题的两面：调用方边一条 span 都没有时，
+    # span_back 恒为 false，卡就算完全恢复了也判不过（frontend 实测：symptom 靠靶子侧
+    # 档通过，recovered 却因 brate=0 卡住）。决策 022 的分母换源同样适用于这一档。
+    tgt_brate = (prom_base or {}).get("rate_per_s")
+    if not span_back and brate == 0 and tgt_brate:
+        arm = "target_side"
+        span_back = (after_rate is not None
+                     and after_rate >= tgt_brate * RECOVER_SPAN_FRAC)
     return (not sym_still) and span_back, {
-        "rule": f"symptom false in recover window AND caller span RATE >= baseline rate x {RECOVER_SPAN_FRAC}"
-                " (§5 未给数值判据，此处为 runner 实现，待 ⑤ 定稿回填)",
+        "rule": f"symptom false in recover window AND (caller span RATE >= baseline rate x "
+                f"{RECOVER_SPAN_FRAC}, or -- when there is no caller edge -- the target's own "
+                f"server rate >= its 300s baseline x {RECOVER_SPAN_FRAC}) (§6 / 决策 022)",
+        "arm": arm,
         "symptom_still_true": sym_still, "symptom_detail": sd,
         "baseline_window_s": bsec, "baseline_spans": bs, "baseline_rate_per_s": round(brate, 4),
         "after_window_s": asec, "after_spans": as_, "after_rate_per_s": round(arate, 4),
-        "required_rate_per_s": round(brate * RECOVER_SPAN_FRAC, 4)}
+        "required_rate_per_s": round(brate * RECOVER_SPAN_FRAC, 4),
+        "target_baseline_rate_per_s": tgt_brate,
+        "target_after_rate_per_s": after_rate,
+        "target_required_rate_per_s": (round(tgt_brate * RECOVER_SPAN_FRAC, 6)
+                                       if tgt_brate else None)}
 
 
 # ── 场景卡 -> 周期参数（决策 021）────────────────────────────────────────
