@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/latency-cart-800/metrics.json",
-   "bytes": 184393,
-   "sha256": "d5a31b6514a9ab37c30f5f4c174d365b7eb3db74557bd31c554d12a417be25c6"
+   "bytes": 269018,
+   "sha256": "8ff3e39e2924751e9bd08e7aeddafdef17232bc50c1822fa108b059a86e2f366"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 7,
-   "series": 107
+   "queries": 9,
+   "series": 162
   },
   "traces.json": {
    "spans": 30726,
@@ -82,5 +82,6 @@
    "edge_count": 33,
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
- }
+ },
+ "metrics_refreshed_at": "2026-08-27T21:46:34Z"
 }

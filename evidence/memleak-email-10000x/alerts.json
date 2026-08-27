@@ -1,5 +1,5 @@
 {
- "detected_at": "2026-08-27T20:11:11Z",
+ "detected_at": "2026-08-27T21:46:46Z",
  "window": {
   "start": "2026-08-27T20:05:14Z",
   "end": "2026-08-27T20:07:15Z"
@@ -26,8 +26,11 @@
   "error_rate_jump": "elevated error rate on <service>",
   "traffic_zero": "traffic dropped to zero on <service>",
   "p95_jump": "elevated p95 latency on <service>",
-  "memory_over_line": "memory rising on <service>"
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>"
  },
+ "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
  "alerts": [
   {
    "rule": "p95_jump",
@@ -42,7 +45,11 @@
    },
    "observed": {
     "p95_ms": 390.0,
-    "threshold_ms": 11.6,
+    "delta_ms": 384.2,
+    "ratio": 67.241,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
     "window": {
      "start": "2026-08-27T20:05:14Z",
      "end": "2026-08-27T20:07:15Z"
@@ -67,7 +74,11 @@
    },
    "observed": {
     "p95_ms": 390.0,
-    "threshold_ms": 96.0,
+    "delta_ms": 342.0,
+    "ratio": 8.125,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
     "window": {
      "start": "2026-08-27T20:05:14Z",
      "end": "2026-08-27T20:07:15Z"

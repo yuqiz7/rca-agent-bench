@@ -245,6 +245,28 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 
 候选池按 **100 收 80**。
 
+### `crash` / `blackhole` 的 symptom 判据（2026-08-27 ET 改写，决策 022）
+
+**判据原文**：以下两档**任一成立**即通过。
+
+| 档 | `crash` | `blackhole` |
+| --- | --- | --- |
+| **调用方边档**（原判据） | 调用方报错 span **>** `N = max(5, ⌈0.25 × 基线速率 × inject_s⌉)` | 调用方 span 数 **<** 基线 × **0.1** |
+| **靶子侧档**（新增，两类共用一条） | 靶子**自身作为 server** 的 spanmetrics 请求速率，注入期 **≤ 基线 × 0.1**，**且**基线速率 × `inject_s` **≥ 5** | 同左 |
+
+**基线速率的来源**：Prometheus spanmetrics，`t_inject` 之前 **300 s**，计数器差分。
+**不是** runner 那 60 s 静默窗 —— 60 s 对被调约 2 /min 的靶子期望样本数只有 2，
+实测多次为 **0**，判据分母为零则卡结构上不可能通过（决策 022）。
+取不到系列时回退到 60 s 窗，回退这件事记进 `probes.json` 的 `baseline_rate_source`。
+
+**无 SDK 的靶子**（`valkey-cart` / `astronomy-db`）不产生 server span、没有
+spanmetrics 系列，**只走调用方边档**；靶子侧档对它们记「不适用」，
+与「不通过」在 `probes.json` 里分开记 —— 两者混同就又是一个静默的零分母。
+
+**为什么要两档**：`frontend` 深度为 0，唯一上游 `frontend-proxy` 不产生能与它配对的
+caller span，「从调用方侧看 B 是否变哑」这个问法对它根本不成立；而低流量靶子的
+调用方边在 120 s 窗内可能一条 span 都没有。两种情形都只能看靶子自己。
+
 ### targeting 型开关的 symptom 判据（2026-08-27 ET，O-P2-13）
 
 **判据原文**：被 targeting 的那个业务 id 上，**注入窗内该 id 的自有 server span 中
@@ -396,14 +418,36 @@ spanmetrics 只有 `(service_name, span_kind, span_name)`，**没有调用方/�
 | --- | --- | --- | --- |
 | 1 | 错误率跳升 | 注入期错误数 ≥ `N = max(5, ceil(0.25 × 基线请求速率 × inject_s))` **且** ≥ 2 × 基线错误数（按窗长折算到注入窗） | `elevated error rate on <service>` |
 | 2 | 流量消失（**2026-08-27 修订，依据 [O-P2-15](open_items.md)**） | 基线请求率 > 0 **且** 注入期连续 ≥ 2 个采样点为 0 **且** (a) 注入期平均速率 ≤ 基线速率 × 0.1 **且** (b) 零跨度内预期调用数 = 基线速率 × 零跨度秒数 ≥ 5 | `traffic dropped to zero on <service>` |
-| 3 | 延迟跳升 | 注入期 p95 ≥ 2 × 基线 p95（两侧各取窗内样本的中位数） | `elevated p95 latency on <service>` |
+| 3 | 延迟跳升（**2026-08-27 修订，依据 [O-P2-17](open_items.md)**） | 注入期 p95 ≥ 2 × 基线 p95 **或** Δp95 ≥ **500 ms**（二者满足其一；两侧各取窗内样本的中位数） | `elevated p95 latency on <service>` |
 | 4 | 内存越线 | 容器内存相对基线 **+30 MiB** **且**注入期单调上升（采样抖动容差 0.5 MiB） | `memory rising on <container>` |
+| 5 | **方法级错误率**（2026-08-27 新增，依据 O-P2-17） | 对每个 `(service, operation)`（spanmetrics 的 `span_name` 维度）：注入期错误数 ≥ `N = max(5, ceil(0.25 × 该方法基线速率 × inject_s))` **且** ≥ 2 × 基线错误数（折算到注入窗） | `elevated error rate on <service>/<operation>` |
+| 6 | **实体级集中**（2026-08-27 新增，依据 O-P2-17） | 读 `traces.json`，按白名单里 `demo.<entity>.id` 类标签分组：某 id 值的报错 span **≥ 5** **且**占该 id 全部 span **≥ 50%** | `errors concentrated on <tag>=<value> (<service>)` |
 
 - 规则 1 的 `N` 沿用决策 018 的相对阈值形式：固定值只对高流量靶子成立，
   `email` / `payment` / `checkout` 被调约 4.4/min，120 s 窗内总共才约 9 次调用。
 - 规则 1 / 2 的计数一律走**原始计数器的正增量之和**，不走 `rate()`：
   计数器归零（容器重启）不会变成负数或巨值，且流量骤停在计数器上是"不再前进"，
   比 `rate()[1m]` 把一次硬停摊平到整整一分钟更利落。
+- **规则 3 的绝对档（2026-08-27 修订，依据 O-P2-17）**：只看倍数看不见「给一个本来就慢的
+  服务再加一段固定延迟」。`latency-checkout-800` 过了入库门却一条告警都没有 ——
+  `checkout` 自身 p95 基线 48.0 ms、注入期 48.0 ms，**一点没动**（延迟注在出口，
+  按 sport 过滤，落在调用方边上而不是它自己的 server span 上）。
+  500 ms 的取法：高于本 testbed 上任何服务的采样噪声，又低于最小的注入延迟档（800 ms）。
+  `deviation` 取**倍数**与 **Δ/500** 的较大者 —— 两者都是「相对各自阈值的倍数」，
+  单位一致，排序里可比。
+- **规则 5（方法级错误率，2026-08-27 新增，依据 O-P2-17）**：只作用于一个方法的开关
+  在服务级计数器里会被稀释掉 —— `adFailure` 只让 1/10 的 `GetAds` 失败，
+  `cartFailure` 只作用于占 `cart` 调用 5.7% 的 `EmptyCart`。阈值形式与规则 1 相同，
+  只是速率与错误数都取自 `(service, operation)` 维度
+  （`queries.py` 的 `calls_total_by_operation` / `errors_total_by_operation`）。
+- **规则 6（实体级集中，2026-08-27 新增，依据 O-P2-17）**：targeting 型故障
+  **不会移动任何速率** —— 它让一个实体全错、其余全对，服务级错误数只等于该实体的
+  流量份额。`misconfig-pc-OLJCESPC7Z` 实测 32 条报错对上规则 1 的阈值 102，
+  差得远；按 `demo.product.id` 分组后是 **32 / 32 = 100%**，一眼可见。
+  这是唯一一条读 `traces.json` 而不是 `metrics.json` 的规则，输入是 §9 的标签白名单。
+  `deviation` 是**报错 span 数**（计数，不是倍数）。
+  `traces.json` 缺失或不带标签时返回空 —— **缺输入不算告警**，
+  O-P2-16 之前打的包没有标签，不能因此变成假阳。
 - **规则 2 的两条附加条件（2026-08-27 修订，依据 O-P2-15）**：原规则只看「连续 ≥ 2 个
   采样点为 0」，在 15 s 步长下对被调约 3 /min 的服务是常态而非故障 —— 干净窗口实测
   `payment` / `checkout` / `email` 三个全部误报，且它们注入期的速率与基线几乎没变。
@@ -414,8 +458,9 @@ spanmetrics 只有 `(service_name, span_kind, span_name)`，**没有调用方/�
 - 输出 `alerts` 列表，每条含 `rule` / `service` / `baseline` 值 / `observed` 值 / `window`，
   **按 `deviation` 降序**。空列表记 `no_alert: true` ——
   是明确的"呼机没响"，不是缺字段。
-- **`deviation` 的单位按规则不同**：规则 1 / 3 / 4 是**倍数**（相对基线或相对阈值）；
-  **规则 2 是「预期缺失调用数」= 基线速率 × 零跨度秒数**，一个计数而不是倍数。
+- **`deviation` 的单位按规则不同**：规则 1 / 3 / 4 / 5 是**倍数**（相对基线或相对阈值）；
+  **规则 2 是「预期缺失调用数」= 基线速率 × 零跨度秒数**，**规则 6 是报错 span 数**，
+  两者都是计数而不是倍数。
   改这一条是因为流量真的归零时，「基线速率 ÷ 0」会算出六位数的比值，
   在排序里压过其余所有规则，而那个数字并不说明丢了多少流量。
   每条告警的 `deviation_unit` 字段写明自己的单位。

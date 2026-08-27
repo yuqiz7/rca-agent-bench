@@ -1,0 +1,7 @@
+{
+ "ref": "_shared/topology.json",
+ "sha256": "2c300ead6cd47dd45de7591f219b00a2fc41066db6e49976345588d6369883c3",
+ "generated_at": "2026-08-27T18:51:12Z",
+ "edge_count": 33,
+ "note": "service topology is generated once from a baseline window and shared by every card; this file is a reference plus its hash, the graph itself lives at the path in `ref` (relative to evidence/)"
+}

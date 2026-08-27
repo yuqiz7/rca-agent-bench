@@ -1,5 +1,5 @@
 {
- "detected_at": "2026-08-27T21:21:30Z",
+ "detected_at": "2026-08-27T21:46:47Z",
  "window": {
   "start": "2026-08-27T21:15:34Z",
   "end": "2026-08-27T21:17:35Z"
@@ -26,9 +26,72 @@
   "error_rate_jump": "elevated error rate on <service>",
   "traffic_zero": "traffic dropped to zero on <service>",
   "p95_jump": "elevated p95 latency on <service>",
-  "memory_over_line": "memory rising on <service>"
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>"
  },
- "alerts": [],
- "no_alert": true,
+ "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
+ "alerts": [
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/recommendations",
+   "service": "frontend",
+   "operation": "GET /api/recommendations",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.7097,
+    "window": {
+     "start": "2026-08-27T21:14:32Z",
+     "end": "2026-08-27T21:15:34Z"
+    }
+   },
+   "observed": {
+    "error_count": 42.0,
+    "threshold_N": 22,
+    "window": {
+     "start": "2026-08-27T21:15:34Z",
+     "end": "2026-08-27T21:17:35Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T21:15:34Z",
+    "end": "2026-08-27T21:17:35Z"
+   },
+   "deviation": 42.0
+  },
+  {
+   "rule": "entity_error_concentration",
+   "message": "errors concentrated on demo.product.id=OLJCESPC7Z (product-catalog)",
+   "service": "product-catalog",
+   "tag": "demo.product.id",
+   "value": "OLJCESPC7Z",
+   "baseline": {
+    "note": "entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below",
+    "window": {
+     "start": "2026-08-27T21:14:32Z",
+     "end": "2026-08-27T21:15:34Z"
+    }
+   },
+   "observed": {
+    "spans": 32,
+    "error_spans": 32,
+    "error_frac": 1.0,
+    "threshold_frac": 0.5,
+    "threshold_abs": 5,
+    "window": {
+     "start": "2026-08-27T21:15:34Z",
+     "end": "2026-08-27T21:17:35Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T21:15:34Z",
+    "end": "2026-08-27T21:17:35Z"
+   },
+   "deviation": 32.0,
+   "deviation_unit": "error spans on the entity"
+  }
+ ],
+ "no_alert": false,
  "card_id": "misconfig-pc-OLJCESPC7Z"
 }

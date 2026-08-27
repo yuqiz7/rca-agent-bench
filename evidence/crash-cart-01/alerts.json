@@ -1,5 +1,5 @@
 {
- "detected_at": "2026-08-27T19:29:56Z",
+ "detected_at": "2026-08-27T21:46:46Z",
  "window": {
   "start": "2026-08-27T19:24:03Z",
   "end": "2026-08-27T19:26:04Z"
@@ -26,8 +26,11 @@
   "error_rate_jump": "elevated error rate on <service>",
   "traffic_zero": "traffic dropped to zero on <service>",
   "p95_jump": "elevated p95 latency on <service>",
-  "memory_over_line": "memory rising on <service>"
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>"
  },
+ "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
  "alerts": [
   {
    "rule": "traffic_zero",
@@ -73,7 +76,11 @@
    },
    "observed": {
     "p95_ms": 3491.67,
-    "threshold_ms": 84.55,
+    "delta_ms": 3449.39,
+    "ratio": 82.596,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
     "window": {
      "start": "2026-08-27T19:24:03Z",
      "end": "2026-08-27T19:26:04Z"
@@ -84,6 +91,34 @@
     "end": "2026-08-27T19:26:04Z"
    },
    "deviation": 82.596
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/cart",
+   "service": "frontend",
+   "operation": "GET /api/cart",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 1.0333,
+    "window": {
+     "start": "2026-08-27T19:23:03Z",
+     "end": "2026-08-27T19:24:03Z"
+    }
+   },
+   "observed": {
+    "error_count": 56.0,
+    "threshold_N": 32,
+    "window": {
+     "start": "2026-08-27T19:24:03Z",
+     "end": "2026-08-27T19:26:04Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T19:24:03Z",
+    "end": "2026-08-27T19:26:04Z"
+   },
+   "deviation": 56.0
   },
   {
    "rule": "traffic_zero",
@@ -222,7 +257,11 @@
    },
    "observed": {
     "p95_ms": 5.2,
-    "threshold_ms": 3.8,
+    "delta_ms": 3.3,
+    "ratio": 2.737,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
     "window": {
      "start": "2026-08-27T19:24:03Z",
      "end": "2026-08-27T19:26:04Z"

@@ -5,7 +5,7 @@
    "start": "2026-08-27T19:58:17Z",
    "end": "2026-08-27T20:00:17Z"
   },
-  "detected_at": "2026-08-27T20:04:12Z",
+  "detected_at": "2026-08-27T21:46:46Z",
   "no_alert": false,
   "alerts": [
    {
@@ -21,7 +21,11 @@
     },
     "observed": {
      "p95_ms": 990.0,
-     "threshold_ms": 195.0,
+     "delta_ms": 892.5,
+     "ratio": 10.154,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
      "window": {
       "start": "2026-08-27T19:58:17Z",
       "end": "2026-08-27T20:00:17Z"

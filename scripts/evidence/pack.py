@@ -200,8 +200,10 @@ def pack_metrics(base, t0, t1, windows, out_path):
             continue
         series = {}
         if data.get("status") == "success":
+            gb = q["group_by"]
+            labels = gb if isinstance(gb, list) else [gb]
             for r in data["data"]["result"]:
-                key = r["metric"].get(q["group_by"]) or "?"
+                key = queries.SERIES_SEP.join(r["metric"].get(l) or "?" for l in labels)
                 series[key] = [[float(ts), None if v in ("NaN", "+Inf", "-Inf") else float(v)]
                                for ts, v in r["values"]]
         entry["series"] = {k: series[k] for k in sorted(series)}
@@ -564,16 +566,53 @@ def pack(card_id, t_start, t_inject, t_revert, t_end, out_root=EVIDENCE_ROOT,
     return manifest
 
 
+def refresh_metrics(card_id, out_root=EVIDENCE_ROOT):
+    """Re-query metrics.json for an already-packed card, in place.
+
+    Prometheus keeps its TSDB for days, so a metrics query set added after a card
+    was packed can still be answered for that card's window. Jaeger cannot: it is
+    in-memory with ~30 min of lookback (fault_schema §9), so traces.json is never
+    refreshable and this deliberately does not touch it.
+    """
+    env = load_backends()
+    cdir = os.path.join(out_root, card_id)
+    mpath = os.path.join(cdir, "manifest.json")
+    with open(mpath) as f:
+        manifest = json.load(f)
+    w = manifest["window"]
+    stat = pack_metrics(env["PROM_BASE"], iso_to_dt(w["start"]), iso_to_dt(w["end"]),
+                        manifest["windows"], os.path.join(cdir, "metrics.json"))
+    p = os.path.join(cdir, "metrics.json")
+    for entry in manifest["files"]:
+        if entry["name"] == "metrics.json":
+            entry["bytes"] = os.path.getsize(p)
+            entry["sha256"] = sha256_of(p)
+    manifest["stats"]["metrics.json"] = stat
+    manifest["metrics_refreshed_at"] = iso(datetime.now(timezone.utc))
+    with open(mpath, "w") as f:
+        json.dump(manifest, f, indent=1)
+    return stat
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--card-id", required=True)
-    ap.add_argument("--t-start", required=True, help="cycle t0 (ISO8601)")
-    ap.add_argument("--t-inject", required=True, help="t_apply (ISO8601)")
-    ap.add_argument("--t-revert", required=True, help="t_revert (ISO8601)")
-    ap.add_argument("--t-end", required=True, help="end of the recover window (ISO8601)")
+    ap.add_argument("--refresh-metrics", action="store_true",
+                    help="re-query metrics.json for an already-packed card using "
+                         "the window in its manifest, and update the manifest entry")
+    ap.add_argument("--t-start", help="cycle t0 (ISO8601)")
+    ap.add_argument("--t-inject", help="t_apply (ISO8601)")
+    ap.add_argument("--t-revert", help="t_revert (ISO8601)")
+    ap.add_argument("--t-end", help="end of the recover window (ISO8601)")
     ap.add_argument("--out-root", default=EVIDENCE_ROOT)
     ap.add_argument("--rebuild-topology", action="store_true")
     a = ap.parse_args()
+    if a.refresh_metrics:
+        print(json.dumps(refresh_metrics(a.card_id, a.out_root), indent=1))
+        return 0
+    if not all((a.t_start, a.t_inject, a.t_revert, a.t_end)):
+        ap.error("--t-start/--t-inject/--t-revert/--t-end are required unless "
+                 "--refresh-metrics is given")
     m = pack(a.card_id, iso_to_dt(a.t_start), iso_to_dt(a.t_inject),
              iso_to_dt(a.t_revert), iso_to_dt(a.t_end),
              out_root=a.out_root, rebuild_topology=a.rebuild_topology)

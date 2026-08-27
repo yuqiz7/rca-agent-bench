@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/misconfig-pc-OLJCESPC7Z/metrics.json",
-   "bytes": 191054,
-   "sha256": "c376cfea5ec76fa9d65742b6f2c3ff39afe26488d152d187519b723711602129"
+   "bytes": 281874,
+   "sha256": "63bf7e070bd9e9a9f9fe0cf8ea0d8ee3a972d1d3d56dd3d38a2d521d0f70bdb2"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 7,
-   "series": 111
+   "queries": 9,
+   "series": 170
   },
   "traces.json": {
    "spans": 30668,
@@ -82,5 +82,6 @@
    "edge_count": 33,
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
- }
+ },
+ "metrics_refreshed_at": "2026-08-27T21:46:36Z"
 }

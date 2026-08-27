@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/misconfig-checkout-on/metrics.json",
-   "bytes": 187415,
-   "sha256": "c2fcf5625b8ce06c1eb887c3aa1fb870765b52b597668e1c9b26641c2c97101f"
+   "bytes": 276519,
+   "sha256": "ccab05ca6f19c4e4ca37bcb45b0b31ee8ab9a8e77177325ba112327c560f20ed"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 7,
-   "series": 109
+   "queries": 9,
+   "series": 167
   },
   "traces.json": {
    "spans": 30089,
@@ -82,5 +82,6 @@
    "edge_count": 33,
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
- }
+ },
+ "metrics_refreshed_at": "2026-08-27T21:46:36Z"
 }

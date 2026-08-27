@@ -64,6 +64,25 @@ QUERIES = [
         "promql": f'sum by (service_name) (traces_span_metrics_calls_total{{{SERVER},{ERR}}})',
         "note": "raw counter; detect.py takes error counts from its delta",
     },
+    # ── per service+operation (O-P2-17 rule 5) ───────────────────────────
+    # Service-level counters hide a fault that only touches one method: adFailure
+    # fires on 1/10 of GetAds, cartFailure only on EmptyCart (5.7% of cart calls).
+    # Both passed the production gate and produced zero service-level alerts.
+    # span_name is spanmetrics' operation dimension.
+    {
+        "name": "calls_total_by_operation",
+        "group_by": ["service_name", "span_name"],
+        "unit": "count (cumulative)",
+        "promql": f'sum by (service_name, span_name) (traces_span_metrics_calls_total{{{SERVER}}})',
+        "note": "raw counter per (service, operation); detect.py rule 5 input",
+    },
+    {
+        "name": "errors_total_by_operation",
+        "group_by": ["service_name", "span_name"],
+        "unit": "count (cumulative)",
+        "promql": f'sum by (service_name, span_name) (traces_span_metrics_calls_total{{{SERVER},{ERR}}})',
+        "note": "raw error counter per (service, operation); detect.py rule 5 input",
+    },
     # ── per container ────────────────────────────────────────────────────
     {
         "name": "container_memory_mib",
@@ -82,3 +101,7 @@ QUERIES = [
 ]
 
 BY_NAME = {q["name"]: q for q in QUERIES}
+
+# A query may group by more than one label. metrics.json keys such a series with
+# the label values joined by SERIES_SEP, in the order given by "group_by".
+SERIES_SEP = "|"

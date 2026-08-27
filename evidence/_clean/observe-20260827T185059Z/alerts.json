@@ -1,5 +1,5 @@
 {
- "detected_at": "2026-08-27T18:51:18Z",
+ "detected_at": "2026-08-27T21:45:55Z",
  "window": {
   "start": "2026-08-27T18:41:00Z",
   "end": "2026-08-27T18:43:00Z"
@@ -26,8 +26,11 @@
   "error_rate_jump": "elevated error rate on <service>",
   "traffic_zero": "traffic dropped to zero on <service>",
   "p95_jump": "elevated p95 latency on <service>",
-  "memory_over_line": "memory rising on <service>"
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>"
  },
+ "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
  "alerts": [],
  "no_alert": true,
  "card_id": "observe-20260827T185059Z"

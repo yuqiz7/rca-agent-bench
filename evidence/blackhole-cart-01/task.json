@@ -5,7 +5,7 @@
    "start": "2026-08-27T19:03:42Z",
    "end": "2026-08-27T19:05:42Z"
   },
-  "detected_at": "2026-08-27T19:09:33Z",
+  "detected_at": "2026-08-27T21:46:46Z",
   "no_alert": false,
   "alerts": [
    {
@@ -21,7 +21,11 @@
     },
     "observed": {
      "p95_ms": 2985.71,
-     "threshold_ms": 80.43,
+     "delta_ms": 2945.5,
+     "ratio": 74.247,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
      "window": {
       "start": "2026-08-27T19:03:42Z",
       "end": "2026-08-27T19:05:42Z"
@@ -42,7 +46,11 @@
     },
     "observed": {
      "p95_ms": 3034.21,
-     "threshold_ms": 83.7,
+     "delta_ms": 2992.36,
+     "ratio": 72.504,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
      "window": {
       "start": "2026-08-27T19:03:42Z",
       "end": "2026-08-27T19:05:42Z"

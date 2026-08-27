@@ -49,11 +49,48 @@ production:
     traces.json: 740b24e44e17f35f068532bd68f387293f4329416e1172e9868d053d84dbff08
     config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
     topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
-  alerts: 0
+  alerts: 2
 agent_visible_symptom:
   window:
     start: "2026-08-27T21:15:34Z"
     end: "2026-08-27T21:17:35Z"
-  detected_at: "2026-08-27T21:21:30Z"
-  no_alert: true
-  alerts: []
+  detected_at: "2026-08-27T21:46:47Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on frontend/GET /api/recommendations
+      service: frontend
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.7097
+        window:
+          start: "2026-08-27T21:14:32Z"
+          end: "2026-08-27T21:15:34Z"
+      observed:
+        error_count: 42.0
+        threshold_N: 22
+        window:
+          start: "2026-08-27T21:15:34Z"
+          end: "2026-08-27T21:17:35Z"
+      deviation: 42.0
+    -
+      rule: entity_error_concentration
+      message: errors concentrated on demo.product.id=OLJCESPC7Z (product-catalog)
+      service: product-catalog
+      baseline:
+        note: entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below
+        window:
+          start: "2026-08-27T21:14:32Z"
+          end: "2026-08-27T21:15:34Z"
+      observed:
+        spans: 32
+        error_spans: 32
+        error_frac: 1.0
+        threshold_frac: 0.5
+        threshold_abs: 5
+        window:
+          start: "2026-08-27T21:15:34Z"
+          end: "2026-08-27T21:17:35Z"
+      deviation: 32.0

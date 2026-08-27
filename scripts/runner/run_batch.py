@@ -11,6 +11,7 @@ scripts/runner/run_batch.sh 包 nohup。
 anchors.json（泄漏隔离，见 fault_schema §4 与决策 015）。
 """
 import argparse, csv, fcntl, json, math, os, subprocess, sys, time
+import urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # scripts/
@@ -67,6 +68,24 @@ LATENCY_SHIFT_FRAC = 0.80         # §5: 耗时分布右移 ≥ delay_ms × 0.8
 # §5 未给各类 recovered 的统一数值判据，此处按"symptom 判定为假 + caller span
 # 数回到基线 50% 以上"实现，待 ⑤ 定稿后回填 §5。
 RECOVER_SPAN_FRAC = 0.50
+
+# ── 判据分母（决策 022）────────────────────────────────────────────────────
+# 基线速率与基线 span 数不再取自 runner 那 60 s 静默窗，改从 Prometheus 的
+# spanmetrics 取 t_inject 之前 BASELINE_LOOKBACK_S 秒。60 s 窗对被调约 4 /min 的
+# 靶子采样期望值只有 4 条，实测多次为 **0** —— 判据分母为零，卡结构上不可能通过。
+# 静默期本身不动（周期结构见决策 012），变的只是判据的分母。
+BASELINE_LOOKBACK_S = 300
+
+# crash / blackhole 的靶子侧判据（决策 022）。靶子自身作为 server 的请求速率
+# 注入期塌到基线的 TARGET_RATE_FRAC 以下，且基线速率 × 注入窗秒数 ≥
+# TARGET_MIN_EXPECTED（样本量够，静默才算数 —— 与决策 021 修订里规则 2 的
+# (b) 同一条道理）。
+TARGET_RATE_FRAC = 0.10
+TARGET_MIN_EXPECTED = 5
+
+# 无 SDK 的靶子不产生 server span，也就没有 spanmetrics 系列，只能从调用方边判
+# （决策 018 已为这两个靶子定过同样的口径）。
+NO_SERVER_METRIC_TARGETS = ("valkey-cart", "astronomy-db")
 
 # 批次模式：连续多少张卡过不了探针门就停批（决策 021「首批执行补充」）。
 # 单张失败不停 —— 首批 16 张里 8 张 param_validated=false，个别失败是预期可能。
@@ -139,6 +158,82 @@ FLAG_CLASS = {
     "imageSlowLoad": "misconfig", "intlShippingSlowdown": "misconfig",
     "kafkaQueueProblems": "misconfig",
 }
+
+
+def prom_baseline(svc, t_inject, lookback_s=BASELINE_LOOKBACK_S):
+    """靶子作为 server 的基线请求速率，从 spanmetrics 计数器差分算（决策 022）。
+
+    用计数器差分而不是 rate()：与 three_signals / detect 同一口径，容器重启导致的
+    归零不会变成负数或巨值（决策 013 定的做法）。
+    返回 {"rate_per_s", "calls", "window_s", "samples", "error"}；查不到记 error，
+    调用方据此回退到调用方边判据，不静默当成 0。
+    """
+    env = load_backends()
+    t0 = t_inject - timedelta(seconds=lookback_s)
+    q = ('sum(traces_span_metrics_calls_total{service_name="%s",'
+         'span_kind="SPAN_KIND_SERVER"})' % svc)
+    url = f"{env['PROM_BASE']}/api/v1/query_range?" + urllib.parse.urlencode(
+        {"query": q, "start": t0.timestamp(), "end": t_inject.timestamp(), "step": 15})
+    out = {"promql": q, "window_s": lookback_s, "rate_per_s": None, "calls": None,
+           "samples": 0, "error": None}
+    try:
+        with urllib.request.urlopen(url, timeout=30) as r:
+            data = json.loads(r.read().decode())
+    except Exception as e:                       # noqa: BLE001
+        out["error"] = f"{type(e).__name__}: {e}"
+        return out
+    res = (data.get("data") or {}).get("result") or []
+    if data.get("status") != "success" or not res:
+        out["error"] = "no series in window"
+        return out
+    vals = [(float(ts), float(v)) for ts, v in res[0]["values"]]
+    out["samples"] = len(vals)
+    if len(vals) < 2:
+        out["error"] = f"insufficient samples ({len(vals)})"
+        return out
+    total = 0.0
+    for (_, a), (_, b) in zip(vals, vals[1:]):
+        total += (b - a) if b >= a else b        # 计数器归零
+    span = vals[-1][0] - vals[0][0]
+    out["calls"] = round(total, 2)
+    out["rate_per_s"] = round(total / span, 6) if span > 0 else None
+    return out
+
+
+def prom_rate_in_window(svc, t0, t1):
+    """同一口径，任意窗口的靶子 server 请求速率。"""
+    env = load_backends()
+    q = ('sum(traces_span_metrics_calls_total{service_name="%s",'
+         'span_kind="SPAN_KIND_SERVER"})' % svc)
+    url = f"{env['PROM_BASE']}/api/v1/query_range?" + urllib.parse.urlencode(
+        {"query": q, "start": t0.timestamp(), "end": t1.timestamp(), "step": 15})
+    try:
+        with urllib.request.urlopen(url, timeout=30) as r:
+            data = json.loads(r.read().decode())
+    except Exception:                            # noqa: BLE001
+        return None
+    res = (data.get("data") or {}).get("result") or []
+    if not res:
+        return None
+    vals = [(float(ts), float(v)) for ts, v in res[0]["values"]]
+    if len(vals) < 2:
+        return 0.0
+    total = 0.0
+    for (_, a), (_, b) in zip(vals, vals[1:]):
+        total += (b - a) if b >= a else b
+    span = vals[-1][0] - vals[0][0]
+    return round(total / span, 6) if span > 0 else None
+
+
+def load_backends():
+    env = {}
+    with open(os.path.join(ROOT, "backends.env")) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                env[k.strip()] = v.strip()
+    return env
 
 
 def now(): return datetime.now(timezone.utc)
@@ -286,33 +381,90 @@ def judge_targeting(flag, variant, base, during, context_value):
     }
 
 
-def judge_symptom(cls, base, during, param, context_value=None):
+def target_side_arm(svc, prom_base, inject_rate, inject_s):
+    """crash / blackhole 的靶子侧判据（决策 022）。返回 (pass|None, detail)。
+
+    None = 这一档不适用（无 SDK 靶子没有 server 系列，或 Prometheus 没数），
+    与「判为不通过」不是一回事 —— 调用方一定要能分辨，否则又是一个静默的零分母。
+    """
+    if svc in NO_SERVER_METRIC_TARGETS:
+        return None, {"applicable": False,
+                      "why": f"{svc} has no SDK and no server-kind spanmetrics "
+                             f"series; caller-edge arm only (决策 018 / 022)"}
+    brate = (prom_base or {}).get("rate_per_s")
+    if brate is None:
+        return None, {"applicable": False,
+                      "why": f"no baseline series: {(prom_base or {}).get('error')}"}
+    expected = brate * inject_s
+    if expected < TARGET_MIN_EXPECTED:
+        return None, {"applicable": False, "baseline_rate_per_s": brate,
+                      "expected_calls_in_inject": round(expected, 2),
+                      "min_expected": TARGET_MIN_EXPECTED,
+                      "why": "baseline rate too low for the silence to mean anything"}
+    if inject_rate is None:
+        return None, {"applicable": False, "why": "inject-window rate unavailable"}
+    ceiling = brate * TARGET_RATE_FRAC
+    return (inject_rate <= ceiling), {
+        "applicable": True,
+        "rule": f"target's own server request rate <= baseline x {TARGET_RATE_FRAC} "
+                f"AND baseline_rate x inject_s >= {TARGET_MIN_EXPECTED} (§6 / 决策 022)",
+        "baseline_rate_per_s": brate, "baseline_window_s": (prom_base or {}).get("window_s"),
+        "inject_rate_per_s": inject_rate, "rate_ceiling_per_s": round(ceiling, 6),
+        "expected_calls_in_inject": round(expected, 2)}
+
+
+def judge_symptom(cls, base, during, param, context_value=None,
+                  prom_base=None, inject_rate=None, svc=None):
     """返回 (pass: bool, detail: dict)。base/during 是 three_signals 的 summary。
 
     调用方需按 SYMPTOM_SNAPSHOT[cls] 传入对应的注入窗快照。
     context_value 只对 targeting 型开关有意义（被 targeting 的业务 id）。
+    prom_base / inject_rate 是决策 022 的靶子侧判据输入；不传则只走调用方边。
     """
     bt, dt_ = base["traces"], during["traces"]
-    if cls == "crash":
-        got = dt_.get("caller_error_spans") or 0
+    if cls in ("crash", "blackhole"):
+        inject_s = during["window"]["seconds"]
+        # 分母改用 Prometheus 300s 回看（决策 022）；取不到才退回 60s 静默窗。
         bsec = base["window"]["seconds"] or 1
-        brate = (bt.get("caller_spans_total") or 0) / bsec
-        inject_s = dt_["window"]["seconds"] if "window" in dt_ else during["window"]["seconds"]
-        n = max(CRASH_N_FLOOR, math.ceil(CRASH_N_FRAC * brate * inject_s))
-        return got > n, {
-            "snapshot": SYMPTOM_SNAPSHOT[cls],
-            "rule": f"caller_error_spans > N, N = max({CRASH_N_FLOOR}, "
-                    f"ceil({CRASH_N_FRAC} x baseline_rate x inject_s)) (§5 / 决策 018)",
-            "N": n, "baseline_rate_per_s": round(brate, 4), "inject_s": inject_s,
-            "during_error_spans": got, "baseline_error_spans": bt.get("caller_error_spans")}
-    if cls == "blackhole":
-        b = bt.get("caller_spans_total") or 0
-        d = dt_.get("caller_spans_total") or 0
-        thr = b * BLACKHOLE_SPAN_FRAC
-        return (b > 0 and d < thr), {
-            "snapshot": SYMPTOM_SNAPSHOT[cls],
-            "rule": f"caller_spans_total < baseline x {BLACKHOLE_SPAN_FRAC} (§5)",
-            "baseline_spans": b, "during_spans": d, "threshold": round(thr, 2)}
+        win_rate = (bt.get("caller_spans_total") or 0) / bsec
+        brate = (prom_base or {}).get("rate_per_s")
+        rate_src = "prometheus_300s"
+        if brate is None:
+            brate, rate_src = win_rate, "baseline_window_fallback"
+        tgt_ok, tgt_d = target_side_arm(svc, prom_base, inject_rate, inject_s)
+
+        if cls == "crash":
+            got = dt_.get("caller_error_spans") or 0
+            n = max(CRASH_N_FLOOR, math.ceil(CRASH_N_FRAC * brate * inject_s))
+            caller_ok = got > n
+            detail = {
+                "snapshot": SYMPTOM_SNAPSHOT[cls],
+                "rule": f"EITHER caller_error_spans > N (N = max({CRASH_N_FLOOR}, "
+                        f"ceil({CRASH_N_FRAC} x baseline_rate x inject_s))) "
+                        f"OR the target-side arm (§6 / 决策 022)",
+                "N": n, "baseline_rate_per_s": round(brate, 6),
+                "baseline_rate_source": rate_src,
+                "baseline_rate_from_window": round(win_rate, 6),
+                "inject_s": inject_s,
+                "during_error_spans": got,
+                "baseline_error_spans": bt.get("caller_error_spans"),
+                "caller_arm_pass": caller_ok, "target_arm": tgt_d,
+                "target_arm_pass": tgt_ok}
+        else:
+            b = bt.get("caller_spans_total") or 0
+            d = dt_.get("caller_spans_total") or 0
+            thr = b * BLACKHOLE_SPAN_FRAC
+            caller_ok = (b > 0 and d < thr)
+            detail = {
+                "snapshot": SYMPTOM_SNAPSHOT[cls],
+                "rule": f"EITHER caller_spans_total < baseline x {BLACKHOLE_SPAN_FRAC} "
+                        f"OR the target-side arm (§6 / 决策 022)",
+                "baseline_spans": b, "during_spans": d, "threshold": round(thr, 2),
+                "baseline_rate_per_s": round(brate, 6),
+                "baseline_rate_source": rate_src,
+                "caller_arm_pass": caller_ok, "target_arm": tgt_d,
+                "target_arm_pass": tgt_ok}
+        return (caller_ok or bool(tgt_ok)), detail
     if cls == "misconfig":
         flag, variant, ratio = parse_ratio(param)
         if flag in FLAG_TARGETING_ID_KEY:
@@ -368,7 +520,7 @@ def judge_symptom(cls, base, during, param, context_value=None):
                 "downstream_edges_during": (dt_.get("downstream_edges") or {})}
 
 
-def judge_recovered(cls, base, after, param):
+def judge_recovered(cls, base, after, param, prom_base=None, after_rate=None, svc=None):
     """按**每秒速率**比较，不比原始条数。
 
     基线窗是 pre 秒（入库档 60s），恢复窗是 [t_revert+30s, t_end] 只有 30s ——
@@ -395,7 +547,8 @@ def judge_recovered(cls, base, after, param):
                     "baseline_rate_mib_per_min": br, "after_rate_mib_per_min": ar,
                     "baseline_memory": bm, "after_memory": am}
 
-    sym_still, sd = judge_symptom(cls, base, after, param)
+    sym_still, sd = judge_symptom(cls, base, after, param,
+                                  prom_base=prom_base, inject_rate=after_rate, svc=svc)
     if sym_still is None:
         return None, {"rule": "待定：该类 symptom 规则未定，recovered 同样待定",
                       "symptom_detail": sd}
@@ -643,6 +796,15 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
         sleep_until(t_harvest)
     t_harvest = now()
 
+    # 判据分母：Prometheus spanmetrics，t_apply 前 300s（决策 022）。
+    # 注意查询时刻在 harvest 之后 —— 窗口本身仍是注入前那 300 秒，只是等 span 落库。
+    prom_base = prom_baseline(svc, t_apply)
+    inject_rate = prom_rate_in_window(svc, during_win[0], during_win[1])
+    after_rate = (prom_rate_in_window(svc, after_win[0], after_win[1])
+                  if after_win is not None else None)
+    log(f"cycle {idx} baseline({BASELINE_LOOKBACK_S}s)="
+        f"{prom_base.get('rate_per_s')}/s inject={inject_rate}/s after={after_rate}/s")
+
     base, err = probe_signals(svc, base_win[0], base_win[1], cdir)
     if err:
         return fail(f"baseline probe failed: {err}")
@@ -675,7 +837,9 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
                                "rule": "observe-only: no verdict computed"}
     else:
         sym_ok, sym_d = judge_symptom(cls, base, snap, param,
-                                      context_value=context_value)
+                                      context_value=context_value,
+                                      prom_base=prom_base, inject_rate=inject_rate,
+                                      svc=svc)
     res["symptom"] = sym_ok
     def snap_nums(d):
         t = d["traces"]
@@ -686,7 +850,11 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
     imm_n, harv_n = snap_nums(during_imm), snap_nums(during_harv)
     in_flight = (harv_n["spans"] or 0) - (imm_n["spans"] or 0)
     res["in_flight_at_revert"] = in_flight
-    probes = {"injected": {"pass": res["injected"], "detail": "primitive probe injected=true"},
+    probes = {"baseline_rate": {"source": "prometheus spanmetrics",
+                                "lookback_s": BASELINE_LOOKBACK_S, **prom_base,
+                                "inject_rate_per_s": inject_rate,
+                                "after_rate_per_s": after_rate},
+              "injected": {"pass": res["injected"], "detail": "primitive probe injected=true"},
               "symptom": {"pass": sym_ok, "detail": sym_d},
               "inject_immediate": imm_n,
               "inject_harvest": harv_n,
@@ -699,7 +867,9 @@ def run_cycle(idx, prim, svc, tier, param, batch_dir, settle_s, observe_only=Fal
         res["recovered"] = None
         probes["recovered"] = {"pass": None, "detail": "observe-only: no verdict computed"}
     elif after is not None:
-        rec_ok, rec_d = judge_recovered(cls, base, after, param)
+        rec_ok, rec_d = judge_recovered(cls, base, after, param,
+                                        prom_base=prom_base, after_rate=after_rate,
+                                        svc=svc)
         res["recovered"] = rec_ok
         probes["recovered"] = {"pass": rec_ok, "detail": rec_d}
     else:

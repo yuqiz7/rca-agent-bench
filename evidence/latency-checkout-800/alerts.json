@@ -1,5 +1,5 @@
 {
- "detected_at": "2026-08-27T19:57:17Z",
+ "detected_at": "2026-08-27T21:46:46Z",
  "window": {
   "start": "2026-08-27T19:51:19Z",
   "end": "2026-08-27T19:53:19Z"
@@ -26,8 +26,11 @@
   "error_rate_jump": "elevated error rate on <service>",
   "traffic_zero": "traffic dropped to zero on <service>",
   "p95_jump": "elevated p95 latency on <service>",
-  "memory_over_line": "memory rising on <service>"
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>"
  },
+ "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
  "alerts": [],
  "no_alert": true,
  "card_id": "latency-checkout-800"

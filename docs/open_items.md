@@ -775,7 +775,58 @@ span logs 因此取不到。gRPC 路径的错误消息由 `otel.status_descripti
 
 ## O-P2-17　4 张过门的卡没有任何 agent 可见告警
 
-**状态：open（2026-08-27 ET，首批 16 卡实测发现）**
+**状态：部分关（2026-08-27 ET）—— 检测器已增补三条，4 张里 1 张转为有告警；
+剩 3 张待出库**
+
+**增补（2026-08-27 ET，落 [fault_schema.md](fault_schema.md) §10）**
+
+1. **规则 3 加绝对档**：p95 ≥ 2 × 基线 **或** Δp95 ≥ **500 ms**，
+   `deviation` 取倍数与 Δ/500 的较大者；
+2. **新增规则 5 方法级错误率**：按 `(service, operation)` 判，阈值形式同规则 1
+   （`queries.py` 新增 `calls_total_by_operation` / `errors_total_by_operation`）；
+3. **新增规则 6 实体级集中**：读 `traces.json` 按 `demo.<entity>.id` 分组，
+   某 id 报错 ≥ 5 且占该 id 全部 span ≥ 50%，`deviation` = 报错数。
+
+**复验**
+
+- **干净窗口负对照两份**：`observe-20260827T185059Z`（无标签，验规则 3/5）与
+  `observe-20260827T214612Z`（**带标签**，6 条规则全覆盖，1612/29718 span 带标签）
+  —— **均 0 条告警**。
+- **12 张已打包卡重跑**（先用 `pack.py --refresh-metrics` 补齐新查询；Prometheus
+  留存以天计所以补得到，Jaeger 只有 30 min 回溯所以 `traces.json` 不可重取，
+  规则 6 只对 O-P2-16 之后打的包有效）：
+
+| card_id | 旧 | 新 | 新增的第一条 |
+| --- | ---: | ---: | --- |
+| `blackhole-cart-01` | 6 | 6 | — |
+| `crash-cart-01` | 7 | **8** | `elevated error rate on frontend/GET /api/cart` |
+| `latency-cart-800` | 4 | 4 | — |
+| `latency-checkout-800` | 0 | **0** | — |
+| `latency-email-800` | 1 | 1 | — |
+| `memleak-email-10000x` | 2 | 2 | — |
+| `memleak-email-1000x` | 1 | 1 | — |
+| `misconfig-ad-on` | 0 | **0** | — |
+| `misconfig-cart-75` | 0 | **0** | — |
+| `misconfig-checkout-on` | 1 | **3** | `elevated error rate on frontend/POST /api/checkout` |
+| `misconfig-payment-100` | 3 | **6** | `elevated error rate on frontend/POST /api/checkout` |
+| `misconfig-pc-OLJCESPC7Z` | 0 | **2** | `elevated error rate on frontend/GET /api/recommendations` |
+
+`misconfig-pc-OLJCESPC7Z` 由规则 6 拿下：
+`errors concentrated on demo.product.id=OLJCESPC7Z (product-catalog)`，
+**32 / 32 = 100%**，正是 targeting 的指纹。
+
+**仍为 `no_alert` 的 3 张 —— 待出库**
+
+| card_id | 成因（实测） |
+| --- | --- |
+| `latency-checkout-800` | `checkout` 自身 p95 基线 **48.0 ms** → 注入期 **48.0 ms**，一点没动。延迟注在**出口**（按 sport 过滤），落在调用方边上；而调用方 `frontend` 的**服务级** p95 把上百个快操作一起平均掉了。需要**方法级 / 边级**的延迟规则，规则 5 是错误率不是延迟，管不了 |
+| `misconfig-ad-on` | **阈值结构上不可达**：规则 5 的 `N = 0.25 × 基线速率 × 120`，即**该方法调用数的 25%**；而 `adFailure` 只让 **10%** 的 `GetAds` 失败。25% > 10%，无论流量多大都够不着。实测 `GetAds` 注入期 17 次调用、4 次报错、N = 7 |
+| `misconfig-cart-75` | **[O-P2-9](open_items.md) 在检测器侧重演**：报错的 `EmptyCart` span 挂起 **p50 150 s / max 265 s**，在证据窗关闭前根本没结束，spanmetrics 因此只看到 **1 次调用 / 0 报错**；而入库门读的 Jaeger 是 harvest 时刻查的，看到 **3 次 / 2 报错**。两侧对同一个窗口给出不同的数 |
+
+三张按裁决**待出库**（本轮不改 recipe）。三条成因各不相同，**不能用一条新规则一起解决**：
+第一条要新的延迟规则，第二条要重新想低比例故障的阈值形式，第三条要先解决 O-P2-9。
+
+**（以下为开条时的记录，保留备查）**
 
 **内容**
 首批跑完后，**12 张过门的卡里有 4 张 `agent_visible_symptom.no_alert = true`** ——
@@ -823,3 +874,80 @@ span logs 因此取不到。gRPC 路径的错误消息由 `otel.status_descripti
 
 **在裁决之前**：这 4 张卡的证据包与 task.json 已落库，`no_alert: true` 如实记录，
 **没有为了让它们"有告警"而调低阈值**。
+
+---
+
+## O-P2-18　超低流量靶子与长连接靶子在 120 s 窗内无可用判据
+
+**状态：open（2026-08-27 ET，决策 022 落码后仍剩的两类）**
+
+决策 022 用「Prometheus 300 s 回看做分母」+「靶子侧档」修掉了**分母为零**那一类，
+但还剩两类结构性问题，**都不是换阈值能解决的**。
+
+**(1) `payment` 流量太低，两档都够不着**
+
+`payment` 被调实测 **10 次 / 300 s = 0.033 /s ≈ 2 /min**。于是：
+
+- **靶子侧档不适用**：期望调用数 = `0.033 × 120` = **4.0 < 5**（决策 022 的样本量守卫）；
+- **调用方边档极窄**：`crash` 需要调用方报错 span > `N = max(5, ⌈0.25×0.033×120⌉)` = **5**，
+  而 120 s 内该靶子总共只有约 4 次调用 —— **最多 4 条报错，永远达不到 > 5**。
+
+`crash-payment-01` / `blackhole-payment-01` 因此**结构上不可能通过**。
+两条出路，都要裁决：(a) 拉长注入窗（推翻决策 012，69 卡机器时间成倍涨）；
+(b) `payment` 不作 `crash` / `blackhole` 靶子（`misconfig` 仍可用 ——
+`paymentFailure` 走的是靶子自身 server span，不受调用方边稀释）。
+
+**(2) `valkey-cart` 的 blackhole 不"哑"**
+
+实测见 [fingerprints.md](fingerprints.md)「长连接靶子的 blackhole 指纹与「哑」不同」：
+全拦之下耗时 0.49 ms → **5702 ms**（约 11 600 倍），但**零报错**，
+且前 74 s 调用照常成功完成，整窗 span 数只掉到基线的 **36%**，远高于 10% 线；
+真正的静默只占注入窗的后 38%。
+
+- 调用方边档：span 数不够低 → 不通过；
+- 调用方报错档：`cart` 报错 span **0** → 不通过；
+- 靶子侧档：无 SDK、无 spanmetrics 系列 → 不适用。
+
+三档全灭。可选：(a) `blackhole` 对长连接靶子改判**耗时分位数**
+（决策 016 曾因「与 `latency` 同形」放弃，但那是对短连接靶子说的；
+`valkey-cart` 基线 0.49 ms、注入 5.7 s，量级差 4 个数量级，与 800 ms 的
+`latency` 档并不混淆）；(b) 判据只看注入窗**后半段**的速率（静默确实出现，只是晚）；
+(c) `valkey-cart` 不作 `blackhole` 靶子。**需裁决。**
+
+---
+
+## O-P2-19　`paymentFailure` 低比例档在 120 s 窗内可能拿不到样本
+
+**状态：open（2026-08-27 ET，随决策 021 验证卡条款改写开出）**
+
+**背景**
+决策 021 原写「验证卡不过门则 6 张整组出库」，2026-08-27 已改写为：
+**验证卡过门只解锁该组进入量产排期，组内每张卡仍各自过探针门与告警检测，
+过不了的卡单独出库、如实记。**
+
+**为什么改**
+验证卡 `misconfig-payment-100` 确实过门，但样本极小 —— `Charge` 在 120 s 注入窗内
+只被调 **7 次**，2 报错阈值 4、实测 7，裕度只有 3 条。7 个样本能证明
+「这个开关能注进去」，证明不了低比例档也拿得到足够样本。
+
+**风险量化**
+`payment` 被调实测 **0.033 /s ≈ 2 /min**（300 s 回看，决策 022），
+`Charge` 是其唯一被调方法，120 s 注入窗期望调用数约 **4**。
+按 misconfig 判据 `N = max(2, ⌈0.5 × ratio × calls⌉)`：
+
+| variant | 期望报错数（4 次调用） | 阈值 N | 预期 |
+| --- | ---: | ---: | --- |
+| `100%` | 4.0 | 2 | 实测已过（7 次调用 / 7 报错） |
+| `90%` | 3.8 | 2 | 大概率过 |
+| `75%` | 3.0 | 2 | 大概率过 |
+| `50%` | 2.0 | 2 | **贴阈值，一次抖动就掉** |
+| `25%` | 1.0 | 2 | **预期不过** |
+| `10%` | 0.4 | 2 | **预期不过** |
+
+`misconfig-payment-10` 还是配方里 5 张难卡之一（轴 B=2、总分 4）。
+
+**待议**
+(a) 低比例档随第二批实跑，过不了的按新条款单独出库 —— 本轮取这条，第二批已排入
+    `50%` / `75%` / `90%` 三张；
+(b) 拉长 `misconfig` 类的注入窗（推翻决策 012）；
+(c) 低比例档改用**多周期累计**判定 —— 与决策 004 的「2 轮复现」口径不同，需新判据。

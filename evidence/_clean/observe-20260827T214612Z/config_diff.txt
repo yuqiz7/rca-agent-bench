@@ -1,0 +1,3 @@
+# unified diff against evidence/_baseline/ (snapshot taken 2026-08-27T18:51:10Z)
+# no diff: demo.flagd.json
+# no diff: compose_env.txt

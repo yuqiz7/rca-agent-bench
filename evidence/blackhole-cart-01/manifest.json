@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/blackhole-cart-01/metrics.json",
-   "bytes": 180936,
-   "sha256": "c9e13db5819e32513fa07820a2bda432e811d6e3d9008585c12c9546a35e80fd"
+   "bytes": 262475,
+   "sha256": "cea98440e04ef19456e8ff88c4b4c385ef61d8106447ee2b14c9e6b81ff58cf4"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 7,
-   "series": 105
+   "queries": 9,
+   "series": 158
   },
   "traces.json": {
    "spans": 27004,
@@ -82,5 +82,6 @@
    "edge_count": 33,
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
- }
+ },
+ "metrics_refreshed_at": "2026-08-27T21:46:34Z"
 }
