@@ -73,6 +73,7 @@ def main():
     ap.add_argument("--baseline2", required=True)
     ap.add_argument("--agent-runs", required=True, help="comma-separated run ids")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--label", default="baselines")
     a = ap.parse_args()
 
     with open(a.cards_file) as f:
@@ -86,10 +87,9 @@ def main():
 
     L = []
     A = L.append
-    A(f"# 三方基线对照报告 baselines_20260828")
+    A(f"# 三方基线对照报告 {a.label}")
     A("")
-    A(f"- 卡集：**{len(cards)} 张在库卡**（第三批产出的卡不在其中，卡单冻结于 "
-      f"`scripts/baselines/cardset_27.json`）")
+    A(f"- 卡集：**{len(cards)} 张在库卡**，冻结于 `{os.path.relpath(a.cards_file, REPO)}`")
     A("- 三方用同一卡集、同一判分器（`run_eval.grade`）、同一答案空间，因此可直接比较。")
     A("- 基线①②的步数按 1 计：两者都没有调查能力，单轮出答案。")
     A("")

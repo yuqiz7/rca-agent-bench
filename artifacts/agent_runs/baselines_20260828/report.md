@@ -1,6 +1,6 @@
 # 三方基线对照报告 baselines_20260828
 
-- 卡集：**27 张在库卡**（第三批产出的卡不在其中，卡单冻结于 `scripts/baselines/cardset_27.json`）
+- 卡集：**27 张在库卡**，冻结于 `scripts/baselines/cardset_27.json`
 - 三方用同一卡集、同一判分器（`run_eval.grade`）、同一答案空间，因此可直接比较。
 - 基线①②的步数按 1 计：两者都没有调查能力，单轮出答案。
 

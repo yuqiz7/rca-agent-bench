@@ -1,0 +1,199 @@
+{
+ "detected_at": "2026-08-28T22:57:59Z",
+ "window": {
+  "start": "2026-08-28T22:51:20Z",
+  "end": "2026-08-28T22:53:20Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-28T22:49:20Z",
+   "end": "2026-08-28T22:57:20Z"
+  },
+  "baseline": {
+   "start": "2026-08-28T22:50:20Z",
+   "end": "2026-08-28T22:51:20Z"
+  },
+  "inject": {
+   "start": "2026-08-28T22:51:20Z",
+   "end": "2026-08-28T22:53:20Z"
+  },
+  "recover": {
+   "start": "2026-08-28T22:53:20Z",
+   "end": "2026-08-28T22:54:50Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on shipping/POST /get-quote",
+   "service": "shipping",
+   "operation": "POST /get-quote",
+   "baseline": {
+    "p95_ms": 3.9,
+    "call_count": 8.0,
+    "window": {
+     "start": "2026-08-28T22:50:20Z",
+     "end": "2026-08-28T22:51:20Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 1970.0,
+    "delta_ms": 1966.1,
+    "ratio": 505.128,
+    "call_count": 19.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T22:51:20Z",
+     "end": "2026-08-28T22:53:20Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T22:51:20Z",
+    "end": "2026-08-28T22:53:20Z"
+   },
+   "deviation": 505.128
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on shipping",
+   "service": "shipping",
+   "baseline": {
+    "p95_ms": 3.86,
+    "window": {
+     "start": "2026-08-28T22:50:20Z",
+     "end": "2026-08-28T22:51:20Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 1947.5,
+    "delta_ms": 1943.64,
+    "ratio": 504.534,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T22:51:20Z",
+     "end": "2026-08-28T22:53:20Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T22:51:20Z",
+    "end": "2026-08-28T22:53:20Z"
+   },
+   "deviation": 504.534
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/shipping",
+   "service": "frontend",
+   "operation": "GET /api/shipping",
+   "baseline": {
+    "p95_ms": 48.0,
+    "call_count": 10.0,
+    "window": {
+     "start": "2026-08-28T22:50:20Z",
+     "end": "2026-08-28T22:51:20Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 1970.0,
+    "delta_ms": 1922.0,
+    "ratio": 41.042,
+    "call_count": 18.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T22:51:20Z",
+     "end": "2026-08-28T22:53:20Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T22:51:20Z",
+    "end": "2026-08-28T22:53:20Z"
+   },
+   "deviation": 41.042
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on checkout",
+   "service": "checkout",
+   "baseline": {
+    "p95_ms": 48.0,
+    "window": {
+     "start": "2026-08-28T22:50:20Z",
+     "end": "2026-08-28T22:51:20Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 1970.0,
+    "delta_ms": 1922.0,
+    "ratio": 41.042,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T22:51:20Z",
+     "end": "2026-08-28T22:53:20Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T22:51:20Z",
+    "end": "2026-08-28T22:53:20Z"
+   },
+   "deviation": 41.042
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "p95_ms": 97.5,
+    "call_count": 10.0,
+    "window": {
+     "start": "2026-08-28T22:50:20Z",
+     "end": "2026-08-28T22:51:20Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 1970.0,
+    "delta_ms": 1872.5,
+    "ratio": 20.205,
+    "call_count": 16.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T22:51:20Z",
+     "end": "2026-08-28T22:53:20Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T22:51:20Z",
+    "end": "2026-08-28T22:53:20Z"
+   },
+   "deviation": 20.205
+  }
+ ],
+ "no_alert": false,
+ "card_id": "latency-quote-800"
+}

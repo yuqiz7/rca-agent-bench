@@ -1,0 +1,171 @@
+[
+ {
+  "card_id": "crash-ad-01",
+  "answer": {
+   "service": "ad",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.249,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.15999990126748967 -> 0.04197486969425371 /s (ratio 0.26234309747528933), upstream errors 0 -> 68",
+   "max caller p50 during fault 5.136 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 6.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 0.0,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 3.75,
+   "frontend-proxy": 2.0,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 0.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "blackhole-astronomy-db-01",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.232,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 3.6266493831001285 -> 1.0666502061710024 /s (ratio 0.2941145099775842), upstream errors 0 -> 76",
+   "max caller p50 during fault 133546.097 ms (wait gate 1000.0 ms)",
+   "recover-window rebound x1.13 >= 1: backlog replay",
+   "callers sat blocked on it: packets dropped"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 8.5,
+   "currency": 3.0,
+   "email": 6.0,
+   "flagd": 1.0,
+   "frontend": 2.75,
+   "frontend-proxy": 5.25,
+   "image-provider": 0.0,
+   "payment": 6.0,
+   "product-catalog": 10.5,
+   "quote": 1.0,
+   "recommendation": 7.5,
+   "shipping": 6.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "crash-quote-01",
+  "answer": {
+   "service": "quote",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.259,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.07555565434513037 -> 0.02716049382716049 /s (ratio 0.3594766541640177), upstream errors 0 -> 62",
+   "max caller p50 during fault 15.921 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 5.5,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 5.0,
+   "frontend-proxy": 2.0,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 3.0,
+   "recommendation": 0.0,
+   "shipping": 6.5,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "blackhole-email-01",
+  "answer": {
+   "service": "frontend-proxy",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.332,
+  "terminated": "submit",
+  "rationale": [
+   "own server error spans 0 -> 16 while traffic held (7.382222223710288 -> 8.378828102787637 /s)"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 5.5,
+   "currency": 0.0,
+   "email": 3.0,
+   "flagd": 0.0,
+   "frontend": 0.25,
+   "frontend-proxy": 2.25,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 0.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "crash-recommendation-01",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.225,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.4044446420499315 -> 0.12499895064060304 /s (ratio 0.30906318849236), upstream errors 0 -> 210",
+   "max caller p50 during fault 4.05 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 0.0,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 3.75,
+   "frontend-proxy": 2.0,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 6.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ }
+]

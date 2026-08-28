@@ -1,0 +1,142 @@
+[
+ {
+  "card_id": "crash-ad-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "ad",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6654,
+   "output": 23,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.013538,
+  "wall_s": 1.477,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"ad\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-astronomy-db-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 10837,
+   "output": 3760,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.059274,
+  "wall_s": 44.524,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"product-catalog\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "crash-quote-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "quote",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7577,
+   "output": 1116,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.026314,
+  "wall_s": 15.088,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"quote\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-email-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "email",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7056,
+   "output": 1029,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.024402,
+  "wall_s": 12.421,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"email\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "crash-recommendation-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6681,
+   "output": 25,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.013612,
+  "wall_s": 1.172,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"recommendation\", \"fault_type\": \"blackhole\"}"
+  ]
+ }
+]
