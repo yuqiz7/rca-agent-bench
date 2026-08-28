@@ -1,0 +1,538 @@
+{
+ "card_id": "crash-checkout-01",
+ "model": "claude-sonnet-5",
+ "started_at": "2026-08-28T21:56:34Z",
+ "wall_s": 63.43,
+ "terminated": "submit",
+ "error": null,
+ "answer": {
+  "service": "checkout",
+  "fault_type": "blackhole"
+ },
+ "steps": 7,
+ "counters": {
+  "api_calls": 7,
+  "tool_calls": 12,
+  "validation_rejects": 0,
+  "tool_retries": 0,
+  "nudges": 0
+ },
+ "usage": {
+  "input": 14,
+  "output": 5525,
+  "cache_write": 14287,
+  "cache_read": 48160
+ },
+ "cost_usd": 0.100627,
+ "prices": {
+  "source_url": "https://platform.claude.com/docs/en/about-claude/pricing",
+  "fetched_at": "2026-08-28"
+ },
+ "run_config": {
+  "max_steps": 20,
+  "max_usd_per_card": 0.2,
+  "tool_retries": 2,
+  "api_max_retries": 3,
+  "max_tokens": 16000,
+  "thinking": "adaptive",
+  "effort": "high",
+  "prompt_caching": true
+ },
+ "leak_check": [
+  "no_forbidden_keys",
+  "no_card_id",
+  "fixed_prompt_and_tools",
+  "user_turn_subset_of_task_json"
+ ],
+ "input": {
+  "system": "You are a site reliability engineer diagnosing a single fault in a running microservice deployment. Monitoring has flagged an anomaly and handed you a frozen evidence pack: logs, metrics, distributed traces, a configuration diff, the service dependency graph, and the alerts that fired.\n\nExactly one fault was introduced, into exactly one service. Downstream services reporting errors is expected cascade, not a second root cause -- your job is to find where the fault was introduced, not where it was felt.\n\nThe candidate services are:\nad, astronomy-db, cart, checkout, currency, email, flagd, frontend, frontend-proxy, image-provider, payment, product-catalog, quote, recommendation, shipping, valkey-cart\n\nThe fault types are:\n- crash: the service's container is not running. Callers see address-unreachable errors in bulk; the service's own logs and spans stop.\n- latency: the service is up and reachable but responds slowly. Caller-side spans get much longer; errors stay rare. The service's own server-side latency may look normal, because the delay is added on the way out.\n- blackhole: the service is up but its port silently drops packets. Callers see neither success nor error -- the edge simply goes quiet, with no timeout errors during the fault.\n- misconfig: the service's configuration or feature flag was changed. The service itself returns errors on its own spans and logs.\n- mem_leak: the service's memory grows without bound, and it eventually slows down or restarts.\n\nInvestigate with the read-only tools. Work from the alerts and the dependency graph towards the source: an alert naming a service usually means that service *observed* the problem, which is often one hop from the service that *caused* it. Distinguish crash from blackhole by whether the caller's spans are loud with errors or silent. Distinguish latency from both by whether calls still succeed.\n\nTwo failure modes are worth spending a step to rule out, because the evidence that separates them is cheap and the wrong answer is not recoverable later.\n\nRESOURCE EXHAUSTION LOOKS LIKE LATENCY. A service that is slow, whose own error rate is unremarkable, and whose config diff is empty, has not yet been shown to be a latency fault -- a memory leak presents exactly that way, because a process under memory pressure serves requests slowly. The two are separated by one query: pull the container_memory_mib series for the suspected service over the whole window. A leak shows memory climbing monotonically across the window and ending well above where it started, while span counts and error counts stay ordinary. An injected latency fault leaves memory flat or sawtoothing around a stable level. Check the memory curve before you conclude latency on a slow-but-not-erroring service; do not infer the leak from slowness alone, and do not report a leak without having seen the curve rise.\n\nCRASH AND BLACKHOLE BOTH END IN SILENCE, AND THE SILENCE IS NOT THE DISCRIMINATOR. What separates them is the shape of the *first* few seconds of the fault, on the edge from the caller to the suspected service:\n\n- A dead process refuses connections immediately. The caller gets connection-class errors -- connection refused, address unreachable, bad connection -- within a second of onset, and then the edge goes quiet. Two details are easy to misread. The absolute number of these errors can be very small, because a caller that gives up or backs off stops generating traffic to error on; a handful of connection errors followed by silence is a crash, not a weak signal. And the latency of the failing calls goes *down*, often well below baseline, because failing fast is quicker than succeeding.\n- A silently dropped packet gives the caller nothing to react to, so the caller waits. The signature is a step up in caller-side latency -- p50 rising by orders of magnitude, into seconds -- with few or no errors during the fault itself. The edge may fall silent later, once client-side timeouts fire, but the waiting comes first.\n\nSo: errors present, connection-class, arriving at once, latency down -> the process is gone. Latency stepping up into seconds with errors near zero -> traffic is being swallowed on the network. Judge on which of these two the early fault window shows, not on whether the edge eventually went quiet.\n\nMIND THE WINDOW. The evidence pack is padded on both sides of the fault: it contains baseline traffic from before the fault was applied and normal traffic from after it was removed. Post-revert traffic is healthy, successful, and can easily outnumber what was recorded during the fault, so a query over the pack's full span dilutes and can entirely mask the shape you are trying to read -- silence with zero errors becomes \"plenty of successful calls\" once recovery traffic is folded in. Scope trace and metric queries to the injection window given to you in the symptom before judging shape, and when a series looks ambiguous, check whether you are reading across the revert boundary.\n\nBe economical: each tool call costs a step, and you have a limited budget. Prefer narrow, targeted queries over broad ones. When the evidence identifies one service and one fault type, call submit. If your budget is nearly spent, submit your best current hypothesis rather than running out of steps -- an unsubmitted investigation scores zero.\n",
+  "user": "{\n \"trigger\": \"Monitoring detected an anomaly in the system.\",\n \"agent_visible_symptom\": {\n  \"window\": {\n   \"start\": \"2026-08-28T18:56:50Z\",\n   \"end\": \"2026-08-28T19:01:50Z\"\n  },\n  \"detected_at\": \"2026-08-28T19:05:55Z\",\n  \"no_alert\": false,\n  \"alerts\": [\n   {\n    \"rule\": \"method_error_rate_jump\",\n    \"message\": \"elevated error rate on frontend/POST /api/checkout\",\n    \"service\": \"frontend\",\n    \"baseline\": {\n     \"error_count\": 0.0,\n     \"error_count_scaled_to_inject\": 0.0,\n     \"request_rate_per_s\": 0.1311,\n     \"window\": {\n      \"start\": \"2026-08-28T18:55:49Z\",\n      \"end\": \"2026-08-28T18:56:50Z\"\n     }\n    },\n    \"observed\": {\n     \"error_count\": 42.0,\n     \"threshold_N\": 10,\n     \"window\": {\n      \"start\": \"2026-08-28T18:56:50Z\",\n      \"end\": \"2026-08-28T19:01:50Z\"\n     }\n    },\n    \"deviation\": 42.0\n   },\n   {\n    \"rule\": \"traffic_zero\",\n    \"message\": \"traffic dropped to zero on email\",\n    \"service\": \"email\",\n    \"baseline\": {\n     \"request_rate_per_s\": 0.0656,\n     \"window\": {\n      \"start\": \"2026-08-28T18:55:49Z\",\n      \"end\": \"2026-08-28T18:56:50Z\"\n     }\n    },\n    \"observed\": {\n     \"request_rate_per_s\": 0.0,\n     \"rate_ceiling_per_s\": 0.0066,\n     \"consecutive_zero_samples\": 19,\n     \"zero_span_s\": 285,\n     \"expected_calls_in_zero_span\": 18.69,\n     \"min_expected_calls\": 5,\n     \"samples_in_window\": 20,\n     \"window\": {\n      \"start\": \"2026-08-28T18:56:50Z\",\n      \"end\": \"2026-08-28T19:01:50Z\"\n     }\n    },\n    \"deviation\": 18.69\n   },\n   {\n    \"rule\": \"traffic_zero\",\n    \"message\": \"traffic dropped to zero on checkout\",\n    \"service\": \"checkout\",\n    \"baseline\": {\n     \"request_rate_per_s\": 0.0492,\n     \"window\": {\n      \"start\": \"2026-08-28T18:55:49Z\",\n      \"end\": \"2026-08-28T18:56:50Z\"\n     }\n    },\n    \"observed\": {\n     \"request_rate_per_s\": 0.0,\n     \"rate_ceiling_per_s\": 0.0049,\n     \"consecutive_zero_samples\": 19,\n     \"zero_span_s\": 285,\n     \"expected_calls_in_zero_span\": 14.02,\n     \"min_expected_calls\": 5,\n     \"samples_in_window\": 20,\n     \"window\": {\n      \"start\": \"2026-08-28T18:56:50Z\",\n      \"end\": \"2026-08-28T19:01:50Z\"\n     }\n    },\n    \"deviation\": 14.02\n   },\n   {\n    \"rule\": \"traffic_zero\",\n    \"message\": \"traffic dropped to zero on payment\",\n    \"service\": \"payment\",\n    \"baseline\": {\n     \"request_rate_per_s\": 0.0492,\n     \"window\": {\n      \"start\": \"2026-08-28T18:55:49Z\",\n      \"end\": \"2026-08-28T18:56:50Z\"\n     }\n    },\n    \"observed\": {\n     \"request_rate_per_s\": 0.0,\n     \"rate_ceiling_per_s\": 0.0049,\n     \"consecutive_zero_samples\": 19,\n     \"zero_span_s\": 285,\n     \"expected_calls_in_zero_span\": 14.02,\n     \"min_expected_calls\": 5,\n     \"samples_in_window\": 20,\n     \"window\": {\n      \"start\": \"2026-08-28T18:56:50Z\",\n      \"end\": \"2026-08-28T19:01:50Z\"\n     }\n    },\n    \"deviation\": 14.02\n   }\n  ]\n }\n}",
+  "tools": [
+   {
+    "name": "logs_search",
+    "description": "Search the collected application logs for this incident. Filter by keyword (case-insensitive substring), service, severity, and time window. Returns match counts broken down by service and severity plus the most recent matching records.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "keyword": {
+       "type": "string",
+       "description": "case-insensitive substring to match in the log body"
+      },
+      "service": {
+       "type": "string",
+       "description": "restrict to one service; must be a service that appears in this incident's telemetry"
+      },
+      "severity": {
+       "type": "string",
+       "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+       ]
+      },
+      "start": {
+       "type": "string",
+       "description": "ISO8601, e.g. 2026-08-27T19:24:03Z; defaults to the start of the collection window"
+      },
+      "end": {
+       "type": "string",
+       "description": "ISO8601; defaults to the end of the collection window"
+      },
+      "limit": {
+       "type": "integer",
+       "description": "max records to return (1-200, default 30)"
+      }
+     },
+     "required": []
+    }
+   },
+   {
+    "name": "metrics_query",
+    "description": "Query one collected metric over a time window. 'summary' returns min/max/mean/first/last per series; 'series' additionally returns a downsampled time series. Metrics ending in _by_operation are keyed '<service>|<operation>'.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "metric": {
+       "type": "string",
+       "enum": [
+        "req_rate_per_s",
+        "error_rate_per_s",
+        "p95_latency_ms",
+        "calls_total",
+        "errors_total",
+        "calls_total_by_operation",
+        "errors_total_by_operation",
+        "p95_latency_ms_by_operation",
+        "container_memory_mib",
+        "container_cpu_ratio"
+       ]
+      },
+      "service": {
+       "type": "string",
+       "description": "restrict to one service"
+      },
+      "start": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "end": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "aggregate": {
+       "type": "string",
+       "enum": [
+        "summary",
+        "series"
+       ],
+       "description": "default summary"
+      },
+      "max_points": {
+       "type": "integer",
+       "description": "cap on returned series points (default 40)"
+      }
+     },
+     "required": [
+      "metric"
+     ]
+    }
+   },
+   {
+    "name": "traces_query",
+    "description": "Aggregate distributed-tracing spans. Filter by the span's own service, by caller (the service that owns the parent span, i.e. the calling side of an edge), by operation substring, by status, and by time. Returns per-(service, operation) counts, error counts and latency percentiles, plus a few sample spans -- never the full span list.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "service": {
+       "type": "string",
+       "description": "the service the span belongs to (callee side)"
+      },
+      "caller": {
+       "type": "string",
+       "description": "the service that owns the parent span (caller side of an edge)"
+      },
+      "operation_contains": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string",
+       "enum": [
+        "ERROR",
+        "OK",
+        "UNSET",
+        "ANY"
+       ]
+      },
+      "start": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "end": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "samples": {
+       "type": "integer",
+       "description": "sample spans to return (1-20, default 5)"
+      }
+     },
+     "required": []
+    }
+   },
+   {
+    "name": "config_diff",
+    "description": "Return the unified diff of the deployment configuration (compose environment and feature-flag file) against the pre-incident baseline snapshot, verbatim.",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "topology",
+    "description": "Return the service dependency graph as a list of caller -> callee edges, derived from a healthy baseline window.",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "alerts",
+    "description": "Return the full list of alerts the monitoring rules fired for this incident, with each alert's rule, baseline and observed values.",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "submit",
+    "description": "Submit your final root-cause diagnosis. Exactly one service is the root cause and exactly one fault type describes it. Calling this ends the investigation -- you get no further tool calls, so make sure the evidence supports the answer before calling it.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "service": {
+       "type": "string",
+       "enum": [
+        "ad",
+        "astronomy-db",
+        "cart",
+        "checkout",
+        "currency",
+        "email",
+        "flagd",
+        "frontend",
+        "frontend-proxy",
+        "image-provider",
+        "payment",
+        "product-catalog",
+        "quote",
+        "recommendation",
+        "shipping",
+        "valkey-cart"
+       ],
+       "description": "the single service where the fault was introduced"
+      },
+      "fault_type": {
+       "type": "string",
+       "enum": [
+        "crash",
+        "latency",
+        "blackhole",
+        "misconfig",
+        "mem_leak"
+       ],
+       "description": "crash: the service's container is not running. latency: the service is up and reachable but responds slowly. blackhole: the service is up but its port silently drops packets, so callers see neither success nor error. misconfig: the service's configuration or feature flag was changed and it returns errors. mem_leak: the service's memory grows without bound."
+      }
+     },
+     "required": [
+      "service",
+      "fault_type"
+     ]
+    }
+   }
+  ]
+ },
+ "transcript": [
+  {
+   "step": 1,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 289,
+    "cache_write": 5161,
+    "cache_read": 0
+   },
+   "cumulative_cost_usd": 0.015797,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "topology",
+     "input": {},
+     "ok": true,
+     "result": {
+      "bytes": 2136,
+      "preview": "{\"generated_at\": \"2026-08-27T18:12:57Z\", \"method\": \"spanmetrics CLIENT/SERVER span_name join, supplemented by Jaeger client-span peer tags for SDK-less and generic-HTTP peers\", \"edge_count\": 33, \"edges\": [{\"from\": \"ad\", \"to\": \"flagd\"}, {\"from\": \"cart\", \"to\": \"flagd\"}, {\"from\": \"cart\", \"to\": \"frontend-proxy\"}, {\"from\": \"cart\", \"to\": \"valkey-cart\"}, {\"from\": \"checkout\", \"to\": \"cart\"}, {\"from\": \"checkout\", \"to\": \"currency\"}, {\"from\": \"checkout\", \"to\": \"email\"}, {\"from\": \"checkout\", \"to\": \"flagd\"}, {\"from\": \"checkout\", \"to\": \"frontend-proxy\"}, {\"from\": \"checkout\", \"to\": \"payment\"}, {\"from\": \"checkout\", \"to\": \"product-catalog\"}, {\"from\": \"checkout\", \"to\": \"shipping\"}, {\"from\": \"frontend\", \"to\": \"ad\"}, {\"from\": \"frontend\", \"to\": \"cart\"}, {\"from\": \"frontend\", \"to\": \"checkout\"}, {\"from\": \"frontend\", \"to\": \"currency\"}, {\"from\": \"frontend\", \"to\": \"flagd\"}, {\"from\": \"frontend\", \"to\": \"frontend-proxy\"}, {\"from\": \"frontend\", \"to\": \"product-catalog\"}, {\"from\": \"frontend\", \"to\": \"recommendation\"}, {\"from\": \"frontend\", \"to\": \"shipping\"}, {\"from\": \"frontend-web\", \"to\": \"flagd\"}, {\"from\": \"frontend-web\", \"to\": \"frontend\"}, {\"from\": \"frontend-web\", \"to\": \"frontend-proxy\"}, {\"from\": \"frontend-web\", \"t",
+      "truncated": true
+     }
+    },
+    {
+     "name": "traces_query",
+     "input": {
+      "caller": "frontend",
+      "service": "checkout",
+      "start": "2026-08-28T18:56:50Z",
+      "end": "2026-08-28T18:58:00Z",
+      "status": "ANY"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 161,
+      "preview": "{\"window\": {\"start\": \"2026-08-28T18:56:50Z\", \"end\": \"2026-08-28T18:58:00Z\"}, \"matched_spans\": 0, \"error_spans\": 0, \"group_count\": 0, \"groups\": [], \"samples\": []}",
+      "truncated": false
+     }
+    }
+   ]
+  },
+  {
+   "step": 2,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 455,
+    "cache_write": 1430,
+    "cache_read": 5161
+   },
+   "cumulative_cost_usd": 0.024958,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "traces_query",
+     "input": {
+      "caller": "frontend",
+      "service": "checkout",
+      "start": "2026-08-28T18:56:50Z",
+      "end": "2026-08-28T18:57:10Z",
+      "status": "ANY"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 161,
+      "preview": "{\"window\": {\"start\": \"2026-08-28T18:56:50Z\", \"end\": \"2026-08-28T18:57:10Z\"}, \"matched_spans\": 0, \"error_spans\": 0, \"group_count\": 0, \"groups\": [], \"samples\": []}",
+      "truncated": false
+     }
+    },
+    {
+     "name": "logs_search",
+     "input": {
+      "service": "frontend",
+      "keyword": "checkout",
+      "start": "2026-08-28T18:56:50Z",
+      "end": "2026-08-28T18:58:30Z",
+      "severity": "error"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 171,
+      "preview": "{\"window\": {\"start\": \"2026-08-28T18:56:50Z\", \"end\": \"2026-08-28T18:58:30Z\"}, \"matched\": 0, \"returned\": 0, \"counts_by_service\": {}, \"counts_by_severity\": {}, \"records\": []}",
+      "truncated": false
+     }
+    }
+   ]
+  },
+  {
+   "step": 3,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 393,
+    "cache_write": 684,
+    "cache_read": 6591
+   },
+   "cumulative_cost_usd": 0.03192,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "logs_search",
+     "input": {
+      "service": "frontend",
+      "severity": "error",
+      "start": "2026-08-28T18:56:50Z",
+      "end": "2026-08-28T18:58:30Z"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 171,
+      "preview": "{\"window\": {\"start\": \"2026-08-28T18:56:50Z\", \"end\": \"2026-08-28T18:58:30Z\"}, \"matched\": 0, \"returned\": 0, \"counts_by_service\": {}, \"counts_by_severity\": {}, \"records\": []}",
+      "truncated": false
+     }
+    },
+    {
+     "name": "traces_query",
+     "input": {
+      "service": "checkout",
+      "start": "2026-08-28T18:56:50Z",
+      "end": "2026-08-28T18:58:30Z",
+      "status": "ANY"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 161,
+      "preview": "{\"window\": {\"start\": \"2026-08-28T18:56:50Z\", \"end\": \"2026-08-28T18:58:30Z\"}, \"matched_spans\": 0, \"error_spans\": 0, \"group_count\": 0, \"groups\": [], \"samples\": []}",
+      "truncated": false
+     }
+    }
+   ]
+  },
+  {
+   "step": 4,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 374,
+    "cache_write": 622,
+    "cache_read": 7275
+   },
+   "cumulative_cost_usd": 0.038674,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "logs_search",
+     "input": {
+      "service": "frontend",
+      "start": "2026-08-28T18:56:50Z",
+      "end": "2026-08-28T18:58:30Z"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 171,
+      "preview": "{\"window\": {\"start\": \"2026-08-28T18:56:50Z\", \"end\": \"2026-08-28T18:58:30Z\"}, \"matched\": 0, \"returned\": 0, \"counts_by_service\": {}, \"counts_by_severity\": {}, \"records\": []}",
+      "truncated": false
+     }
+    },
+    {
+     "name": "traces_query",
+     "input": {
+      "service": "frontend",
+      "operation_contains": "checkout",
+      "start": "2026-08-28T18:56:50Z",
+      "end": "2026-08-28T18:58:30Z",
+      "status": "ANY"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 1470,
+      "preview": "{\"window\": {\"start\": \"2026-08-28T18:56:50Z\", \"end\": \"2026-08-28T18:58:30Z\"}, \"matched_spans\": 36, \"error_spans\": 36, \"group_count\": 3, \"groups\": [{\"service\": \"frontend\", \"operation\": \"POST /api/checkout\", \"count\": 18, \"errors\": 18, \"p50_ms\": 2.74, \"p95_ms\": 14290.703, \"max_ms\": 14290.988}, {\"service\": \"frontend\", \"operation\": \"executing api route (pages) /api/checkout\", \"count\": 9, \"errors\": 9, \"p50_ms\": 1.989, \"p95_ms\": 14290.13, \"max_ms\": 14290.13}, {\"service\": \"frontend\", \"operation\": \"oteldemo.CheckoutService/PlaceOrder\", \"count\": 9, \"errors\": 9, \"p50_ms\": 0.588, \"p95_ms\": 14287.088, \"max_ms\": 14287.088}], \"samples\": [{\"ts\": \"2026-08-28T18:57:13Z\", \"service\": \"frontend\", \"operation\": \"executing api route (pages) /api/checkout\", \"status\": \"ERROR\", \"duration_ms\": 14290.13, \"caller\": \"frontend\"}, {\"ts\": \"2026-08-28T18:57:16Z\", \"service\": \"frontend\", \"operation\": \"oteldemo.CheckoutService/PlaceOrder\", \"status\": \"ERROR\", \"duration_ms\": 11105.223, \"caller\": \"frontend\"}, {\"ts\": \"2026-08-28T18:57:41Z\", \"service\": \"frontend\", \"operation\": \"oteldemo.CheckoutService/PlaceOrder\", \"status\": \"ERROR\", \"duration_ms\": 0.588, \"caller\": \"frontend\"}, {\"ts\": \"2026-08-28T18:57:52Z\", \"service\": \"fron",
+      "truncated": true
+     }
+    }
+   ]
+  },
+  {
+   "step": 5,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 1619,
+    "cache_write": 1257,
+    "cache_read": 7897
+   },
+   "cumulative_cost_usd": 0.05959,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "traces_query",
+     "input": {
+      "service": "frontend",
+      "operation_contains": "checkout",
+      "start": "2026-08-28T18:56:50Z",
+      "end": "2026-08-28T18:57:30Z",
+      "status": "ANY",
+      "samples": 20
+     },
+     "ok": true,
+     "result": {
+      "bytes": 2658,
+      "preview": "{\"window\": {\"start\": \"2026-08-28T18:56:50Z\", \"end\": \"2026-08-28T18:57:30Z\"}, \"matched_spans\": 12, \"error_spans\": 12, \"group_count\": 3, \"groups\": [{\"service\": \"frontend\", \"operation\": \"POST /api/checkout\", \"count\": 6, \"errors\": 6, \"p50_ms\": 11106.957, \"p95_ms\": 14290.988, \"max_ms\": 14290.988}, {\"service\": \"frontend\", \"operation\": \"executing api route (pages) /api/checkout\", \"count\": 3, \"errors\": 3, \"p50_ms\": 11106.315, \"p95_ms\": 14290.13, \"max_ms\": 14290.13}, {\"service\": \"frontend\", \"operation\": \"oteldemo.CheckoutService/PlaceOrder\", \"count\": 3, \"errors\": 3, \"p50_ms\": 11105.223, \"p95_ms\": 14287.088, \"max_ms\": 14287.088}], \"samples\": [{\"ts\": \"2026-08-28T18:57:13Z\", \"service\": \"frontend\", \"operation\": \"executing api route (pages) /api/checkout\", \"status\": \"ERROR\", \"duration_ms\": 14290.13, \"caller\": \"frontend\"}, {\"ts\": \"2026-08-28T18:57:13Z\", \"service\": \"frontend\", \"operation\": \"oteldemo.CheckoutService/PlaceOrder\", \"status\": \"ERROR\", \"duration_ms\": 14287.088, \"caller\": \"frontend\"}, {\"ts\": \"2026-08-28T18:57:13Z\", \"service\": \"frontend\", \"operation\": \"POST /api/checkout\", \"status\": \"ERROR\", \"duration_ms\": 14290.988, \"caller\": \"frontend-proxy\"}, {\"ts\": \"2026-08-28T18:57:13Z\", \"service\": \"",
+      "truncated": true
+     }
+    }
+   ]
+  },
+  {
+   "step": 6,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 1258,
+    "cache_write": 2928,
+    "cache_read": 9154
+   },
+   "cumulative_cost_usd": 0.081325,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "traces_query",
+     "input": {
+      "caller": "checkout",
+      "service": "payment",
+      "start": "2026-08-28T18:56:00Z",
+      "end": "2026-08-28T19:02:30Z",
+      "status": "ANY"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 794,
+      "preview": "{\"window\": {\"start\": \"2026-08-28T18:56:00Z\", \"end\": \"2026-08-28T19:02:30Z\"}, \"matched_spans\": 3, \"error_spans\": 0, \"group_count\": 1, \"groups\": [{\"service\": \"payment\", \"operation\": \"oteldemo.PaymentService/Charge\", \"count\": 3, \"errors\": 0, \"p50_ms\": 0.718, \"p95_ms\": 0.799, \"max_ms\": 0.799}], \"samples\": [{\"ts\": \"2026-08-28T18:56:37Z\", \"service\": \"payment\", \"operation\": \"oteldemo.PaymentService/Charge\", \"status\": \"UNSET\", \"duration_ms\": 0.799, \"caller\": \"checkout\"}, {\"ts\": \"2026-08-28T18:56:42Z\", \"service\": \"payment\", \"operation\": \"oteldemo.PaymentService/Charge\", \"status\": \"UNSET\", \"duration_ms\": 0.718, \"caller\": \"checkout\"}, {\"ts\": \"2026-08-28T18:56:43Z\", \"service\": \"payment\", \"operation\": \"oteldemo.PaymentService/Charge\", \"status\": \"UNSET\", \"duration_ms\": 0.7, \"caller\": \"checkout\"}]}",
+      "truncated": false
+     }
+    },
+    {
+     "name": "metrics_query",
+     "input": {
+      "metric": "p95_latency_ms",
+      "service": "checkout",
+      "start": "2026-08-28T18:55:00Z",
+      "end": "2026-08-28T19:03:00Z",
+      "aggregate": "series"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 820,
+      "preview": "{\"metric\": \"p95_latency_ms\", \"unit\": \"ms\", \"promql\": \"histogram_quantile(0.95, sum by (service_name, le) (rate(traces_span_metrics_duration_milliseconds_bucket{span_kind=\\\"SPAN_KIND_SERVER\\\"}[1m])))\", \"group_by\": \"service_name\", \"window\": {\"start\": \"2026-08-28T18:55:00Z\", \"end\": \"2026-08-28T19:03:00Z\"}, \"step_s\": 15, \"series_count\": 1, \"series\": [{\"key\": \"checkout\", \"points\": 11, \"min\": 48.0, \"max\": 97.5, \"mean\": 69.023, \"first\": 48.0, \"last\": 48.0, \"series\": [[\"2026-08-28T18:55:04Z\", 48.0], [\"2026-08-28T18:55:19Z\", 48.0], [\"2026-08-28T18:55:34Z\", 48.0], [\"2026-08-28T18:55:49Z\", 90.0], [\"2026-08-28T18:56:04Z\", 95.0], [\"2026-08-28T18:56:19Z\", 96.25], [\"2026-08-28T18:56:34Z\", 97.5], [\"2026-08-28T18:56:49Z\", 92.5], [\"2026-08-28T18:57:04Z\", 48.0], [\"2026-08-28T18:57:19Z\", 48.0], [\"2026-08-28T18:57:34Z\", 48.0]]}]}",
+      "truncated": false
+     }
+    }
+   ]
+  },
+  {
+   "step": 7,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 1137,
+    "cache_write": 2205,
+    "cache_read": 12082
+   },
+   "cumulative_cost_usd": 0.100627,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "submit",
+     "input": {
+      "service": "checkout",
+      "fault_type": "blackhole"
+     },
+     "ok": true,
+     "result": {
+      "accepted": true
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,758 @@
+[
+ {
+  "card_id": "blackhole-cart-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7433,
+   "output": 1698,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.031846,
+  "wall_s": 19.444,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"checkout\", \"fault_type\": \"misconfig\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-checkout-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6900,
+   "output": 474,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.01854,
+  "wall_s": 6.061,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"checkout\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-currency-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5976,
+   "output": 625,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.018202,
+  "wall_s": 7.809,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"checkout\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-frontend-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "frontend-proxy",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 8739,
+   "output": 800,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.025478,
+  "wall_s": 9.564,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"frontend-proxy\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-product-catalog-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 10959,
+   "output": 1617,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.038088,
+  "wall_s": 18.788,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"product-catalog\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-quote-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "quote",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7382,
+   "output": 1884,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.033604,
+  "wall_s": 23.11,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"quote\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "crash-astronomy-db-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 11422,
+   "output": 590,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.028744,
+  "wall_s": 6.64,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"product-catalog\", \"fault_type\": \"misconfig\"}"
+  ]
+ },
+ {
+  "card_id": "crash-cart-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "cart",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 8024,
+   "output": 517,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.021218,
+  "wall_s": 7.095,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"cart\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "crash-checkout-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6721,
+   "output": 479,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.018232,
+  "wall_s": 6.393,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"checkout\", \"fault_type\": \"crash\"}"
+  ]
+ },
+ {
+  "card_id": "crash-currency-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "currency",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7943,
+   "output": 3419,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.050076,
+  "wall_s": 38.896,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"currency\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "crash-email-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "email",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6017,
+   "output": 22,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.012254,
+  "wall_s": 1.135,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"email\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "crash-frontend-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "frontend-proxy",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 8536,
+   "output": 587,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.022942,
+  "wall_s": 10.239,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"frontend-proxy\", \"fault_type\": \"misconfig\"}"
+  ]
+ },
+ {
+  "card_id": "crash-product-catalog-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 9510,
+   "output": 1044,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.02946,
+  "wall_s": 13.377,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"product-catalog\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "latency-cart-800",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "cart",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6790,
+   "output": 3601,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.04959,
+  "wall_s": 40.859,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"cart\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "latency-checkout-800",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5686,
+   "output": 1120,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.022572,
+  "wall_s": 12.57,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"checkout\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "latency-currency-800",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "currency",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6018,
+   "output": 896,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.020996,
+  "wall_s": 11.239,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"currency\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "latency-email-800",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5996,
+   "output": 368,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.015672,
+  "wall_s": 4.683,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"checkout\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "latency-product-catalog-800",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6893,
+   "output": 1469,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.028476,
+  "wall_s": 16.973,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"recommendation\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "memleak-email-10000x",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "email",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6246,
+   "output": 20,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.012692,
+  "wall_s": 1.203,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"email\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "memleak-email-1000x",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "email",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5963,
+   "output": 20,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.012126,
+  "wall_s": 1.148,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"email\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "misconfig-cart-75",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6425,
+   "output": 2764,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.04049,
+  "wall_s": 33.01,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"checkout\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "misconfig-checkout-on",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "payment",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6457,
+   "output": 858,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.021494,
+  "wall_s": 11.035,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"payment\", \"fault_type\": \"crash\"}"
+  ]
+ },
+ {
+  "card_id": "misconfig-payment-100",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "payment",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7371,
+   "output": 23,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.014972,
+  "wall_s": 1.286,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"payment\", \"fault_type\": \"misconfig\"}"
+  ]
+ },
+ {
+  "card_id": "misconfig-payment-50",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "payment",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7096,
+   "output": 344,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.017632,
+  "wall_s": 5.235,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"payment\", \"fault_type\": \"misconfig\"}"
+  ]
+ },
+ {
+  "card_id": "misconfig-payment-75",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "payment",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7072,
+   "output": 23,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.014374,
+  "wall_s": 1.333,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"payment\", \"fault_type\": \"misconfig\"}"
+  ]
+ },
+ {
+  "card_id": "misconfig-payment-90",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "payment",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7100,
+   "output": 333,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.01753,
+  "wall_s": 5.394,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"payment\", \"fault_type\": \"misconfig\"}"
+  ]
+ },
+ {
+  "card_id": "misconfig-pc-OLJCESPC7Z",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6330,
+   "output": 26,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.01292,
+  "wall_s": 1.254,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"product-catalog\", \"fault_type\": \"misconfig\"}"
+  ]
+ }
+]

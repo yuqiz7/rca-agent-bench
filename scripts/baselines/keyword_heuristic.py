@@ -31,6 +31,7 @@ import argparse
 import json
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -360,6 +361,7 @@ def classify(sig, svc, feats):
 
 
 def run(card_id, evidence_root=None):
+    t0 = time.time()
     sig = Signals(card_id, evidence_root=evidence_root)
     svc, scores, feats = localise(sig)
     assert_no_card_id_in_features(card_id, (scores, feats))
@@ -369,6 +371,9 @@ def run(card_id, evidence_root=None):
         "answer": {"service": svc, "fault_type": ft},
         "steps": 1,
         "cost_usd": 0.0,
+        # Real elapsed time, dominated by parsing the pack's ~10 MB of JSON. It is
+        # not zero and reporting it as zero would flatter the arm.
+        "wall_s": round(time.time() - t0, 3),
         "terminated": "submit",
         "rationale": why,
         "scores": scores,

@@ -1,0 +1,114 @@
+{
+ "run_id": "devset_v2_extra8_20260828",
+ "model": "claude-sonnet-5",
+ "cards": [
+  "blackhole-checkout-01",
+  "blackhole-product-catalog-01",
+  "crash-astronomy-db-01",
+  "crash-checkout-01",
+  "crash-email-01",
+  "misconfig-cart-75",
+  "misconfig-payment-50",
+  "misconfig-payment-75"
+ ],
+ "started_at": "2026-08-28T21:53:14Z",
+ "wall_s": 347.465,
+ "rows": [
+  {
+   "card_id": "blackhole-checkout-01",
+   "ground_truth": {
+    "service": "checkout",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "blackhole-product-catalog-01",
+   "ground_truth": {
+    "service": "product-catalog",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "crash-astronomy-db-01",
+   "ground_truth": {
+    "service": "astronomy-db",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "crash-checkout-01",
+   "ground_truth": {
+    "service": "checkout",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "crash-email-01",
+   "ground_truth": {
+    "service": "email",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "misconfig-cart-75",
+   "ground_truth": {
+    "service": "cart",
+    "fault_type": "misconfig",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": false,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "misconfig-payment-50",
+   "ground_truth": {
+    "service": "payment",
+    "fault_type": "misconfig",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "misconfig-payment-75",
+   "ground_truth": {
+    "service": "payment",
+    "fault_type": "misconfig",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  }
+ ]
+}
