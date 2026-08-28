@@ -1,0 +1,47 @@
+# batch 4 -- 14 cards, run in this order via --scenarios (order is preserved).
+#
+# Composition: the 8 cards batch 3 never reached after it aborted, the 4 F-2
+# family reruns now that recover_s is derived per target, plus the two cards
+# whose judgement was the thing at fault (F-3 latency-shipping-3000, F-6
+# latency-payment-800).
+#
+# Ordering follows the same discipline as batch 3 and adds one rule from its
+# failure: the four F-2 family cards are the highest remaining risk and are
+# spaced three apart so that no two can land in the same run of failures.
+# Non-low-risk cards never run three deep -- batch 3 aborted because a card
+# judged low risk failed off-forecast and bridged two risky ones into a streak
+# of three.
+#
+#   L = low risk    H = F-2 family rerun    M = new tier / no-SDK / just-fixed
+#
+# 1  L   latency-quote-800              new, quote 0.0933/s, recover_s 90
+# 2  H   crash-payment-01               F-2, recover_s 60 -> 150
+# 3  M   latency-shipping-3000          F-3 rerun, should now pass at 8.70% share
+# 4  L   latency-ad-800                 new
+# 5  H   blackhole-valkey-cart-01       F-4, recover_s 150 as a measurement
+# 6  M   latency-recommendation-3000    new 3000 ms tier
+# 7  L   crash-shipping-01              new
+# 8  H   blackhole-ad-01                F-2 but gets NO extension: expected 5.20
+#                                       calls >= floor of 5, so ~10.9% false
+#                                       failure remains. Watch this one.
+# 9  M   latency-payment-800            F-6 rerun, first test of the IP-resolved
+#                                       caller edge
+# 10 L   blackhole-recommendation-01    new
+# 11 H   blackhole-payment-01           F-2, recover_s 60 -> 150
+# 12 M   latency-valkey-cart-800        new, no-SDK target
+# 13 L   blackhole-shipping-01          new
+# 14 M   latency-astronomy-db-3000      new 3000 ms tier on a no-SDK target
+scenarios/latency-quote-800.yaml
+scenarios/crash-payment-01.yaml
+scenarios/latency-shipping-3000.yaml
+scenarios/latency-ad-800.yaml
+scenarios/blackhole-valkey-cart-01.yaml
+scenarios/latency-recommendation-3000.yaml
+scenarios/crash-shipping-01.yaml
+scenarios/blackhole-ad-01.yaml
+scenarios/latency-payment-800.yaml
+scenarios/blackhole-recommendation-01.yaml
+scenarios/blackhole-payment-01.yaml
+scenarios/latency-valkey-cart-800.yaml
+scenarios/blackhole-shipping-01.yaml
+scenarios/latency-astronomy-db-3000.yaml
