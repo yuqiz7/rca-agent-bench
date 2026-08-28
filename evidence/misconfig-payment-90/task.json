@@ -1,0 +1,130 @@
+{
+ "card_id": "misconfig-payment-90",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T22:52:16Z",
+   "end": "2026-08-27T22:54:17Z"
+  },
+  "detected_at": "2026-08-27T22:58:11Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_error_rate_jump",
+    "message": "elevated error rate on frontend/POST /api/checkout",
+    "service": "frontend",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.1935,
+     "window": {
+      "start": "2026-08-27T22:51:14Z",
+      "end": "2026-08-27T22:52:16Z"
+     }
+    },
+    "observed": {
+     "error_count": 22.0,
+     "threshold_N": 6,
+     "window": {
+      "start": "2026-08-27T22:52:16Z",
+      "end": "2026-08-27T22:54:17Z"
+     }
+    },
+    "deviation": 22.0
+   },
+   {
+    "rule": "error_rate_jump",
+    "message": "elevated error rate on payment",
+    "service": "payment",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.0968,
+     "window": {
+      "start": "2026-08-27T22:51:14Z",
+      "end": "2026-08-27T22:52:16Z"
+     }
+    },
+    "observed": {
+     "error_count": 13.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-27T22:52:16Z",
+      "end": "2026-08-27T22:54:17Z"
+     }
+    },
+    "deviation": 13.0
+   },
+   {
+    "rule": "method_error_rate_jump",
+    "message": "elevated error rate on payment/oteldemo.PaymentService/Charge",
+    "service": "payment",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.0968,
+     "window": {
+      "start": "2026-08-27T22:51:14Z",
+      "end": "2026-08-27T22:52:16Z"
+     }
+    },
+    "observed": {
+     "error_count": 13.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-27T22:52:16Z",
+      "end": "2026-08-27T22:54:17Z"
+     }
+    },
+    "deviation": 13.0
+   },
+   {
+    "rule": "error_rate_jump",
+    "message": "elevated error rate on checkout",
+    "service": "checkout",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.0968,
+     "window": {
+      "start": "2026-08-27T22:51:14Z",
+      "end": "2026-08-27T22:52:16Z"
+     }
+    },
+    "observed": {
+     "error_count": 11.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-27T22:52:16Z",
+      "end": "2026-08-27T22:54:17Z"
+     }
+    },
+    "deviation": 11.0
+   },
+   {
+    "rule": "method_error_rate_jump",
+    "message": "elevated error rate on checkout/oteldemo.CheckoutService/PlaceOrder",
+    "service": "checkout",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.0968,
+     "window": {
+      "start": "2026-08-27T22:51:14Z",
+      "end": "2026-08-27T22:52:16Z"
+     }
+    },
+    "observed": {
+     "error_count": 11.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-27T22:52:16Z",
+      "end": "2026-08-27T22:54:17Z"
+     }
+    },
+    "deviation": 11.0
+   }
+  ]
+ },
+ "evidence_dir": "evidence/misconfig-payment-90",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

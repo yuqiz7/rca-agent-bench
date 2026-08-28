@@ -1,0 +1,40 @@
+{
+ "card_id": "latency-currency-800",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T23:40:15Z",
+   "end": "2026-08-27T23:42:15Z"
+  },
+  "detected_at": "2026-08-27T23:46:08Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on checkout",
+    "service": "checkout",
+    "baseline": {
+     "p95_ms": 48.0,
+     "window": {
+      "start": "2026-08-27T23:39:15Z",
+      "end": "2026-08-27T23:40:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4775.0,
+     "delta_ms": 4727.0,
+     "ratio": 99.479,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-27T23:40:15Z",
+      "end": "2026-08-27T23:42:15Z"
+     }
+    },
+    "deviation": 99.479
+   }
+  ]
+ },
+ "evidence_dir": "evidence/latency-currency-800",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

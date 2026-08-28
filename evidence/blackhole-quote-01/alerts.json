@@ -1,0 +1,207 @@
+{
+ "detected_at": "2026-08-28T00:20:18Z",
+ "window": {
+  "start": "2026-08-28T00:14:23Z",
+  "end": "2026-08-28T00:16:23Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-28T00:12:23Z",
+   "end": "2026-08-28T00:19:53Z"
+  },
+  "baseline": {
+   "start": "2026-08-28T00:13:23Z",
+   "end": "2026-08-28T00:14:23Z"
+  },
+  "inject": {
+   "start": "2026-08-28T00:14:23Z",
+   "end": "2026-08-28T00:16:23Z"
+  },
+  "recover": {
+   "start": "2026-08-28T00:16:23Z",
+   "end": "2026-08-28T00:17:23Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>"
+ },
+ "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
+ "alerts": [
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on shipping",
+   "service": "shipping",
+   "baseline": {
+    "p95_ms": 3.87,
+    "window": {
+     "start": "2026-08-28T00:13:23Z",
+     "end": "2026-08-28T00:14:23Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9628.41,
+    "delta_ms": 9624.55,
+    "ratio": 2490.107,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T00:14:23Z",
+     "end": "2026-08-28T00:16:23Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T00:14:23Z",
+    "end": "2026-08-28T00:16:23Z"
+   },
+   "deviation": 2490.107
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on checkout",
+   "service": "checkout",
+   "baseline": {
+    "p95_ms": 48.0,
+    "window": {
+     "start": "2026-08-28T00:13:23Z",
+     "end": "2026-08-28T00:14:23Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9250.0,
+    "delta_ms": 9202.0,
+    "ratio": 192.708,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T00:14:23Z",
+     "end": "2026-08-28T00:16:23Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T00:14:23Z",
+    "end": "2026-08-28T00:16:23Z"
+   },
+   "deviation": 192.708
+  },
+  {
+   "rule": "error_rate_jump",
+   "message": "elevated error rate on shipping",
+   "service": "shipping",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.1,
+    "window": {
+     "start": "2026-08-28T00:13:23Z",
+     "end": "2026-08-28T00:14:23Z"
+    }
+   },
+   "observed": {
+    "error_count": 11.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-28T00:14:23Z",
+     "end": "2026-08-28T00:16:23Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T00:14:23Z",
+    "end": "2026-08-28T00:16:23Z"
+   },
+   "deviation": 11.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on shipping/POST /get-quote",
+   "service": "shipping",
+   "operation": "POST /get-quote",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0833,
+    "window": {
+     "start": "2026-08-28T00:13:23Z",
+     "end": "2026-08-28T00:14:23Z"
+    }
+   },
+   "observed": {
+    "error_count": 11.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-28T00:14:23Z",
+     "end": "2026-08-28T00:16:23Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T00:14:23Z",
+    "end": "2026-08-28T00:16:23Z"
+   },
+   "deviation": 11.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/shipping",
+   "service": "frontend",
+   "operation": "GET /api/shipping",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.1333,
+    "window": {
+     "start": "2026-08-28T00:13:23Z",
+     "end": "2026-08-28T00:14:23Z"
+    }
+   },
+   "observed": {
+    "error_count": 7.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-28T00:14:23Z",
+     "end": "2026-08-28T00:16:23Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T00:14:23Z",
+    "end": "2026-08-28T00:16:23Z"
+   },
+   "deviation": 7.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0333,
+    "window": {
+     "start": "2026-08-28T00:13:23Z",
+     "end": "2026-08-28T00:14:23Z"
+    }
+   },
+   "observed": {
+    "error_count": 6.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-28T00:14:23Z",
+     "end": "2026-08-28T00:16:23Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T00:14:23Z",
+    "end": "2026-08-28T00:16:23Z"
+   },
+   "deviation": 6.0
+  }
+ ],
+ "no_alert": false,
+ "card_id": "blackhole-quote-01"
+}

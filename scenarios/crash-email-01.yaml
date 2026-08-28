@@ -23,5 +23,34 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: 2
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-08-27T23:53:08Z"
+  t_inject: "2026-08-27T23:54:08Z"
+  t_revert: "2026-08-27T23:56:09Z"
+  t_end: "2026-08-27T23:57:09Z"
+  settle_s: 150
+  t_harvest: "2026-08-27T23:59:39Z"
+  batch_dir: scripts/out/batch2_20260827T223101Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/crash-email-01
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 26b81f7cb7b4fe10638c290a3925f88fdb5aada6b5b53f4615b3175633781638
+    metrics.json: 0171663b4a465a084cc325e9b695ea07a7b74c49d5cb02e4883ee5c88dd7dbbd
+    traces.json: 871def9d3565a9337e51f27c927377fff8ee30d958187a2f0eea5db9e9cfe979
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 0
+agent_visible_symptom:
+  window:
+    start: "2026-08-27T23:54:08Z"
+    end: "2026-08-27T23:56:09Z"
+  detected_at: "2026-08-28T00:00:02Z"
+  no_alert: true
+  alerts: []

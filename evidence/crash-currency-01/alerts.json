@@ -1,0 +1,270 @@
+{
+ "detected_at": "2026-08-27T23:32:23Z",
+ "window": {
+  "start": "2026-08-27T23:26:32Z",
+  "end": "2026-08-27T23:28:32Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-27T23:24:31Z",
+   "end": "2026-08-27T23:32:02Z"
+  },
+  "baseline": {
+   "start": "2026-08-27T23:25:31Z",
+   "end": "2026-08-27T23:26:32Z"
+  },
+  "inject": {
+   "start": "2026-08-27T23:26:32Z",
+   "end": "2026-08-27T23:28:32Z"
+  },
+  "recover": {
+   "start": "2026-08-27T23:28:32Z",
+   "end": "2026-08-27T23:29:32Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>"
+ },
+ "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
+ "alerts": [
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on currency",
+   "service": "currency",
+   "baseline": {
+    "request_rate_per_s": 0.5574,
+    "window": {
+     "start": "2026-08-27T23:25:31Z",
+     "end": "2026-08-27T23:26:32Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0557,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 58.52,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-27T23:26:32Z",
+     "end": "2026-08-27T23:28:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:26:32Z",
+    "end": "2026-08-27T23:28:32Z"
+   },
+   "deviation": 58.52,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/currency",
+   "service": "frontend",
+   "operation": "GET /api/currency",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.1967,
+    "window": {
+     "start": "2026-08-27T23:25:31Z",
+     "end": "2026-08-27T23:26:32Z"
+    }
+   },
+   "observed": {
+    "error_count": 20.0,
+    "threshold_N": 6,
+    "window": {
+     "start": "2026-08-27T23:26:32Z",
+     "end": "2026-08-27T23:28:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:26:32Z",
+    "end": "2026-08-27T23:28:32Z"
+   },
+   "deviation": 20.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/shipping",
+   "service": "frontend",
+   "operation": "GET /api/shipping",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0656,
+    "window": {
+     "start": "2026-08-27T23:25:31Z",
+     "end": "2026-08-27T23:26:32Z"
+    }
+   },
+   "observed": {
+    "error_count": 15.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-27T23:26:32Z",
+     "end": "2026-08-27T23:28:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:26:32Z",
+    "end": "2026-08-27T23:28:32Z"
+   },
+   "deviation": 15.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.1311,
+    "window": {
+     "start": "2026-08-27T23:25:31Z",
+     "end": "2026-08-27T23:26:32Z"
+    }
+   },
+   "observed": {
+    "error_count": 11.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-27T23:26:32Z",
+     "end": "2026-08-27T23:28:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:26:32Z",
+    "end": "2026-08-27T23:28:32Z"
+   },
+   "deviation": 11.0
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on email",
+   "service": "email",
+   "baseline": {
+    "request_rate_per_s": 0.0656,
+    "window": {
+     "start": "2026-08-27T23:25:31Z",
+     "end": "2026-08-27T23:26:32Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0066,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 6.89,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-27T23:26:32Z",
+     "end": "2026-08-27T23:28:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:26:32Z",
+    "end": "2026-08-27T23:28:32Z"
+   },
+   "deviation": 6.89,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on payment",
+   "service": "payment",
+   "baseline": {
+    "request_rate_per_s": 0.0656,
+    "window": {
+     "start": "2026-08-27T23:25:31Z",
+     "end": "2026-08-27T23:26:32Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0066,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 6.89,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-27T23:26:32Z",
+     "end": "2026-08-27T23:28:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:26:32Z",
+    "end": "2026-08-27T23:28:32Z"
+   },
+   "deviation": 6.89,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "error_rate_jump",
+   "message": "elevated error rate on checkout",
+   "service": "checkout",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0656,
+    "window": {
+     "start": "2026-08-27T23:25:31Z",
+     "end": "2026-08-27T23:26:32Z"
+    }
+   },
+   "observed": {
+    "error_count": 6.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-27T23:26:32Z",
+     "end": "2026-08-27T23:28:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:26:32Z",
+    "end": "2026-08-27T23:28:32Z"
+   },
+   "deviation": 6.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on checkout/oteldemo.CheckoutService/PlaceOrder",
+   "service": "checkout",
+   "operation": "oteldemo.CheckoutService/PlaceOrder",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0656,
+    "window": {
+     "start": "2026-08-27T23:25:31Z",
+     "end": "2026-08-27T23:26:32Z"
+    }
+   },
+   "observed": {
+    "error_count": 6.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-27T23:26:32Z",
+     "end": "2026-08-27T23:28:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:26:32Z",
+    "end": "2026-08-27T23:28:32Z"
+   },
+   "deviation": 6.0
+  }
+ ],
+ "no_alert": false,
+ "card_id": "crash-currency-01"
+}

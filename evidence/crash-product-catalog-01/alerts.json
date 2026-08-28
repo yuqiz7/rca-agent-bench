@@ -1,0 +1,422 @@
+{
+ "detected_at": "2026-08-27T23:04:58Z",
+ "window": {
+  "start": "2026-08-27T22:59:12Z",
+  "end": "2026-08-27T23:01:12Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-27T22:57:11Z",
+   "end": "2026-08-27T23:04:42Z"
+  },
+  "baseline": {
+   "start": "2026-08-27T22:58:11Z",
+   "end": "2026-08-27T22:59:12Z"
+  },
+  "inject": {
+   "start": "2026-08-27T22:59:12Z",
+   "end": "2026-08-27T23:01:12Z"
+  },
+  "recover": {
+   "start": "2026-08-27T23:01:12Z",
+   "end": "2026-08-27T23:02:12Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>"
+ },
+ "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
+ "alerts": [
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on flagd",
+   "service": "flagd",
+   "baseline": {
+    "p95_ms": 1.93,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 2450.0,
+    "delta_ms": 2448.07,
+    "ratio": 1269.451,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 1269.451
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on frontend",
+   "service": "frontend",
+   "baseline": {
+    "p95_ms": 40.03,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 14959.97,
+    "ratio": 374.698,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 374.698
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on frontend-proxy",
+   "service": "frontend-proxy",
+   "baseline": {
+    "p95_ms": 42.39,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 14957.61,
+    "ratio": 353.855,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 353.855
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on product-catalog",
+   "service": "product-catalog",
+   "baseline": {
+    "request_rate_per_s": 3.2623,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.3262,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 342.54,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 342.54,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on shipping",
+   "service": "shipping",
+   "baseline": {
+    "request_rate_per_s": 0.2623,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0262,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 27.54,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 27.54,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/recommendations",
+   "service": "frontend",
+   "operation": "GET /api/recommendations",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.7541,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "error_count": 24.0,
+    "threshold_N": 23,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 24.0
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on currency",
+   "service": "currency",
+   "baseline": {
+    "request_rate_per_s": 0.6557,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0417,
+    "rate_ceiling_per_s": 0.0656,
+    "consecutive_zero_samples": 2,
+    "zero_span_s": 30,
+    "expected_calls_in_zero_span": 19.67,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 19.67,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on quote",
+   "service": "quote",
+   "baseline": {
+    "request_rate_per_s": 0.1639,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0164,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 17.21,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 17.21,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on email",
+   "service": "email",
+   "baseline": {
+    "request_rate_per_s": 0.0984,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0098,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 10.33,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 10.33,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.1967,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "error_count": 10.0,
+    "threshold_N": 6,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 10.0
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on payment",
+   "service": "payment",
+   "baseline": {
+    "request_rate_per_s": 0.082,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0082,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 8.61,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 8.61,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "error_rate_jump",
+   "message": "elevated error rate on checkout",
+   "service": "checkout",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0984,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "error_count": 5.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 5.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on checkout/oteldemo.CheckoutService/PlaceOrder",
+   "service": "checkout",
+   "operation": "oteldemo.CheckoutService/PlaceOrder",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0984,
+    "window": {
+     "start": "2026-08-27T22:58:11Z",
+     "end": "2026-08-27T22:59:12Z"
+    }
+   },
+   "observed": {
+    "error_count": 5.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-27T22:59:12Z",
+     "end": "2026-08-27T23:01:12Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:59:12Z",
+    "end": "2026-08-27T23:01:12Z"
+   },
+   "deviation": 5.0
+  }
+ ],
+ "no_alert": false,
+ "card_id": "crash-product-catalog-01"
+}

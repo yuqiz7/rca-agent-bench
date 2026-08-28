@@ -24,5 +24,54 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: 2
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-08-27T23:39:15Z"
+  t_inject: "2026-08-27T23:40:15Z"
+  t_revert: "2026-08-27T23:42:15Z"
+  t_end: "2026-08-27T23:43:15Z"
+  settle_s: 150
+  t_harvest: "2026-08-27T23:45:45Z"
+  batch_dir: scripts/out/batch2_20260827T223101Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/latency-currency-800
+  packed: true
+  manifest_sha256:
+    logs.jsonl: a300fec9d845700dade169d1d83fb1f4dffb9ea26a2f219f181551ba90860606
+    metrics.json: cc841e2a70825651e59f6f25046d5efea40252bc60c75f5316063591fc74187b
+    traces.json: ac5c7375788fa723b41029096a8de44abd7aa21361dc371765777da1d126c2af
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 1
+agent_visible_symptom:
+  window:
+    start: "2026-08-27T23:40:15Z"
+    end: "2026-08-27T23:42:15Z"
+  detected_at: "2026-08-27T23:46:08Z"
+  no_alert: false
+  alerts:
+    -
+      rule: p95_jump
+      message: elevated p95 latency on checkout
+      service: checkout
+      baseline:
+        p95_ms: 48.0
+        window:
+          start: "2026-08-27T23:39:15Z"
+          end: "2026-08-27T23:40:15Z"
+      observed:
+        p95_ms: 4775.0
+        delta_ms: 4727.0
+        ratio: 99.479
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T23:40:15Z"
+          end: "2026-08-27T23:42:15Z"
+      deviation: 99.479

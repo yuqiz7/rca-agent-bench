@@ -1,0 +1,37 @@
+{
+ "detected_at": "2026-08-27T23:53:08Z",
+ "window": {
+  "start": "2026-08-27T23:47:10Z",
+  "end": "2026-08-27T23:49:11Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-27T23:45:09Z",
+   "end": "2026-08-27T23:52:41Z"
+  },
+  "baseline": {
+   "start": "2026-08-27T23:46:09Z",
+   "end": "2026-08-27T23:47:10Z"
+  },
+  "inject": {
+   "start": "2026-08-27T23:47:10Z",
+   "end": "2026-08-27T23:49:11Z"
+  },
+  "recover": {
+   "start": "2026-08-27T23:49:11Z",
+   "end": "2026-08-27T23:50:11Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>"
+ },
+ "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
+ "alerts": [],
+ "no_alert": true,
+ "card_id": "misconfig-payment-50"
+}

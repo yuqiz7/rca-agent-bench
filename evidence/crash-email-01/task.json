@@ -1,0 +1,14 @@
+{
+ "card_id": "crash-email-01",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-27T23:54:08Z",
+   "end": "2026-08-27T23:56:09Z"
+  },
+  "detected_at": "2026-08-28T00:00:02Z",
+  "no_alert": true,
+  "alerts": []
+ },
+ "evidence_dir": "evidence/crash-email-01",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

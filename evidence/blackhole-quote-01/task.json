@@ -1,0 +1,157 @@
+{
+ "card_id": "blackhole-quote-01",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-28T00:14:23Z",
+   "end": "2026-08-28T00:16:23Z"
+  },
+  "detected_at": "2026-08-28T00:20:18Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on shipping",
+    "service": "shipping",
+    "baseline": {
+     "p95_ms": 3.87,
+     "window": {
+      "start": "2026-08-28T00:13:23Z",
+      "end": "2026-08-28T00:14:23Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 9628.41,
+     "delta_ms": 9624.55,
+     "ratio": 2490.107,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T00:14:23Z",
+      "end": "2026-08-28T00:16:23Z"
+     }
+    },
+    "deviation": 2490.107
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on checkout",
+    "service": "checkout",
+    "baseline": {
+     "p95_ms": 48.0,
+     "window": {
+      "start": "2026-08-28T00:13:23Z",
+      "end": "2026-08-28T00:14:23Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 9250.0,
+     "delta_ms": 9202.0,
+     "ratio": 192.708,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T00:14:23Z",
+      "end": "2026-08-28T00:16:23Z"
+     }
+    },
+    "deviation": 192.708
+   },
+   {
+    "rule": "error_rate_jump",
+    "message": "elevated error rate on shipping",
+    "service": "shipping",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.1,
+     "window": {
+      "start": "2026-08-28T00:13:23Z",
+      "end": "2026-08-28T00:14:23Z"
+     }
+    },
+    "observed": {
+     "error_count": 11.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-28T00:14:23Z",
+      "end": "2026-08-28T00:16:23Z"
+     }
+    },
+    "deviation": 11.0
+   },
+   {
+    "rule": "method_error_rate_jump",
+    "message": "elevated error rate on shipping/POST /get-quote",
+    "service": "shipping",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.0833,
+     "window": {
+      "start": "2026-08-28T00:13:23Z",
+      "end": "2026-08-28T00:14:23Z"
+     }
+    },
+    "observed": {
+     "error_count": 11.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-28T00:14:23Z",
+      "end": "2026-08-28T00:16:23Z"
+     }
+    },
+    "deviation": 11.0
+   },
+   {
+    "rule": "method_error_rate_jump",
+    "message": "elevated error rate on frontend/GET /api/shipping",
+    "service": "frontend",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.1333,
+     "window": {
+      "start": "2026-08-28T00:13:23Z",
+      "end": "2026-08-28T00:14:23Z"
+     }
+    },
+    "observed": {
+     "error_count": 7.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-28T00:14:23Z",
+      "end": "2026-08-28T00:16:23Z"
+     }
+    },
+    "deviation": 7.0
+   },
+   {
+    "rule": "method_error_rate_jump",
+    "message": "elevated error rate on frontend/POST /api/checkout",
+    "service": "frontend",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.0333,
+     "window": {
+      "start": "2026-08-28T00:13:23Z",
+      "end": "2026-08-28T00:14:23Z"
+     }
+    },
+    "observed": {
+     "error_count": 6.0,
+     "threshold_N": 5,
+     "window": {
+      "start": "2026-08-28T00:14:23Z",
+      "end": "2026-08-28T00:16:23Z"
+     }
+    },
+    "deviation": 6.0
+   }
+  ]
+ },
+ "evidence_dir": "evidence/blackhole-quote-01",
+ "trigger": "Monitoring detected an anomaly in the system."
+}
