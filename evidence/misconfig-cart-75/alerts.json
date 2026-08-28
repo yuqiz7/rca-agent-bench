@@ -1,25 +1,25 @@
 {
- "detected_at": "2026-08-28T18:47:49Z",
+ "detected_at": "2026-08-28T20:22:26Z",
  "window": {
-  "start": "2026-08-27T20:26:07Z",
-  "end": "2026-08-27T20:28:08Z"
+  "start": "2026-08-28T20:14:00Z",
+  "end": "2026-08-28T20:16:01Z"
  },
  "windows": {
   "pack": {
-   "start": "2026-08-27T20:24:06Z",
-   "end": "2026-08-27T20:31:38Z"
+   "start": "2026-08-28T20:11:58Z",
+   "end": "2026-08-28T20:19:31Z"
   },
   "baseline": {
-   "start": "2026-08-27T20:25:06Z",
-   "end": "2026-08-27T20:26:07Z"
+   "start": "2026-08-28T20:12:58Z",
+   "end": "2026-08-28T20:14:00Z"
   },
   "inject": {
-   "start": "2026-08-27T20:26:07Z",
-   "end": "2026-08-27T20:28:08Z"
+   "start": "2026-08-28T20:14:00Z",
+   "end": "2026-08-28T20:16:01Z"
   },
   "recover": {
-   "start": "2026-08-27T20:28:08Z",
-   "end": "2026-08-27T20:29:08Z"
+   "start": "2026-08-28T20:16:01Z",
+   "end": "2026-08-28T20:17:01Z"
   }
  },
  "rules": {
@@ -32,7 +32,76 @@
   "method_latency_jump": "elevated p95 latency on <service>"
  },
  "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
- "alerts": [],
- "no_alert": true,
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "p95_ms": 97.5,
+    "call_count": 6.0,
+    "window": {
+     "start": "2026-08-28T20:12:58Z",
+     "end": "2026-08-28T20:14:00Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 14902.5,
+    "ratio": 153.846,
+    "call_count": 9.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T20:14:00Z",
+     "end": "2026-08-28T20:16:01Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T20:14:00Z",
+    "end": "2026-08-28T20:16:01Z"
+   },
+   "deviation": 153.846
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/POST",
+   "service": "frontend-proxy",
+   "operation": "POST",
+   "baseline": {
+    "p95_ms": 4340.0,
+    "call_count": 31.0,
+    "window": {
+     "start": "2026-08-28T20:12:58Z",
+     "end": "2026-08-28T20:14:00Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 10660.0,
+    "ratio": 3.456,
+    "call_count": 63.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T20:14:00Z",
+     "end": "2026-08-28T20:16:01Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T20:14:00Z",
+    "end": "2026-08-28T20:16:01Z"
+   },
+   "deviation": 21.32
+  }
+ ],
+ "no_alert": false,
  "card_id": "misconfig-cart-75"
 }

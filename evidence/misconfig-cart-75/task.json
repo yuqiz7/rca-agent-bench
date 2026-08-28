@@ -2,12 +2,71 @@
  "card_id": "misconfig-cart-75",
  "agent_visible_symptom": {
   "window": {
-   "start": "2026-08-27T20:26:07Z",
-   "end": "2026-08-27T20:28:08Z"
+   "start": "2026-08-28T20:14:00Z",
+   "end": "2026-08-28T20:16:01Z"
   },
-  "detected_at": "2026-08-27T21:46:47Z",
-  "no_alert": true,
-  "alerts": []
+  "detected_at": "2026-08-28T20:22:26Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/POST /api/checkout",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 97.5,
+     "call_count": 6.0,
+     "window": {
+      "start": "2026-08-28T20:12:58Z",
+      "end": "2026-08-28T20:14:00Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14902.5,
+     "ratio": 153.846,
+     "call_count": 9.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T20:14:00Z",
+      "end": "2026-08-28T20:16:01Z"
+     }
+    },
+    "deviation": 153.846
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend-proxy/POST",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 4340.0,
+     "call_count": 31.0,
+     "window": {
+      "start": "2026-08-28T20:12:58Z",
+      "end": "2026-08-28T20:14:00Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 10660.0,
+     "ratio": 3.456,
+     "call_count": 63.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T20:14:00Z",
+      "end": "2026-08-28T20:16:01Z"
+     }
+    },
+    "deviation": 21.32
+   }
+  ]
  },
  "evidence_dir": "evidence/misconfig-cart-75",
  "trigger": "Monitoring detected an anomaly in the system."

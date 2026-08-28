@@ -1,0 +1,616 @@
+{
+ "detected_at": "2026-08-28T19:29:20Z",
+ "window": {
+  "start": "2026-08-28T19:23:31Z",
+  "end": "2026-08-28T19:25:31Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-28T19:21:30Z",
+   "end": "2026-08-28T19:29:01Z"
+  },
+  "baseline": {
+   "start": "2026-08-28T19:22:30Z",
+   "end": "2026-08-28T19:23:31Z"
+  },
+  "inject": {
+   "start": "2026-08-28T19:23:31Z",
+   "end": "2026-08-28T19:25:31Z"
+  },
+  "recover": {
+   "start": "2026-08-28T19:25:31Z",
+   "end": "2026-08-28T19:26:31Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/products/[productId]/index",
+   "service": "frontend",
+   "operation": "GET /api/products/[productId]/index",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 1.0164,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "error_count": 108.0,
+    "threshold_N": 31,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 108.0
+  },
+  {
+   "rule": "error_rate_jump",
+   "message": "elevated error rate on product-catalog",
+   "service": "product-catalog",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 2.7541,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "error_count": 87.0,
+    "threshold_N": 83,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 87.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/recommendations",
+   "service": "frontend",
+   "operation": "GET /api/recommendations",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.623,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "error_count": 42.0,
+    "threshold_N": 19,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 42.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on product-catalog/oteldemo.ProductCatalogService/ListProducts",
+   "service": "product-catalog",
+   "operation": "oteldemo.ProductCatalogService/ListProducts",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.4918,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "error_count": 34.0,
+    "threshold_N": 15,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 34.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/products/index",
+   "service": "frontend",
+   "operation": "GET /api/products/index",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.1967,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "error_count": 28.0,
+    "threshold_N": 6,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 28.0
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on shipping",
+   "service": "shipping",
+   "baseline": {
+    "request_rate_per_s": 0.2295,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0083,
+    "rate_ceiling_per_s": 0.023,
+    "consecutive_zero_samples": 6,
+    "zero_span_s": 90,
+    "expected_calls_in_zero_span": 20.66,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 20.66,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "entity_error_concentration",
+   "message": "errors concentrated on demo.product.id=6E92ZMYYFZ (product-catalog)",
+   "service": "product-catalog",
+   "tag": "demo.product.id",
+   "value": "6E92ZMYYFZ",
+   "baseline": {
+    "note": "entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below",
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "spans": 12,
+    "error_spans": 12,
+    "error_frac": 1.0,
+    "threshold_frac": 0.5,
+    "threshold_abs": 5,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 12.0,
+   "deviation_unit": "error spans on the entity"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on quote",
+   "service": "quote",
+   "baseline": {
+    "request_rate_per_s": 0.1311,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0083,
+    "rate_ceiling_per_s": 0.0131,
+    "consecutive_zero_samples": 6,
+    "zero_span_s": 90,
+    "expected_calls_in_zero_span": 11.8,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 11.8,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/POST",
+   "service": "frontend-proxy",
+   "operation": "POST",
+   "baseline": {
+    "p95_ms": 4250.0,
+    "call_count": 28.0,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9737.5,
+    "delta_ms": 5487.5,
+    "ratio": 2.291,
+    "call_count": 32.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 10.975
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on flagd/flagd.evaluation.v1.Service/EventStream",
+   "service": "flagd",
+   "operation": "flagd.evaluation.v1.Service/EventStream",
+   "baseline": {
+    "p95_ms": 4850.0,
+    "call_count": 6.0,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9925.0,
+    "delta_ms": 5075.0,
+    "ratio": 2.046,
+    "call_count": 5.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 10.15
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on email",
+   "service": "email",
+   "baseline": {
+    "request_rate_per_s": 0.082,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0082,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 8.61,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 8.61,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on payment",
+   "service": "payment",
+   "baseline": {
+    "request_rate_per_s": 0.082,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0082,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 8.61,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 8.61,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "entity_error_concentration",
+   "message": "errors concentrated on demo.product.id=HQTGWGPNH4 (product-catalog)",
+   "service": "product-catalog",
+   "tag": "demo.product.id",
+   "value": "HQTGWGPNH4",
+   "baseline": {
+    "note": "entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below",
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "spans": 8,
+    "error_spans": 8,
+    "error_frac": 1.0,
+    "threshold_frac": 0.5,
+    "threshold_abs": 5,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 8.0,
+   "deviation_unit": "error spans on the entity"
+  },
+  {
+   "rule": "entity_error_concentration",
+   "message": "errors concentrated on demo.product.id=LS4PSXUNUM (product-catalog)",
+   "service": "product-catalog",
+   "tag": "demo.product.id",
+   "value": "LS4PSXUNUM",
+   "baseline": {
+    "note": "entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below",
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "spans": 8,
+    "error_spans": 8,
+    "error_frac": 1.0,
+    "threshold_frac": 0.5,
+    "threshold_abs": 5,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 8.0,
+   "deviation_unit": "error spans on the entity"
+  },
+  {
+   "rule": "entity_error_concentration",
+   "message": "errors concentrated on demo.product.id=2ZYFJ3GM2N (product-catalog)",
+   "service": "product-catalog",
+   "tag": "demo.product.id",
+   "value": "2ZYFJ3GM2N",
+   "baseline": {
+    "note": "entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below",
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "spans": 7,
+    "error_spans": 7,
+    "error_frac": 1.0,
+    "threshold_frac": 0.5,
+    "threshold_abs": 5,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 7.0,
+   "deviation_unit": "error spans on the entity"
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on recommendation",
+   "service": "recommendation",
+   "baseline": {
+    "p95_ms": 7.1,
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 48.0,
+    "delta_ms": 40.9,
+    "ratio": 6.761,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 6.761
+  },
+  {
+   "rule": "entity_error_concentration",
+   "message": "errors concentrated on demo.product.id=0PUK6V6EV0 (product-catalog)",
+   "service": "product-catalog",
+   "tag": "demo.product.id",
+   "value": "0PUK6V6EV0",
+   "baseline": {
+    "note": "entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below",
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "spans": 5,
+    "error_spans": 5,
+    "error_frac": 1.0,
+    "threshold_frac": 0.5,
+    "threshold_abs": 5,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 5.0,
+   "deviation_unit": "error spans on the entity"
+  },
+  {
+   "rule": "entity_error_concentration",
+   "message": "errors concentrated on demo.product.id=66VCHSJNUP (product-catalog)",
+   "service": "product-catalog",
+   "tag": "demo.product.id",
+   "value": "66VCHSJNUP",
+   "baseline": {
+    "note": "entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below",
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "spans": 5,
+    "error_spans": 5,
+    "error_frac": 1.0,
+    "threshold_frac": 0.5,
+    "threshold_abs": 5,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 5.0,
+   "deviation_unit": "error spans on the entity"
+  },
+  {
+   "rule": "entity_error_concentration",
+   "message": "errors concentrated on demo.product.id=9SIQT8TOJO (product-catalog)",
+   "service": "product-catalog",
+   "tag": "demo.product.id",
+   "value": "9SIQT8TOJO",
+   "baseline": {
+    "note": "entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below",
+    "window": {
+     "start": "2026-08-28T19:22:30Z",
+     "end": "2026-08-28T19:23:31Z"
+    }
+   },
+   "observed": {
+    "spans": 5,
+    "error_spans": 5,
+    "error_frac": 1.0,
+    "threshold_frac": 0.5,
+    "threshold_abs": 5,
+    "window": {
+     "start": "2026-08-28T19:23:31Z",
+     "end": "2026-08-28T19:25:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T19:23:31Z",
+    "end": "2026-08-28T19:25:31Z"
+   },
+   "deviation": 5.0,
+   "deviation_unit": "error spans on the entity"
+  }
+ ],
+ "no_alert": false,
+ "card_id": "crash-astronomy-db-01"
+}

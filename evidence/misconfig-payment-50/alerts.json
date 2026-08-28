@@ -1,25 +1,25 @@
 {
- "detected_at": "2026-08-28T18:47:50Z",
+ "detected_at": "2026-08-28T20:32:37Z",
  "window": {
-  "start": "2026-08-27T23:47:10Z",
-  "end": "2026-08-27T23:49:11Z"
+  "start": "2026-08-28T20:23:28Z",
+  "end": "2026-08-28T20:28:29Z"
  },
  "windows": {
   "pack": {
-   "start": "2026-08-27T23:45:09Z",
-   "end": "2026-08-27T23:52:41Z"
+   "start": "2026-08-28T20:21:27Z",
+   "end": "2026-08-28T20:31:59Z"
   },
   "baseline": {
-   "start": "2026-08-27T23:46:09Z",
-   "end": "2026-08-27T23:47:10Z"
+   "start": "2026-08-28T20:22:27Z",
+   "end": "2026-08-28T20:23:28Z"
   },
   "inject": {
-   "start": "2026-08-27T23:47:10Z",
-   "end": "2026-08-27T23:49:11Z"
+   "start": "2026-08-28T20:23:28Z",
+   "end": "2026-08-28T20:28:29Z"
   },
   "recover": {
-   "start": "2026-08-27T23:49:11Z",
-   "end": "2026-08-27T23:50:11Z"
+   "start": "2026-08-28T20:28:29Z",
+   "end": "2026-08-28T20:29:29Z"
   }
  },
  "rules": {
@@ -32,7 +32,146 @@
   "method_latency_jump": "elevated p95 latency on <service>"
  },
  "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
- "alerts": [],
- "no_alert": true,
+ "alerts": [
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.1803,
+    "window": {
+     "start": "2026-08-28T20:22:27Z",
+     "end": "2026-08-28T20:23:28Z"
+    }
+   },
+   "observed": {
+    "error_count": 16.0,
+    "threshold_N": 14,
+    "window": {
+     "start": "2026-08-28T20:23:28Z",
+     "end": "2026-08-28T20:28:29Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T20:23:28Z",
+    "end": "2026-08-28T20:28:29Z"
+   },
+   "deviation": 16.0
+  },
+  {
+   "rule": "error_rate_jump",
+   "message": "elevated error rate on checkout",
+   "service": "checkout",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0984,
+    "window": {
+     "start": "2026-08-28T20:22:27Z",
+     "end": "2026-08-28T20:23:28Z"
+    }
+   },
+   "observed": {
+    "error_count": 8.0,
+    "threshold_N": 8,
+    "window": {
+     "start": "2026-08-28T20:23:28Z",
+     "end": "2026-08-28T20:28:29Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T20:23:28Z",
+    "end": "2026-08-28T20:28:29Z"
+   },
+   "deviation": 8.0
+  },
+  {
+   "rule": "error_rate_jump",
+   "message": "elevated error rate on payment",
+   "service": "payment",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.082,
+    "window": {
+     "start": "2026-08-28T20:22:27Z",
+     "end": "2026-08-28T20:23:28Z"
+    }
+   },
+   "observed": {
+    "error_count": 8.0,
+    "threshold_N": 7,
+    "window": {
+     "start": "2026-08-28T20:23:28Z",
+     "end": "2026-08-28T20:28:29Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T20:23:28Z",
+    "end": "2026-08-28T20:28:29Z"
+   },
+   "deviation": 8.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on checkout/oteldemo.CheckoutService/PlaceOrder",
+   "service": "checkout",
+   "operation": "oteldemo.CheckoutService/PlaceOrder",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.0984,
+    "window": {
+     "start": "2026-08-28T20:22:27Z",
+     "end": "2026-08-28T20:23:28Z"
+    }
+   },
+   "observed": {
+    "error_count": 8.0,
+    "threshold_N": 8,
+    "window": {
+     "start": "2026-08-28T20:23:28Z",
+     "end": "2026-08-28T20:28:29Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T20:23:28Z",
+    "end": "2026-08-28T20:28:29Z"
+   },
+   "deviation": 8.0
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on payment/oteldemo.PaymentService/Charge",
+   "service": "payment",
+   "operation": "oteldemo.PaymentService/Charge",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.082,
+    "window": {
+     "start": "2026-08-28T20:22:27Z",
+     "end": "2026-08-28T20:23:28Z"
+    }
+   },
+   "observed": {
+    "error_count": 8.0,
+    "threshold_N": 7,
+    "window": {
+     "start": "2026-08-28T20:23:28Z",
+     "end": "2026-08-28T20:28:29Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T20:23:28Z",
+    "end": "2026-08-28T20:28:29Z"
+   },
+   "deviation": 8.0
+  }
+ ],
+ "no_alert": false,
  "card_id": "misconfig-payment-50"
 }

@@ -24,21 +24,114 @@ cycle:
 param_validated: false
 batch: 2
 production:
-  t_start: "2026-08-27T22:31:01Z"
-  t_inject: "2026-08-27T22:32:02Z"
-  t_revert: "2026-08-27T22:34:02Z"
-  t_end: "2026-08-27T22:35:02Z"
+  t_start: "2026-08-28T18:55:49Z"
+  t_inject: "2026-08-28T18:56:50Z"
+  t_revert: "2026-08-28T19:01:50Z"
+  t_end: "2026-08-28T19:02:50Z"
   settle_s: 150
-  t_harvest: "2026-08-27T22:37:32Z"
-  batch_dir: scripts/out/batch2_20260827T223101Z
+  t_harvest: "2026-08-28T19:05:20Z"
+  batch_dir: scripts/out/rerun1_20260828T185549Z
   probe:
     injected: true
-    symptom: false
+    symptom: true
     recovered: true
     residue_clean: true
-    verdict: failed
+    verdict: passed
     observe_only: false
-  evidence_dir: null
-  packed: false
-  note: probe gate failed; evidence not packed (decision 021)
-agent_visible_symptom: null
+  evidence_dir: evidence/crash-checkout-01
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 277722a17b26d986abcf28c4505467b91c7b6238fb317cca2c2b255cc44fbf3d
+    metrics.json: f2bded1a3978a09d47b09ba0856a966ce757ae7e1522791f41b5254f15db2da8
+    traces.json: fbc7610e740ff61fab3f5320094e8a392f45c73864f5f74facaf2cae394d4f18
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 4
+agent_visible_symptom:
+  window:
+    start: "2026-08-28T18:56:50Z"
+    end: "2026-08-28T19:01:50Z"
+  detected_at: "2026-08-28T19:05:55Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.1311
+        window:
+          start: "2026-08-28T18:55:49Z"
+          end: "2026-08-28T18:56:50Z"
+      observed:
+        error_count: 42.0
+        threshold_N: 10
+        window:
+          start: "2026-08-28T18:56:50Z"
+          end: "2026-08-28T19:01:50Z"
+      deviation: 42.0
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on email
+      service: email
+      baseline:
+        request_rate_per_s: 0.0656
+        window:
+          start: "2026-08-28T18:55:49Z"
+          end: "2026-08-28T18:56:50Z"
+      observed:
+        request_rate_per_s: 0.0
+        rate_ceiling_per_s: 0.0066
+        consecutive_zero_samples: 19
+        zero_span_s: 285
+        expected_calls_in_zero_span: 18.69
+        min_expected_calls: 5
+        samples_in_window: 20
+        window:
+          start: "2026-08-28T18:56:50Z"
+          end: "2026-08-28T19:01:50Z"
+      deviation: 18.69
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on checkout
+      service: checkout
+      baseline:
+        request_rate_per_s: 0.0492
+        window:
+          start: "2026-08-28T18:55:49Z"
+          end: "2026-08-28T18:56:50Z"
+      observed:
+        request_rate_per_s: 0.0
+        rate_ceiling_per_s: 0.0049
+        consecutive_zero_samples: 19
+        zero_span_s: 285
+        expected_calls_in_zero_span: 14.02
+        min_expected_calls: 5
+        samples_in_window: 20
+        window:
+          start: "2026-08-28T18:56:50Z"
+          end: "2026-08-28T19:01:50Z"
+      deviation: 14.02
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on payment
+      service: payment
+      baseline:
+        request_rate_per_s: 0.0492
+        window:
+          start: "2026-08-28T18:55:49Z"
+          end: "2026-08-28T18:56:50Z"
+      observed:
+        request_rate_per_s: 0.0
+        rate_ceiling_per_s: 0.0049
+        consecutive_zero_samples: 19
+        zero_span_s: 285
+        expected_calls_in_zero_span: 14.02
+        min_expected_calls: 5
+        samples_in_window: 20
+        window:
+          start: "2026-08-28T18:56:50Z"
+          end: "2026-08-28T19:01:50Z"
+      deviation: 14.02

@@ -24,16 +24,16 @@ cycle:
 param_validated: false
 batch: 1
 production:
-  t_start: "2026-08-27T22:22:45Z"
-  t_inject: "2026-08-27T22:23:45Z"
-  t_revert: "2026-08-27T22:25:45Z"
-  t_end: "2026-08-27T22:26:45Z"
+  t_start: "2026-08-28T19:05:55Z"
+  t_inject: "2026-08-28T19:06:55Z"
+  t_revert: "2026-08-28T19:08:56Z"
+  t_end: "2026-08-28T19:09:56Z"
   settle_s: 150
-  t_harvest: "2026-08-27T22:29:15Z"
-  batch_dir: scripts/out/20260827_rerun4b
+  t_harvest: "2026-08-28T19:12:26Z"
+  batch_dir: scripts/out/rerun1_20260828T185549Z
   probe:
     injected: true
-    symptom: false
+    symptom: true
     recovered: false
     residue_clean: true
     verdict: failed

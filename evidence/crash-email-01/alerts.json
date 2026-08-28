@@ -1,25 +1,25 @@
 {
- "detected_at": "2026-08-28T18:47:48Z",
+ "detected_at": "2026-08-28T20:42:46Z",
  "window": {
-  "start": "2026-08-27T23:54:08Z",
-  "end": "2026-08-27T23:56:09Z"
+  "start": "2026-08-28T20:33:37Z",
+  "end": "2026-08-28T20:38:37Z"
  },
  "windows": {
   "pack": {
-   "start": "2026-08-27T23:52:08Z",
-   "end": "2026-08-27T23:59:39Z"
+   "start": "2026-08-28T20:31:37Z",
+   "end": "2026-08-28T20:42:07Z"
   },
   "baseline": {
-   "start": "2026-08-27T23:53:08Z",
-   "end": "2026-08-27T23:54:08Z"
+   "start": "2026-08-28T20:32:37Z",
+   "end": "2026-08-28T20:33:37Z"
   },
   "inject": {
-   "start": "2026-08-27T23:54:08Z",
-   "end": "2026-08-27T23:56:09Z"
+   "start": "2026-08-28T20:33:37Z",
+   "end": "2026-08-28T20:38:37Z"
   },
   "recover": {
-   "start": "2026-08-27T23:56:09Z",
-   "end": "2026-08-27T23:57:09Z"
+   "start": "2026-08-28T20:38:37Z",
+   "end": "2026-08-28T20:39:37Z"
   }
  },
  "rules": {
@@ -32,7 +32,39 @@
   "method_latency_jump": "elevated p95 latency on <service>"
  },
  "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
- "alerts": [],
- "no_alert": true,
+ "alerts": [
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on email",
+   "service": "email",
+   "baseline": {
+    "request_rate_per_s": 0.0333,
+    "window": {
+     "start": "2026-08-28T20:32:37Z",
+     "end": "2026-08-28T20:33:37Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0033,
+    "consecutive_zero_samples": 20,
+    "zero_span_s": 300,
+    "expected_calls_in_zero_span": 10.0,
+    "min_expected_calls": 5,
+    "samples_in_window": 21,
+    "window": {
+     "start": "2026-08-28T20:33:37Z",
+     "end": "2026-08-28T20:38:37Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T20:33:37Z",
+    "end": "2026-08-28T20:38:37Z"
+   },
+   "deviation": 10.0,
+   "deviation_unit": "expected calls missed"
+  }
+ ],
+ "no_alert": false,
  "card_id": "crash-email-01"
 }

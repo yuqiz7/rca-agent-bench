@@ -1,28 +1,28 @@
 {
  "card_id": "misconfig-payment-50",
- "packed_at": "2026-08-27T23:53:08Z",
+ "packed_at": "2026-08-28T20:32:37Z",
  "window": {
-  "start": "2026-08-27T23:45:09Z",
-  "end": "2026-08-27T23:52:41Z",
+  "start": "2026-08-28T20:21:27Z",
+  "end": "2026-08-28T20:31:59Z",
   "pre_pad_s": 60,
   "post_pad_s": 150
  },
  "windows": {
   "pack": {
-   "start": "2026-08-27T23:45:09Z",
-   "end": "2026-08-27T23:52:41Z"
+   "start": "2026-08-28T20:21:27Z",
+   "end": "2026-08-28T20:31:59Z"
   },
   "baseline": {
-   "start": "2026-08-27T23:46:09Z",
-   "end": "2026-08-27T23:47:10Z"
+   "start": "2026-08-28T20:22:27Z",
+   "end": "2026-08-28T20:23:28Z"
   },
   "inject": {
-   "start": "2026-08-27T23:47:10Z",
-   "end": "2026-08-27T23:49:11Z"
+   "start": "2026-08-28T20:23:28Z",
+   "end": "2026-08-28T20:28:29Z"
   },
   "recover": {
-   "start": "2026-08-27T23:49:11Z",
-   "end": "2026-08-27T23:50:11Z"
+   "start": "2026-08-28T20:28:29Z",
+   "end": "2026-08-28T20:29:29Z"
   }
  },
  "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
@@ -30,20 +30,20 @@
   {
    "name": "logs.jsonl",
    "path": "evidence/misconfig-payment-50/logs.jsonl",
-   "bytes": 3343033,
-   "sha256": "a9a7b747529142fb1688f2ae36d421579116154a3b0ee5a940082d8e8280d6f9"
+   "bytes": 4508438,
+   "sha256": "971fcdd769a7ae3068cf05e591f181f37819961025f6952450ce5801103b17e7"
   },
   {
    "name": "metrics.json",
    "path": "evidence/misconfig-payment-50/metrics.json",
-   "bytes": 360436,
-   "sha256": "4bc512d64159906347628deb15447398716caa4be70f6adc98c0d0cc84b18fd6"
+   "bytes": 484155,
+   "sha256": "3ecd2739c06c950dd6085a331cf83007f35e7211afcd13310003371c68d4b7e2"
   },
   {
    "name": "traces.json",
    "path": "evidence/misconfig-payment-50/traces.json",
-   "bytes": 8595368,
-   "sha256": "7c03bd371531d2c4c32d666a720a7aa01653afc20f812da8c55c6b75bcb37634"
+   "bytes": 11651947,
+   "sha256": "08c372efe7646be9cc0081f6dcf6a304957170ce71f702a4951cd16eef920ba3"
   },
   {
    "name": "config_diff.txt",
@@ -60,17 +60,17 @@
  ],
  "stats": {
   "logs.jsonl": {
-   "lines": 10132,
+   "lines": 13862,
    "index_pattern": "otel-logs-*",
    "truncated": false,
    "page_size": 2000
   },
   "metrics.json": {
    "queries": 10,
-   "series": 218
+   "series": 213
   },
   "traces.json": {
-   "spans": 30135,
+   "spans": 40807,
    "limit_hit": false,
    "services_hitting_limit": []
   },
@@ -82,6 +82,5 @@
    "edge_count": 33,
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
- },
- "metrics_refreshed_at": "2026-08-28T18:29:45Z"
+ }
 }

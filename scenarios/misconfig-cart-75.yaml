@@ -26,13 +26,13 @@ cycle:
 param_validated: false
 batch: 1
 production:
-  t_start: "2026-08-27T20:25:06Z"
-  t_inject: "2026-08-27T20:26:07Z"
-  t_revert: "2026-08-27T20:28:08Z"
-  t_end: "2026-08-27T20:29:08Z"
-  settle_s: 150
-  t_harvest: "2026-08-27T20:31:38Z"
-  batch_dir: scripts/out/batch1_20260827T190241Z
+  t_start: "2026-08-28T20:12:58Z"
+  t_inject: "2026-08-28T20:14:00Z"
+  t_revert: "2026-08-28T20:16:01Z"
+  t_end: "2026-08-28T20:17:01Z"
+  settle_s: 300
+  t_harvest: "2026-08-28T20:22:01Z"
+  batch_dir: scripts/out/rerun1_20260828T185549Z
   probe:
     injected: true
     symptom: true
@@ -43,16 +43,64 @@ production:
   evidence_dir: evidence/misconfig-cart-75
   packed: true
   manifest_sha256:
-    logs.jsonl: f073c3186c40fe2bef92993b88df1ba6fb50aabe9e15e988b2873cc38f9aa8a3
-    metrics.json: 0f7cd2a5fd2083e421ccbb7af9a8311ae63d74b7a6df29943bfacec23e1677be
-    traces.json: 031a571a40c7ee0b1c804b8ad995b6d3a579b9d6725407d2a2f194eeca78f50e
+    logs.jsonl: 8ed31f269c9861eca328c99569ed8013595408dbe5f5996d79adfcd50ea3d5e7
+    metrics.json: bbe5fa167fdaa6dda18e07fdc86781ea663b4ee7b94194d5271e23f985fa8e16
+    traces.json: bf639963cf71ff38e27cb8e6024e011d59bc36ef9c875a18fc7a8d98d8ee9472
     config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
     topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
-  alerts: 0
+  alerts: 2
 agent_visible_symptom:
   window:
-    start: "2026-08-27T20:26:07Z"
-    end: "2026-08-27T20:28:08Z"
-  detected_at: "2026-08-28T18:47:49Z"
-  no_alert: true
-  alerts: []
+    start: "2026-08-28T20:14:00Z"
+    end: "2026-08-28T20:16:01Z"
+  detected_at: "2026-08-28T20:22:26Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        p95_ms: 97.5
+        call_count: 6.0
+        window:
+          start: "2026-08-28T20:12:58Z"
+          end: "2026-08-28T20:14:00Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 14902.5
+        ratio: 153.846
+        call_count: 9.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T20:14:00Z"
+          end: "2026-08-28T20:16:01Z"
+      deviation: 153.846
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/POST
+      service: frontend-proxy
+      baseline:
+        p95_ms: 4340.0
+        call_count: 31.0
+        window:
+          start: "2026-08-28T20:12:58Z"
+          end: "2026-08-28T20:14:00Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 10660.0
+        ratio: 3.456
+        call_count: 63.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T20:14:00Z"
+          end: "2026-08-28T20:16:01Z"
+      deviation: 21.32

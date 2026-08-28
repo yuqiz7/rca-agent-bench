@@ -26,13 +26,13 @@ cycle:
 param_validated: false
 batch: 2
 production:
-  t_start: "2026-08-27T23:18:34Z"
-  t_inject: "2026-08-27T23:19:36Z"
-  t_revert: "2026-08-27T23:21:37Z"
-  t_end: "2026-08-27T23:22:37Z"
+  t_start: "2026-08-28T19:52:54Z"
+  t_inject: "2026-08-28T19:53:55Z"
+  t_revert: "2026-08-28T19:58:56Z"
+  t_end: "2026-08-28T19:59:56Z"
   settle_s: 150
-  t_harvest: "2026-08-27T23:25:07Z"
-  batch_dir: scripts/out/batch2_20260827T223101Z
+  t_harvest: "2026-08-28T20:02:26Z"
+  batch_dir: scripts/out/rerun1_20260828T185549Z
   probe:
     injected: true
     symptom: true
@@ -43,16 +43,106 @@ production:
   evidence_dir: evidence/misconfig-payment-75
   packed: true
   manifest_sha256:
-    logs.jsonl: 68d8b48512ce0377cd7a0cef9672e23365f146b8be9086a662dc5dc50f4ea8a9
-    metrics.json: 1983ea4dd827e6a3c6a857b469f143334ac619cc989c052fe63879f3169ff348
-    traces.json: be4a21bd97a71abc23088222f09ac3c658144c6c5fb737e4cbb537b4e0902c26
+    logs.jsonl: 0bf64eb9aae1ff701486f3e76b6806c8b54fa6d9ed87b6649d437c3d8e4b0801
+    metrics.json: 159c9685b27e5af06421509fe538acc94dd62922ce613f2fa687988202356cad
+    traces.json: c296aefb643047470cd5298bb4119da175cbd79af8cc7cd7dc354cf509b895eb
     config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
     topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
-  alerts: 0
+  alerts: 5
 agent_visible_symptom:
   window:
-    start: "2026-08-27T23:19:36Z"
-    end: "2026-08-27T23:21:37Z"
-  detected_at: "2026-08-28T18:47:50Z"
-  no_alert: true
-  alerts: []
+    start: "2026-08-28T19:53:55Z"
+    end: "2026-08-28T19:58:56Z"
+  detected_at: "2026-08-28T20:03:05Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0984
+        window:
+          start: "2026-08-28T19:52:54Z"
+          end: "2026-08-28T19:53:55Z"
+      observed:
+        error_count: 34.0
+        threshold_N: 8
+        window:
+          start: "2026-08-28T19:53:55Z"
+          end: "2026-08-28T19:58:56Z"
+      deviation: 34.0
+    -
+      rule: error_rate_jump
+      message: elevated error rate on payment
+      service: payment
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0656
+        window:
+          start: "2026-08-28T19:52:54Z"
+          end: "2026-08-28T19:53:55Z"
+      observed:
+        error_count: 18.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T19:53:55Z"
+          end: "2026-08-28T19:58:56Z"
+      deviation: 18.0
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on payment/oteldemo.PaymentService/Charge
+      service: payment
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0656
+        window:
+          start: "2026-08-28T19:52:54Z"
+          end: "2026-08-28T19:53:55Z"
+      observed:
+        error_count: 18.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T19:53:55Z"
+          end: "2026-08-28T19:58:56Z"
+      deviation: 18.0
+    -
+      rule: error_rate_jump
+      message: elevated error rate on checkout
+      service: checkout
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0656
+        window:
+          start: "2026-08-28T19:52:54Z"
+          end: "2026-08-28T19:53:55Z"
+      observed:
+        error_count: 17.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T19:53:55Z"
+          end: "2026-08-28T19:58:56Z"
+      deviation: 17.0
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on checkout/oteldemo.CheckoutService/PlaceOrder
+      service: checkout
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0656
+        window:
+          start: "2026-08-28T19:52:54Z"
+          end: "2026-08-28T19:53:55Z"
+      observed:
+        error_count: 17.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T19:53:55Z"
+          end: "2026-08-28T19:58:56Z"
+      deviation: 17.0

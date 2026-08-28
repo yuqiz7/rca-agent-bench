@@ -1,76 +1,76 @@
 {
- "card_id": "misconfig-payment-75",
- "packed_at": "2026-08-28T20:03:05Z",
+ "card_id": "crash-checkout-01",
+ "packed_at": "2026-08-28T19:05:55Z",
  "window": {
-  "start": "2026-08-28T19:51:54Z",
-  "end": "2026-08-28T20:02:26Z",
+  "start": "2026-08-28T18:54:49Z",
+  "end": "2026-08-28T19:05:20Z",
   "pre_pad_s": 60,
   "post_pad_s": 150
  },
  "windows": {
   "pack": {
-   "start": "2026-08-28T19:51:54Z",
-   "end": "2026-08-28T20:02:26Z"
+   "start": "2026-08-28T18:54:49Z",
+   "end": "2026-08-28T19:05:20Z"
   },
   "baseline": {
-   "start": "2026-08-28T19:52:54Z",
-   "end": "2026-08-28T19:53:55Z"
+   "start": "2026-08-28T18:55:49Z",
+   "end": "2026-08-28T18:56:50Z"
   },
   "inject": {
-   "start": "2026-08-28T19:53:55Z",
-   "end": "2026-08-28T19:58:56Z"
+   "start": "2026-08-28T18:56:50Z",
+   "end": "2026-08-28T19:01:50Z"
   },
   "recover": {
-   "start": "2026-08-28T19:58:56Z",
-   "end": "2026-08-28T19:59:56Z"
+   "start": "2026-08-28T19:01:50Z",
+   "end": "2026-08-28T19:02:50Z"
   }
  },
  "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
  "files": [
   {
    "name": "logs.jsonl",
-   "path": "evidence/misconfig-payment-75/logs.jsonl",
-   "bytes": 4383327,
-   "sha256": "0bf64eb9aae1ff701486f3e76b6806c8b54fa6d9ed87b6649d437c3d8e4b0801"
+   "path": "evidence/crash-checkout-01/logs.jsonl",
+   "bytes": 4263540,
+   "sha256": "277722a17b26d986abcf28c4505467b91c7b6238fb317cca2c2b255cc44fbf3d"
   },
   {
    "name": "metrics.json",
-   "path": "evidence/misconfig-payment-75/metrics.json",
-   "bytes": 480073,
-   "sha256": "159c9685b27e5af06421509fe538acc94dd62922ce613f2fa687988202356cad"
+   "path": "evidence/crash-checkout-01/metrics.json",
+   "bytes": 437992,
+   "sha256": "f2bded1a3978a09d47b09ba0856a966ce757ae7e1522791f41b5254f15db2da8"
   },
   {
    "name": "traces.json",
-   "path": "evidence/misconfig-payment-75/traces.json",
-   "bytes": 11258465,
-   "sha256": "c296aefb643047470cd5298bb4119da175cbd79af8cc7cd7dc354cf509b895eb"
+   "path": "evidence/crash-checkout-01/traces.json",
+   "bytes": 10995963,
+   "sha256": "fbc7610e740ff61fab3f5320094e8a392f45c73864f5f74facaf2cae394d4f18"
   },
   {
    "name": "config_diff.txt",
-   "path": "evidence/misconfig-payment-75/config_diff.txt",
+   "path": "evidence/crash-checkout-01/config_diff.txt",
    "bytes": 135,
    "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
   },
   {
    "name": "topology.json",
-   "path": "evidence/misconfig-payment-75/topology.json",
+   "path": "evidence/crash-checkout-01/topology.json",
    "bytes": 378,
    "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
   }
  ],
  "stats": {
   "logs.jsonl": {
-   "lines": 13554,
+   "lines": 12911,
    "index_pattern": "otel-logs-*",
    "truncated": false,
    "page_size": 2000
   },
   "metrics.json": {
    "queries": 10,
-   "series": 212
+   "series": 192
   },
   "traces.json": {
-   "spans": 39387,
+   "spans": 38600,
    "limit_hit": false,
    "services_hitting_limit": []
   },

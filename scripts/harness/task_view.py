@@ -6,6 +6,22 @@ out of the card and everything else is dropped by construction -- adding a field
 to a card can never widen the agent's view, because nothing here enumerates what
 to *exclude*. tests/test_no_leak.py holds the line.
 
+WHITELIST fields != fields the agent sees (decision 024). Two different jobs:
+
+  - WHITELIST is the *packing addressing* layer. `evidence_dir` tells the packer
+    where the pack lives and `card_id` names the card, so both must survive into
+    task.json -- but neither is ever handed to the model.
+  - The agent's input is only `trigger` + `agent_visible_symptom`. run_agent.py
+    projects those two into the user turn and drops the rest.
+
+`card_id` is the dangerous one: it spells out the answer (service and class are
+right there in "crash-payment-01"). It is whitelisted here for addressing and
+then held out of the payload by a fail-closed assertion -- leak_check.py rejects
+the run by *value*, before the first API request, if the id string appears
+anywhere in the agent input (run_agent.py:114). So it is not "in the whitelist,
+therefore visible"; it is "in the whitelist for packing, and asserted absent
+from what the model reads".
+
 Usage:
   task_view.py --card-id crash-cart-01          # write evidence/<card>/task.json
   task_view.py --all                            # every card in scenarios/

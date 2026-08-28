@@ -24,21 +24,408 @@ cycle:
 param_validated: false
 batch: 2
 production:
-  t_start: "2026-08-28T00:06:43Z"
-  t_inject: "2026-08-28T00:07:43Z"
-  t_revert: "2026-08-28T00:09:44Z"
-  t_end: "2026-08-28T00:10:44Z"
+  t_start: "2026-08-28T19:22:30Z"
+  t_inject: "2026-08-28T19:23:31Z"
+  t_revert: "2026-08-28T19:25:31Z"
+  t_end: "2026-08-28T19:26:31Z"
   settle_s: 150
-  t_harvest: "2026-08-28T00:13:14Z"
-  batch_dir: scripts/out/batch2_20260827T223101Z
+  t_harvest: "2026-08-28T19:29:01Z"
+  batch_dir: scripts/out/rerun1_20260828T185549Z
   probe:
     injected: true
-    symptom: false
+    symptom: true
     recovered: true
     residue_clean: true
-    verdict: failed
+    verdict: passed
     observe_only: false
-  evidence_dir: null
-  packed: false
-  note: probe gate failed; evidence not packed (decision 021)
-agent_visible_symptom: null
+  evidence_dir: evidence/crash-astronomy-db-01
+  packed: true
+  manifest_sha256:
+    logs.jsonl: aabc6646e84ee1c890d20805e8ba58372d5fd4c3f3357f03ad9e20803b48a2d0
+    metrics.json: 6538e2f5fa699f1ab780574e13ec1967b3ada6b4f32b4ac620e86a77e72009e4
+    traces.json: 8cd29bd7cea992a9c0a08c7c47bc524608b9022571098329aa357320f5e972b0
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 19
+agent_visible_symptom:
+  window:
+    start: "2026-08-28T19:23:31Z"
+    end: "2026-08-28T19:25:31Z"
+  detected_at: "2026-08-28T19:29:20Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on frontend/GET /api/products/[productId]/index
+      service: frontend
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 1.0164
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        error_count: 108.0
+        threshold_N: 31
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 108.0
+    -
+      rule: error_rate_jump
+      message: elevated error rate on product-catalog
+      service: product-catalog
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 2.7541
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        error_count: 87.0
+        threshold_N: 83
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 87.0
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on frontend/GET /api/recommendations
+      service: frontend
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.623
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        error_count: 42.0
+        threshold_N: 19
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 42.0
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on product-catalog/oteldemo.ProductCatalogService/ListProducts
+      service: product-catalog
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.4918
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        error_count: 34.0
+        threshold_N: 15
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 34.0
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on frontend/GET /api/products/index
+      service: frontend
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.1967
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        error_count: 28.0
+        threshold_N: 6
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 28.0
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on shipping
+      service: shipping
+      baseline:
+        request_rate_per_s: 0.2295
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        request_rate_per_s: 0.0083
+        rate_ceiling_per_s: 0.023
+        consecutive_zero_samples: 6
+        zero_span_s: 90
+        expected_calls_in_zero_span: 20.66
+        min_expected_calls: 5
+        samples_in_window: 8
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 20.66
+    -
+      rule: entity_error_concentration
+      message: errors concentrated on demo.product.id=6E92ZMYYFZ (product-catalog)
+      service: product-catalog
+      baseline:
+        note: entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        spans: 12
+        error_spans: 12
+        error_frac: 1.0
+        threshold_frac: 0.5
+        threshold_abs: 5
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 12.0
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on quote
+      service: quote
+      baseline:
+        request_rate_per_s: 0.1311
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        request_rate_per_s: 0.0083
+        rate_ceiling_per_s: 0.0131
+        consecutive_zero_samples: 6
+        zero_span_s: 90
+        expected_calls_in_zero_span: 11.8
+        min_expected_calls: 5
+        samples_in_window: 8
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 11.8
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/POST
+      service: frontend-proxy
+      baseline:
+        p95_ms: 4250.0
+        call_count: 28.0
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        p95_ms: 9737.5
+        delta_ms: 5487.5
+        ratio: 2.291
+        call_count: 32.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 10.975
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on flagd/flagd.evaluation.v1.Service/EventStream
+      service: flagd
+      baseline:
+        p95_ms: 4850.0
+        call_count: 6.0
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        p95_ms: 9925.0
+        delta_ms: 5075.0
+        ratio: 2.046
+        call_count: 5.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 10.15
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on email
+      service: email
+      baseline:
+        request_rate_per_s: 0.082
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        request_rate_per_s: 0.0
+        rate_ceiling_per_s: 0.0082
+        consecutive_zero_samples: 7
+        zero_span_s: 105
+        expected_calls_in_zero_span: 8.61
+        min_expected_calls: 5
+        samples_in_window: 8
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 8.61
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on payment
+      service: payment
+      baseline:
+        request_rate_per_s: 0.082
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        request_rate_per_s: 0.0
+        rate_ceiling_per_s: 0.0082
+        consecutive_zero_samples: 7
+        zero_span_s: 105
+        expected_calls_in_zero_span: 8.61
+        min_expected_calls: 5
+        samples_in_window: 8
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 8.61
+    -
+      rule: entity_error_concentration
+      message: errors concentrated on demo.product.id=HQTGWGPNH4 (product-catalog)
+      service: product-catalog
+      baseline:
+        note: entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        spans: 8
+        error_spans: 8
+        error_frac: 1.0
+        threshold_frac: 0.5
+        threshold_abs: 5
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 8.0
+    -
+      rule: entity_error_concentration
+      message: errors concentrated on demo.product.id=LS4PSXUNUM (product-catalog)
+      service: product-catalog
+      baseline:
+        note: entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        spans: 8
+        error_spans: 8
+        error_frac: 1.0
+        threshold_frac: 0.5
+        threshold_abs: 5
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 8.0
+    -
+      rule: entity_error_concentration
+      message: errors concentrated on demo.product.id=2ZYFJ3GM2N (product-catalog)
+      service: product-catalog
+      baseline:
+        note: entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        spans: 7
+        error_spans: 7
+        error_frac: 1.0
+        threshold_frac: 0.5
+        threshold_abs: 5
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 7.0
+    -
+      rule: p95_jump
+      message: elevated p95 latency on recommendation
+      service: recommendation
+      baseline:
+        p95_ms: 7.1
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        p95_ms: 48.0
+        delta_ms: 40.9
+        ratio: 6.761
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 6.761
+    -
+      rule: entity_error_concentration
+      message: errors concentrated on demo.product.id=0PUK6V6EV0 (product-catalog)
+      service: product-catalog
+      baseline:
+        note: entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        spans: 5
+        error_spans: 5
+        error_frac: 1.0
+        threshold_frac: 0.5
+        threshold_abs: 5
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 5.0
+    -
+      rule: entity_error_concentration
+      message: errors concentrated on demo.product.id=66VCHSJNUP (product-catalog)
+      service: product-catalog
+      baseline:
+        note: entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        spans: 5
+        error_spans: 5
+        error_frac: 1.0
+        threshold_frac: 0.5
+        threshold_abs: 5
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 5.0
+    -
+      rule: entity_error_concentration
+      message: errors concentrated on demo.product.id=9SIQT8TOJO (product-catalog)
+      service: product-catalog
+      baseline:
+        note: entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below
+        window:
+          start: "2026-08-28T19:22:30Z"
+          end: "2026-08-28T19:23:31Z"
+      observed:
+        spans: 5
+        error_spans: 5
+        error_frac: 1.0
+        threshold_frac: 0.5
+        threshold_abs: 5
+        window:
+          start: "2026-08-28T19:23:31Z"
+          end: "2026-08-28T19:25:31Z"
+      deviation: 5.0
