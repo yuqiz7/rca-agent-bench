@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/latency-checkout-800/metrics.json",
-   "bytes": 269274,
-   "sha256": "14982e1e7eb51c24ad2d52500ecc3429f3d84da3d1d98b1c80960e6f20ece51d"
+   "bytes": 340137,
+   "sha256": "651fcfb18866fc57ccda04f62680c546ee6e2bc01a124254695811d8f956a22d"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 162
+   "queries": 10,
+   "series": 205
   },
   "traces.json": {
    "spans": 29578,
@@ -83,5 +83,5 @@
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
  },
- "metrics_refreshed_at": "2026-08-27T21:46:35Z"
+ "metrics_refreshed_at": "2026-08-28T18:29:44Z"
 }

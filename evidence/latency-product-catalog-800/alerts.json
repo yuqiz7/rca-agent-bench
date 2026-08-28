@@ -1,5 +1,5 @@
 {
- "detected_at": "2026-08-27T23:18:34Z",
+ "detected_at": "2026-08-28T18:47:49Z",
  "window": {
   "start": "2026-08-27T23:12:41Z",
   "end": "2026-08-27T23:14:41Z"
@@ -28,10 +28,45 @@
   "p95_jump": "elevated p95 latency on <service>",
   "memory_over_line": "memory rising on <service>",
   "method_error_rate_jump": "elevated error rate on <service>",
-  "entity_error_concentration": "errors concentrated on <service>"
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
  },
- "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
  "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on recommendation/oteldemo.RecommendationService/ListRecommendations",
+   "service": "recommendation",
+   "operation": "oteldemo.RecommendationService/ListRecommendations",
+   "baseline": {
+    "p95_ms": 7.7,
+    "call_count": 29.0,
+    "window": {
+     "start": "2026-08-27T23:11:40Z",
+     "end": "2026-08-27T23:12:41Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 1692.5,
+    "delta_ms": 1684.8,
+    "ratio": 219.805,
+    "call_count": 35.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T23:12:41Z",
+     "end": "2026-08-27T23:14:41Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:12:41Z",
+    "end": "2026-08-27T23:14:41Z"
+   },
+   "deviation": 219.805
+  },
   {
    "rule": "p95_jump",
    "message": "elevated p95 latency on recommendation",
@@ -62,6 +97,40 @@
    "deviation": 219.805
   },
   {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/products/[productId]/index",
+   "service": "frontend",
+   "operation": "GET /api/products/[productId]/index",
+   "baseline": {
+    "p95_ms": 9.5,
+    "call_count": 66.0,
+    "window": {
+     "start": "2026-08-27T23:11:40Z",
+     "end": "2026-08-27T23:12:41Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 990.0,
+    "delta_ms": 980.5,
+    "ratio": 104.211,
+    "call_count": 108.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T23:12:41Z",
+     "end": "2026-08-27T23:14:41Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:12:41Z",
+    "end": "2026-08-27T23:14:41Z"
+   },
+   "deviation": 104.211
+  },
+  {
    "rule": "p95_jump",
    "message": "elevated p95 latency on checkout",
    "service": "checkout",
@@ -89,6 +158,40 @@
     "end": "2026-08-27T23:14:41Z"
    },
    "deviation": 96.354
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/recommendations",
+   "service": "frontend",
+   "operation": "GET /api/recommendations",
+   "baseline": {
+    "p95_ms": 49.58,
+    "call_count": 58.0,
+    "window": {
+     "start": "2026-08-27T23:11:40Z",
+     "end": "2026-08-27T23:12:41Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 4187.5,
+    "delta_ms": 4137.92,
+    "ratio": 84.454,
+    "call_count": 70.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T23:12:41Z",
+     "end": "2026-08-27T23:14:41Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:12:41Z",
+    "end": "2026-08-27T23:14:41Z"
+   },
+   "deviation": 84.454
   },
   {
    "rule": "p95_jump",
@@ -147,6 +250,108 @@
     "end": "2026-08-27T23:14:41Z"
    },
    "deviation": 41.785
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/GET",
+   "service": "frontend-proxy",
+   "operation": "GET",
+   "baseline": {
+    "p95_ms": 36.08,
+    "call_count": 434.0,
+    "window": {
+     "start": "2026-08-27T23:11:40Z",
+     "end": "2026-08-27T23:12:41Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 1425.68,
+    "delta_ms": 1389.6,
+    "ratio": 39.514,
+    "call_count": 657.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T23:12:41Z",
+     "end": "2026-08-27T23:14:41Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:12:41Z",
+    "end": "2026-08-27T23:14:41Z"
+   },
+   "deviation": 39.514
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/products/index",
+   "service": "frontend",
+   "operation": "GET /api/products/index",
+   "baseline": {
+    "p95_ms": 34.0,
+    "call_count": 12.0,
+    "window": {
+     "start": "2026-08-27T23:11:40Z",
+     "end": "2026-08-27T23:12:41Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 990.0,
+    "delta_ms": 956.0,
+    "ratio": 29.118,
+    "call_count": 24.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T23:12:41Z",
+     "end": "2026-08-27T23:14:41Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:12:41Z",
+    "end": "2026-08-27T23:14:41Z"
+   },
+   "deviation": 29.118
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/cart",
+   "service": "frontend",
+   "operation": "GET /api/cart",
+   "baseline": {
+    "p95_ms": 33.0,
+    "call_count": 50.0,
+    "window": {
+     "start": "2026-08-27T23:11:40Z",
+     "end": "2026-08-27T23:12:41Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 918.33,
+    "delta_ms": 885.33,
+    "ratio": 27.828,
+    "call_count": 82.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T23:12:41Z",
+     "end": "2026-08-27T23:14:41Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T23:12:41Z",
+    "end": "2026-08-27T23:14:41Z"
+   },
+   "deviation": 27.828
   }
  ],
  "no_alert": false,

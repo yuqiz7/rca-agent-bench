@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/misconfig-ad-on/metrics.json",
-   "bytes": 273441,
-   "sha256": "5a8f479cfe9e62d13871e06e97187b86be2988c153596fe33387d43736c6bea0"
+   "bytes": 344310,
+   "sha256": "8932fdd31ab79c53abe6786639bbc4dbc7aa21f3945442308f3c8f1c145626a7"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 166
+   "queries": 10,
+   "series": 209
   },
   "traces.json": {
    "spans": 29635,
@@ -83,5 +83,5 @@
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
  },
- "metrics_refreshed_at": "2026-08-27T21:46:35Z"
+ "metrics_refreshed_at": "2026-08-28T18:29:45Z"
 }

@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/blackhole-currency-01/metrics.json",
-   "bytes": 286977,
-   "sha256": "edb0cc270082b98127aa7e989fc704602539a857d804fd8b396026c2d8c3bee5"
+   "bytes": 359033,
+   "sha256": "9ce5184ff6f6de43bef1319c117fca1ea15b40a6d4cd96413fb95ea7fb30973e"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 174
+   "queries": 10,
+   "series": 218
   },
   "traces.json": {
    "spans": 27917,
@@ -82,5 +82,6 @@
    "edge_count": 33,
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
- }
+ },
+ "metrics_refreshed_at": "2026-08-28T18:29:43Z"
 }

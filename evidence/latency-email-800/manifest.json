@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/latency-email-800/metrics.json",
-   "bytes": 268882,
-   "sha256": "a810ef26dc5af3bb4dcdbe0b5d76982eb52a81af92809ae9b9a644b3a4267a9f"
+   "bytes": 340466,
+   "sha256": "f2ee8c61f729fefffc68261a58b3a2c68ff975ea951fbbc038eb772d9ee846fa"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 162
+   "queries": 10,
+   "series": 205
   },
   "traces.json": {
    "spans": 29748,
@@ -83,5 +83,5 @@
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
  },
- "metrics_refreshed_at": "2026-08-27T21:46:35Z"
+ "metrics_refreshed_at": "2026-08-28T18:29:45Z"
 }

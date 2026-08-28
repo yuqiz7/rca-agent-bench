@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/blackhole-quote-01/metrics.json",
-   "bytes": 292269,
-   "sha256": "cdd2f1e51bc2af6d61681c61f23179904f15e28f0a9db1586c8bb48fac9b3f2a"
+   "bytes": 365260,
+   "sha256": "5a547a0286027f3a069ef2b91c997a516e26f67e4ccbd04344b93999e54e0df7"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 178
+   "queries": 10,
+   "series": 222
   },
   "traces.json": {
    "spans": 28849,
@@ -82,5 +82,6 @@
    "edge_count": 33,
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
- }
+ },
+ "metrics_refreshed_at": "2026-08-28T18:29:44Z"
 }

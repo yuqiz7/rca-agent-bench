@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/crash-currency-01/metrics.json",
-   "bytes": 285939,
-   "sha256": "81de992c92e3c2993af5a73bb19607d1b43185e83a861594c6418080d7080c78"
+   "bytes": 357735,
+   "sha256": "174de794b1b38489d48e1b1edaaabd2dc4b77747d5283c7b47aeead3ae37621d"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 174
+   "queries": 10,
+   "series": 218
   },
   "traces.json": {
    "spans": 27632,
@@ -82,5 +82,6 @@
    "edge_count": 33,
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
- }
+ },
+ "metrics_refreshed_at": "2026-08-28T18:29:44Z"
 }

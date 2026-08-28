@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/misconfig-payment-100/metrics.json",
-   "bytes": 279546,
-   "sha256": "42f7cb2e0d06e0115226a92ead0ba28c6ca23671fa3fb5efa1544342d107c6e1"
+   "bytes": 350706,
+   "sha256": "068e5aff869b63652a47faa8c10c2844bb8b6fcc39bc46f3c2c8fde3eccdc339"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 170
+   "queries": 10,
+   "series": 213
   },
   "traces.json": {
    "spans": 30333,
@@ -83,5 +83,5 @@
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
  },
- "metrics_refreshed_at": "2026-08-27T21:46:36Z"
+ "metrics_refreshed_at": "2026-08-28T18:29:45Z"
 }

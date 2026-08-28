@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/_clean/observe-20260827T185059Z/metrics.json",
-   "bytes": 256643,
-   "sha256": "26a2964974319546ce157044c0f7d06d7d0e643530334eb54b8ed3dae6243b01"
+   "bytes": 327566,
+   "sha256": "4fa0016af91be9a682f3cae89d9861fade5e1cd370825637a52f88bdb14db9bd"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 154
+   "queries": 10,
+   "series": 197
   },
   "traces.json": {
    "spans": 29910,
@@ -83,5 +83,5 @@
    "sha256": "2c300ead6cd47dd45de7591f219b00a2fc41066db6e49976345588d6369883c3"
   }
  },
- "metrics_refreshed_at": "2026-08-27T21:45:55Z"
+ "metrics_refreshed_at": "2026-08-28T18:29:46Z"
 }

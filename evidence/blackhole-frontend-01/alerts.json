@@ -1,5 +1,5 @@
 {
- "detected_at": "2026-08-27T22:44:32Z",
+ "detected_at": "2026-08-28T18:47:47Z",
  "window": {
   "start": "2026-08-27T22:38:46Z",
   "end": "2026-08-27T22:40:46Z"
@@ -28,9 +28,10 @@
   "p95_jump": "elevated p95 latency on <service>",
   "memory_over_line": "memory rising on <service>",
   "method_error_rate_jump": "elevated error rate on <service>",
-  "entity_error_concentration": "errors concentrated on <service>"
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
  },
- "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
  "alerts": [
   {
    "rule": "traffic_zero",
@@ -93,6 +94,40 @@
    },
    "deviation": 372.75,
    "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/GET",
+   "service": "frontend-proxy",
+   "operation": "GET",
+   "baseline": {
+    "p95_ms": 37.02,
+    "call_count": 573.0,
+    "window": {
+     "start": "2026-08-27T22:37:46Z",
+     "end": "2026-08-27T22:38:46Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9691.18,
+    "delta_ms": 9654.15,
+    "ratio": 261.759,
+    "call_count": 110.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T22:38:46Z",
+     "end": "2026-08-27T22:40:46Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:38:46Z",
+    "end": "2026-08-27T22:40:46Z"
+   },
+   "deviation": 261.759
   },
   {
    "rule": "p95_jump",
@@ -246,6 +281,40 @@
    },
    "deviation": 20.0,
    "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/POST",
+   "service": "frontend-proxy",
+   "operation": "POST",
+   "baseline": {
+    "p95_ms": 4350.0,
+    "call_count": 41.0,
+    "window": {
+     "start": "2026-08-27T22:37:46Z",
+     "end": "2026-08-27T22:38:46Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9750.0,
+    "delta_ms": 5400.0,
+    "ratio": 2.241,
+    "call_count": 15.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-27T22:38:46Z",
+     "end": "2026-08-27T22:40:46Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-27T22:38:46Z",
+    "end": "2026-08-27T22:40:46Z"
+   },
+   "deviation": 10.8
   },
   {
    "rule": "traffic_zero",

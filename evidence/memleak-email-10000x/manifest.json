@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/memleak-email-10000x/metrics.json",
-   "bytes": 269111,
-   "sha256": "71171c1fca780dbc6021c263b5b5298d7081208f486e8612aca0cc53c494605a"
+   "bytes": 339710,
+   "sha256": "27c552b31aafc335edc2a3dd2c0704cac77b612a728174b726f380c7bf14e322"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 162
+   "queries": 10,
+   "series": 205
   },
   "traces.json": {
    "spans": 28555,
@@ -83,5 +83,5 @@
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
  },
- "metrics_refreshed_at": "2026-08-27T21:46:35Z"
+ "metrics_refreshed_at": "2026-08-28T18:29:45Z"
 }

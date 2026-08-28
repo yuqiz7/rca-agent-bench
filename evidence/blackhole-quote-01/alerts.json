@@ -1,5 +1,5 @@
 {
- "detected_at": "2026-08-28T00:20:18Z",
+ "detected_at": "2026-08-28T18:47:47Z",
  "window": {
   "start": "2026-08-28T00:14:23Z",
   "end": "2026-08-28T00:16:23Z"
@@ -28,9 +28,10 @@
   "p95_jump": "elevated p95 latency on <service>",
   "memory_over_line": "memory rising on <service>",
   "method_error_rate_jump": "elevated error rate on <service>",
-  "entity_error_concentration": "errors concentrated on <service>"
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
  },
- "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
  "alerts": [
   {
    "rule": "p95_jump",
@@ -60,6 +61,74 @@
     "end": "2026-08-28T00:16:23Z"
    },
    "deviation": 2490.107
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on shipping/POST /get-quote",
+   "service": "shipping",
+   "operation": "POST /get-quote",
+   "baseline": {
+    "p95_ms": 3.9,
+    "call_count": 5.0,
+    "window": {
+     "start": "2026-08-28T00:13:23Z",
+     "end": "2026-08-28T00:14:23Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9689.21,
+    "delta_ms": 9685.31,
+    "ratio": 2484.412,
+    "call_count": 15.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T00:14:23Z",
+     "end": "2026-08-28T00:16:23Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T00:14:23Z",
+    "end": "2026-08-28T00:16:23Z"
+   },
+   "deviation": 2484.412
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/shipping",
+   "service": "frontend",
+   "operation": "GET /api/shipping",
+   "baseline": {
+    "p95_ms": 48.0,
+    "call_count": 8.0,
+    "window": {
+     "start": "2026-08-28T00:13:23Z",
+     "end": "2026-08-28T00:14:23Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9750.0,
+    "delta_ms": 9702.0,
+    "ratio": 203.125,
+    "call_count": 9.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T00:14:23Z",
+     "end": "2026-08-28T00:16:23Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T00:14:23Z",
+    "end": "2026-08-28T00:16:23Z"
+   },
+   "deviation": 203.125
   },
   {
    "rule": "p95_jump",

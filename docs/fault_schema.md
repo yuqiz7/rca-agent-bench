@@ -188,7 +188,7 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 | --- | --- | --- |
 | `crash` | `harvest` | 调用方对 B 的错误 span 数 **严格 > N**，`N = max(5, ceil(0.25 × baseline_rate_per_s × inject_s))`（决策 018；`cart` 算得 N = 27，实测报错 90 通过）。固定 20 只对高流量靶子成立，`email`/`payment`/`checkout` 被调仅 4.4/min，120s 窗内约 9 次调用永远达不到。报错要等 127s 建连预算耗尽才集中出现，immediate 会看到 0 条 |
 | `blackhole` | `immediate` | 调用方对 B 的 **span 总数**（`caller_spans_total`）**低于基线 × 0.10**（且要求基线 > 0，代码 `b > 0 and d < b*0.10`）—— 该类整链静音、错误 span 恒为 0，用错误数判会永远不通过。静音是机制性的且**只在 immediate 成立**：撤除后积压请求同一秒回放，harvest 会看到比基线还多的 span |
-| `latency` | `harvest` | 调用方 → B 的 **`caller_all_dur.p50_ms`** 相对基线**右移 ≥ `delay_ms` × 0.8**，**且报错 span 数不增**（该类只产生「慢」不产生「错」）。`cart` 800ms 入库档实测右移 p50 +800.31ms、报错 0。 |
+| `latency` | `harvest` | 调用方 → B 的 **`caller_all_dur.p50_ms`** 相对基线**右移 ≥ `delay_ms` × 0.8**，**且报错 span 数不增**（该类只产生「慢」不产生「错」）。`cart` 800ms 入库档实测右移 p50 +800.31ms、报错 0。**判据只看调用方边，没有靶子侧臂** —— `delay_outbound` 只延迟从服务端口发出的响应包（§3 作用面 / 决策 007），netem 排队在应用写完响应之后，靶子自己的 server span 量不到；四张已通过的 latency 卡实测靶子自身 p95 位移 +0.3 / +0.0 / +0.0 / +0.0 ms，而调用方 p95 位移 1922~4727 ms（决策 023）。 |
 | `misconfig` | `harvest` | **B 自身** server span 在受影响方法上的报错数 ≥ `max(2, ⌈0.5 × ratio × 该方法调用数⌉)`，**且基线窗 B 自身报错为 0**。`ratio` 由 variant 名解析，另乘代码里的固定概率（`adFailure` 即使 `on` 也只有 0.1）。受影响方法见 [flag_catalog.md](flag_catalog.md)。**症状不在调用方 span 上** —— 实测 `cartFailure=50%` 时调用方 109 条 span 零报错 |
 | `mem_leak` | `harvest` | 注入窗 `growth_mib ≥ max(10, 0.15 × first_mib)` **且** `last_mib ≥ first_mib + 阈值`（指标 `container_memory_usage_total_bytes`） |
 
@@ -260,8 +260,21 @@ span 只在结束时导出，两类故障的可靠信号出现在不同时刻，
 取不到系列时回退到 60 s 窗，回退这件事记进 `probes.json` 的 `baseline_rate_source`。
 
 **无 SDK 的靶子**（`valkey-cart` / `astronomy-db`）不产生 server span、没有
-spanmetrics 系列，**只走调用方边档**；靶子侧档对它们记「不适用」，
-与「不通过」在 `probes.json` 里分开记 —— 两者混同就又是一个静默的零分母。
+spanmetrics 系列，**靶子侧档对它们记「不适用」**，与「不通过」在 `probes.json` 里
+分开记 —— 两者混同就又是一个静默的零分母。
+
+**无 SDK 靶子专用的两档（2026-08-28 新增，决策 023 / O-P2-18）**：这两个靶子的
+调用方边档也不成立（客户端把故障吞成了别的形状），故再加两档，与上面两档同为或关系：
+
+| 档 | 判据 | 覆盖的形态 |
+| --- | --- | --- |
+| **台阶档** | 调用边 during `p50_ms` **≥ 1000 ms**，**或** ≥ **100 ×** 基线 p50 | `valkey-cart` blackhole：0.49 → **5702 ms**（约 11 600×）但**零报错**、span 数只掉到 36% |
+| **边静默档** | 调用边 during 速率 **≤ 基线 × 0.1**，**且** 基线速率 × `inject_s` **≥ 5** | `astronomy-db` crash：fail-fast 2 条报错后 **119.5 s 静默**（期望约 314 条实收 2 条），p50 **不升反降** |
+
+两条形态成对记在 [fingerprints.md](fingerprints.md)。门槛取值：1000 ms 高于全部靶子
+实测的正常边耗时（最大 p50 40.96 ms），低于两个已知台阶；100× 是给低基线边
+（`valkey-cart` 0.49 ms）留的相对口子。**这两档只对无 SDK 靶子生效**，
+其余 11 个靶子的判据一个字没改。
 
 **为什么要两档**：`frontend` 深度为 0，唯一上游 `frontend-proxy` 不产生能与它配对的
 caller span，「从调用方侧看 B 是否变哑」这个问法对它根本不成立；而低流量靶子的
@@ -405,14 +418,14 @@ spanmetrics 只有 `(service_name, span_kind, span_name)`，**没有调用方/�
 
 ---
 
-## §10 告警检测器规则（决策 021）
+## §10 告警检测器规则（决策 021；规则 5/6 见决策 021 修订，规则 7 见决策 023）
 
 `scripts/evidence/detect.py`。**只读 `evidence/<card_id>/metrics.json`**，
 不 import 卡片模块、文件里没有任何 `scenarios/` 路径 —— 检测器要是能看见 ground truth，
 告警迟早会开始迎合答案，那条告警就不再是证据（§4 第一道墙）。
 回写卡片 `agent_visible_symptom` 的是 `scripts/scenarios/write_symptom.py`，方向单向。
 
-四条规则对**每个**服务（内存规则对每个容器）扫：
+七条规则对**每个**服务（内存规则对每个容器，规则 5/7 对每个 `(service, operation)`）扫：
 
 | # | 规则 | 判据 | 告警文本 |
 | --- | --- | --- | --- |
@@ -422,6 +435,7 @@ spanmetrics 只有 `(service_name, span_kind, span_name)`，**没有调用方/�
 | 4 | 内存越线 | 容器内存相对基线 **+30 MiB** **且**注入期单调上升（采样抖动容差 0.5 MiB） | `memory rising on <container>` |
 | 5 | **方法级错误率**（2026-08-27 新增，依据 O-P2-17） | 对每个 `(service, operation)`（spanmetrics 的 `span_name` 维度）：注入期错误数 ≥ `N = max(5, ceil(0.25 × 该方法基线速率 × inject_s))` **且** ≥ 2 × 基线错误数（折算到注入窗） | `elevated error rate on <service>/<operation>` |
 | 6 | **实体级集中**（2026-08-27 新增，依据 O-P2-17） | 读 `traces.json`，按白名单里 `demo.<entity>.id` 类标签分组：某 id 值的报错 span **≥ 5** **且**占该 id 全部 span **≥ 50%** | `errors concentrated on <tag>=<value> (<service>)` |
+| 7 | **方法级延迟**（2026-08-28 新增，依据 O-P2-17 / 决策 023） | 对每个 `(service, operation)`：注入期 p95 **≥ 2 × 基线 p95 且 Δp95 ≥ 100 ms**，**或** Δp95 **≥ 500 ms**；两窗**各需 ≥ 5 次调用** | `elevated p95 latency on <service>/<operation>` |
 
 - 规则 1 的 `N` 沿用决策 018 的相对阈值形式：固定值只对高流量靶子成立，
   `email` / `payment` / `checkout` 被调约 4.4/min，120 s 窗内总共才约 9 次调用。
@@ -455,6 +469,23 @@ spanmetrics 只有 `(service_name, span_kind, span_name)`，**没有调用方/�
   要求速率**真的塌了**；条件 (b) 把「静默算不算数」按**该服务自己的流量水平**判，
   而不是拿一个固定采样点数去卡所有服务 —— 每分钟 3 次调用的服务，30 秒没动静
   本来就说明不了什么。修订后同一干净窗口 **0 条告警**，crash 卡的真实告警一条不少。
+- **规则 7（方法级延迟，2026-08-28 新增，依据 O-P2-17 / 决策 023）**：规则 3 之于规则 7，
+  正如规则 1 之于规则 5 —— 落在一个方法上的延迟会被服务级直方图平均掉。
+  `latency-checkout-800` 连规则 3 的绝对档都没救回来（`checkout` 自身 p95 一动没动，
+  而调用方 `frontend` 的服务级 p95 把上百个快操作一起平均了）；按方法分组后
+  `frontend/POST /api/checkout` **87.5 → 990.0 ms（+902.5）**，一眼可见。
+  输入是 `queries.py` 的 `p95_latency_ms_by_operation`。
+  **比例臂额外要求 Δ ≥ 100 ms**，这是规则 3 没有的地板：服务级 p95 基线是聚合值、
+  本来就大，而方法级基线常在 6–36 ms，2 倍不过是十几毫秒的常态抖动。
+  不加地板时实测产出 46 条告警、其中 **16 条 Δ < 100 ms**，并把三张卡从诚实的
+  `no_alert` 翻成「有告警但指错服务」（`crash-email-01` 的唯一告警是
+  `frontend/GET /api/cart 6.0 → 16.0 ms`，而真因是 email 容器被 kill）。
+  加地板后 46 → **30** 条。规则 1 / 2 / 5 本来就是「相对条件 + 绝对地板」双条件，
+  规则 7 与它们同形，规则 3 才是例外。
+  **两窗各需 ≥ 5 次调用**：近乎空闲的序列上 `histogram_quantile(0.95)` 只是最慢那个
+  桶边界，不是延迟。规则 3 靠「每个服务都有流量」隐式免疫，方法级必须显式设地板。
+  **该查询在 2026-08-28 之前打的包里不存在** —— 缺输入时规则 7 静默产出 0 条，
+  不报错，旧包因此仍可重检（补齐用 `pack.py --refresh-metrics`）。
 - 输出 `alerts` 列表，每条含 `rule` / `service` / `baseline` 值 / `observed` 值 / `window`，
   **按 `deviation` 降序**。空列表记 `no_alert: true` ——
   是明确的"呼机没响"，不是缺字段。

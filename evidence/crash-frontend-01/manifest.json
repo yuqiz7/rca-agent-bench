@@ -36,8 +36,8 @@
   {
    "name": "metrics.json",
    "path": "evidence/crash-frontend-01/metrics.json",
-   "bytes": 279016,
-   "sha256": "f30cf2b7bdceb1cbe7e7c5f0b71febd25188fc90d87eb210aa77925bc5299157"
+   "bytes": 347940,
+   "sha256": "216f0735060f8e5a67bd1b1d4519ca41d9cbee6aec6b4b557453c2ab40b09749"
   },
   {
    "name": "traces.json",
@@ -66,8 +66,8 @@
    "page_size": 2000
   },
   "metrics.json": {
-   "queries": 9,
-   "series": 170
+   "queries": 10,
+   "series": 213
   },
   "traces.json": {
    "spans": 20139,
@@ -82,5 +82,6 @@
    "edge_count": 33,
    "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
   }
- }
+ },
+ "metrics_refreshed_at": "2026-08-28T18:29:44Z"
 }
