@@ -1,0 +1,171 @@
+{
+ "window": {
+  "start": "2026-08-28T17:52:50.725160Z",
+  "end": "2026-08-28T17:57:50.725160Z",
+  "seconds": 300
+ },
+ "targets": {
+  "ad": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 0.2267,
+   "samples_in_window": 19,
+   "note": null,
+   "calls_in_300s": 68.0,
+   "caller_spans_300s": 70,
+   "caller_rate_per_s": 0.233333,
+   "caller_edges": {
+    "frontend": 70
+   }
+  },
+  "astronomy-db": {
+   "no_sdk": true,
+   "caller_spans_300s": 908,
+   "caller_rate_per_s": 3.026667,
+   "caller_edges": {
+    "product-catalog": 908
+   },
+   "arm": "caller-edge rate (jaeger caller client spans, 300s)",
+   "rate_per_s": 3.026667,
+   "calls_in_300s": 908
+  },
+  "cart": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 0.9967,
+   "samples_in_window": 21,
+   "note": null,
+   "calls_in_300s": 299.0,
+   "caller_spans_300s": 268,
+   "caller_rate_per_s": 0.893333,
+   "caller_edges": {
+    "frontend": 268
+   }
+  },
+  "checkout": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 0.06,
+   "samples_in_window": 11,
+   "note": null,
+   "calls_in_300s": 18.0,
+   "caller_spans_300s": 18,
+   "caller_rate_per_s": 0.06,
+   "caller_edges": {
+    "frontend": 18
+   }
+  },
+  "currency": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 0.5333,
+   "samples_in_window": 21,
+   "note": null,
+   "calls_in_300s": 160.0,
+   "caller_spans_300s": 112,
+   "caller_rate_per_s": 0.373333,
+   "caller_edges": {
+    "frontend": 112
+   }
+  },
+  "email": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 0.06,
+   "samples_in_window": 12,
+   "note": null,
+   "calls_in_300s": 18.0,
+   "caller_spans_300s": 18,
+   "caller_rate_per_s": 0.06,
+   "caller_edges": {
+    "checkout": 18
+   }
+  },
+  "frontend": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 8.2133,
+   "samples_in_window": 21,
+   "note": null,
+   "calls_in_300s": 2464.0,
+   "caller_spans_300s": 0,
+   "caller_rate_per_s": 0.0,
+   "caller_edges": {}
+  },
+  "payment": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 0.06,
+   "samples_in_window": 11,
+   "note": null,
+   "calls_in_300s": 18.0,
+   "caller_spans_300s": 0,
+   "caller_rate_per_s": 0.0,
+   "caller_edges": {}
+  },
+  "product-catalog": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 2.96,
+   "samples_in_window": 21,
+   "note": null,
+   "calls_in_300s": 888.0,
+   "caller_spans_300s": 749,
+   "caller_rate_per_s": 2.496667,
+   "caller_edges": {
+    "frontend": 749
+   }
+  },
+  "quote": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 0.1167,
+   "samples_in_window": 19,
+   "note": null,
+   "calls_in_300s": 35.0,
+   "caller_spans_300s": 36,
+   "caller_rate_per_s": 0.12,
+   "caller_edges": {
+    "shipping": 36
+   }
+  },
+  "recommendation": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 0.4133,
+   "samples_in_window": 21,
+   "note": null,
+   "calls_in_300s": 124.0,
+   "caller_spans_300s": 127,
+   "caller_rate_per_s": 0.423333,
+   "caller_edges": {
+    "frontend": 127
+   }
+  },
+  "shipping": {
+   "no_sdk": false,
+   "arm": "own server span rate (prometheus spanmetrics, 300s counter delta)",
+   "rate_per_s": 0.1767,
+   "samples_in_window": 17,
+   "note": null,
+   "calls_in_300s": 53.0,
+   "caller_spans_300s": 72,
+   "caller_rate_per_s": 0.24,
+   "caller_edges": {
+    "checkout": 36,
+    "frontend": 36
+   }
+  },
+  "valkey-cart": {
+   "no_sdk": true,
+   "caller_spans_300s": 456,
+   "caller_rate_per_s": 1.52,
+   "caller_edges": {
+    "cart": 456
+   },
+   "arm": "caller-edge rate (jaeger caller client spans, 300s)",
+   "rate_per_s": 1.52,
+   "calls_in_300s": 456
+  }
+ }
+}
