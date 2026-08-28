@@ -1,0 +1,44 @@
+name: ci
+
+# Three gates, all of them offline. Nothing here may touch the demo VM, a live
+# Prometheus/Jaeger, or the Anthropic API: CI has to stay runnable on a checkout
+# alone, or it stops being a gate and becomes another thing that is broken.
+on:
+  push:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # pytest and PyYAML are the whole dependency set. The agent's anthropic
+      # client is deliberately NOT installed -- no gate may need a network call,
+      # and leak_check/prompts/evidence_tools all import without it.
+      - name: install
+        run: python -m pip install --quiet pytest PyYAML
+
+      # Gate 1. The leak tests are the ones that matter most: they hold the line
+      # that a card's answer cannot reach the model, which is what makes every
+      # accuracy number in docs/ worth anything.
+      - name: "gate 1: pytest"
+        run: python -m pytest tests/ -q
+
+      # Gate 2. Cards are generated from recipe.csv; a hand-edited yaml would be
+      # silently overwritten on the next generator run, so a dirty check here is
+      # the difference between "the recipe is the source of truth" being a rule
+      # and being a wish.
+      - name: "gate 2: generator is idempotent"
+        run: python scripts/scenarios/generate.py --check
+
+      # Gate 3. The detector must stay silent on windows with no fault in them.
+      # Runs on reduced fixtures because the real packs carry 8 MB of traces each
+      # and are gitignored; the reduction is exact for the detector and
+      # tools/refresh_clean_fixtures.py verifies that whenever it rebuilds them.
+      - name: "gate 3: clean windows raise no alert"
+        run: python -m pytest tests/test_clean_window_negative_control.py -q

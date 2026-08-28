@@ -1,0 +1,9 @@
+{
+ "window": {
+  "start": "2026-08-27T18:39:00Z",
+  "end": "2026-08-27T18:46:30Z"
+ },
+ "span_count": 0,
+ "spans": [],
+ "_fixture_note": "reduced: only spans carrying demo.<entity>.id tags, and only the four fields detect.detect_entity_concentration reads. Rule 6 ignores every span without such a tag, so this is equivalent to the full file for the detector. Rebuild with tools/refresh_clean_fixtures.py."
+}
