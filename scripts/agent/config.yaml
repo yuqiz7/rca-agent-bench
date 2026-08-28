@@ -1,0 +1,80 @@
+# Agent + eval harness configuration (see docs/decisions.md, agent design entry).
+#
+# Everything the harness needs to reproduce a run lives here. Prices are the one
+# exception and sit in prices.yaml, because they come from an external page with
+# its own fetch date.
+
+models:
+  # Main subject of the evaluation.
+  primary: claude-sonnet-5
+  # Small-model baseline arm: same prompt, same tools, cheaper model. Reserved for
+  # the baseline comparison; run_eval.py takes it via --model.
+  baseline_small: claude-haiku-4-5
+
+run:
+  # Step = one assistant turn that calls at least one tool. submit() ends the loop,
+  # so a card that needs k lookups costs k+1 steps. 20 leaves headroom over the
+  # 6-8 an easy card takes without letting a confused run grind.
+  max_steps: 20
+  # Per-card dollar breaker, checked after every API response against prices.yaml.
+  # 19 dev cards x $0.20 bounds one full dev sweep at $3.80.
+  max_usd_per_card: 0.20
+  # Retries for an exception *inside* a tool implementation (bad evidence file,
+  # transient decode). Distinct from api_max_retries, which the SDK owns.
+  tool_retries: 2
+  api_max_retries: 3
+  request_timeout_s: 600
+  max_tokens: 16000
+  # Sonnet 5 takes adaptive thinking only; budget_tokens is rejected with a 400.
+  thinking: adaptive
+  effort: high
+  # Top-level auto-caching. The system prompt + tool schemas + growing transcript
+  # are re-sent every step, so cache reads at 0.1x base input are the difference
+  # between a $0.05 card and a $0.30 one.
+  prompt_caching: true
+
+tools:
+  # Return-size caps. These are the real cost control: an uncapped logs_search on a
+  # 9k-line pack would put the whole pack in context on step one.
+  logs_default_limit: 30
+  logs_max_limit: 200
+  logs_body_chars: 300
+  traces_default_samples: 5
+  traces_max_samples: 20
+  traces_top_groups: 10
+  metrics_max_points: 40
+
+# Dev set, frozen (决策: explicit list, no runtime scan).
+#
+# Selection, checked programmatically against scenarios/*.yaml and evidence/ on
+# 2026-08-28: production.probe.verdict == passed, all five evidence files present
+# (logs.jsonl / metrics.json / traces.json / config_diff.txt / topology.json), and
+# not among the 12 cards in the rerun1_20260828T185549Z batch.
+#
+# 25 cards are passed-with-five-files; 6 of those (crash-astronomy-db-01,
+# crash-checkout-01, crash-email-01, misconfig-cart-75, misconfig-payment-50,
+# misconfig-payment-75) are being re-harvested by that batch right now, so their
+# packs are mid-rewrite and are excluded. 25 - 6 = 19.
+#
+# The list is written down rather than rediscovered at run time so that a rerun
+# landing between two eval runs cannot silently change what "the dev set" means.
+dev_set:
+  - blackhole-cart-01
+  - blackhole-currency-01
+  - blackhole-frontend-01
+  - blackhole-quote-01
+  - crash-cart-01
+  - crash-currency-01
+  - crash-frontend-01
+  - crash-product-catalog-01
+  - latency-cart-800
+  - latency-checkout-800
+  - latency-currency-800
+  - latency-email-800
+  - latency-product-catalog-800
+  - memleak-email-10000x
+  - memleak-email-1000x
+  - misconfig-checkout-on
+  - misconfig-payment-100
+  - misconfig-payment-90
+  - misconfig-pc-OLJCESPC7Z
