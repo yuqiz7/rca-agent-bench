@@ -1416,3 +1416,66 @@ fingerprints.md 对这个例外写得很清楚：**「`blackhole` 类的「注�
 
 **相关**：决策 025、决策 024 trade-off、[fingerprints.md](fingerprints.md) 的两节 blackhole 指纹。
 
+---
+
+## F-6　`checkout` 的 gRPC 出口把 peer 解析成容器 IP，四条边在探针里恒为空（2026-08-28）
+
+**一句话**：`latency-payment-800` 的 `caller_all_dur.p50` 恒为 `null`，
+不是流量太低采不到样本，是**探针根本没在找这条边** ——
+`checkout` 的 gRPC client span 把 peer 写成**容器 IP**，
+而探针的匹配是 `peer 字符串 == 服务名`，两者永远对不上。
+
+**实测**（直接查 Jaeger，`checkout` 近 30 分钟的 client span）：
+
+| 操作 | peer 标签取值 | 协议 |
+| --- | --- | --- |
+| `oteldemo.PaymentService/Charge` | `server.address=172.18.0.16` | gRPC |
+| `oteldemo.CartService/GetCart` | `server.address=172.18.0.23` | gRPC |
+| `oteldemo.CurrencyService/Convert` | `server.address=172.18.0.13` | gRPC |
+| `oteldemo.ProductCatalogService/GetProduct` | `server.address=172.18.0.17` | gRPC |
+| `POST`（→ `shipping` / `email`） | `server.address=shipping` / `email` | HTTP |
+
+**同一个 checkout 进程，HTTP 出口给服务名、gRPC 出口给 IP。**
+于是 `checkout → payment / cart / currency / product-catalog` 四条边
+在 `three_signals.collect_traces` 里**恒为空**，
+而 `checkout → email / shipping` 正常 —— 这解释了为什么
+`crash-email-01` 的调用方边有数（2 条）而 `latency-payment-800` 一条都没有。
+
+**为什么一直没被发现**：这四条边对应的卡此前都是靠**别的臂**过门的 ——
+`frontend` 也调 cart / currency / product-catalog（frontend 的 span 给的是服务名），
+或者走靶子侧臂 / 自身 server span 臂（misconfig 类）。
+`payment` 是唯一一个**只有 checkout 一个调用方**的靶子，
+所以只有它把这个洞完整暴露出来：`misconfig-payment-*` 五张卡的
+`caller_spans_total` 全部是 0，它们靠 self_edges 过的门。
+
+**裁定：既不是 (a) 也不是 (b)。** 任务给的二选一是「加窗能救」还是
+「该流量下分位数物理不可判」，而实际成因是**第三种** ——
+标签命名不匹配。加窗救不了（窗口再长也匹配不上），
+但它也**不是物理不可判**：数据一直在 Jaeger 里，证据包里就有 47 条
+`checkout → payment` 父子边，只是探针没认出来。
+
+**修法**（`three_signals.py`）：把容器 IP 反解成服务名后再比。
+只**新增**匹配、不移除既有匹配，因此对既有卡单调。
+实测修后（近 600 s 实时窗）：
+
+| 靶子 | 修前 caller_spans | 修后 caller_spans | 修后调用方 |
+| --- | ---: | ---: | --- |
+| `payment` | **0** | **38**（p50 2.78 ms） | `checkout` |
+| `cart` | 仅 frontend | 622 | `checkout` + `frontend` |
+| `currency` | 仅 frontend | 356 | `checkout` + `frontend` |
+| `product-catalog` | 仅 frontend | 1627 | `checkout` + `frontend` |
+| `email` / `frontend` / `astronomy-db` | 有数 | 有数，未变少 | 不变 |
+
+`payment` 600 s 收 38 条 → 300 s 注入窗约 **19 条**，足够出 p50；
+800 ms 注入相对 2.78 ms 基线是约 **290 倍**台阶，判据分辨率绰绰有余。
+**`latency-payment-800` 因此不出库，进第四批重跑。**
+
+**这条说明了什么**：**「没有数据」和「没去取数据」在探针输出里长得一模一样。**
+`caller_all_dur.p50 = null` 被读成了「流量太低」，
+连着两批（批次 2 的 frontend、批次 3 的 payment）都指向同一个形状 ——
+上一次（决策 023 的 R3）的结论是「加 Envoy 的命名键」，
+**修的是同一个类的 bug，但只修了当时那一个键**。
+判据取不到分子时，应当先分清是**分子为零**还是**分子没被计算**，
+这两者的处置完全相反。O-P2-19 与本条应合并看。
+
+**相关**：决策 027、决策 023 R3、[O-P2-19](#o-p2-19paymentfailure-低比例档在-120-s-窗内可能拿不到样本)。

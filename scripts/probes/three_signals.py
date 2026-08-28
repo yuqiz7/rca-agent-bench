@@ -9,7 +9,13 @@
 --name-suffix 在文件名末尾追加一段（同一窗口查两次时区分快照，见决策 016），
 默认空、即文件名格式不变。
 """
-import json, os, re, sys, time, urllib.parse, urllib.request
+import json, os, re, subprocess, sys, time, urllib.parse, urllib.request
+
+_IP_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
+
+
+def _looks_like_ip(v):
+    return bool(_IP_RE.match(str(v)))
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -78,6 +84,64 @@ def fetch(url, data=None, headers=None, label=""):
 # —— server 侧臂在任何门槛下都不会命中，故不设。
 PEER_KEYS = ("net.peer.name", "server.address", "peer.service",
              "upstream_cluster.name", "upstream_cluster")
+
+# 但 PEER_KEYS 的取值不保证是服务名 —— 实测 `checkout` 的 **gRPC** client span 把
+# peer 解析成了容器 IP，而它的 HTTP 出口给的是名字：
+#
+#   oteldemo.PaymentService/Charge             server.address=172.18.0.16
+#   oteldemo.CartService/GetCart               server.address=172.18.0.23
+#   oteldemo.CurrencyService/Convert           server.address=172.18.0.13
+#   oteldemo.ProductCatalogService/GetProduct  server.address=172.18.0.17
+#   POST（→ shipping / email，HTTP）           server.address=shipping / email
+#
+# `peer == svc` 的字符串匹配因此对 checkout 的四条 gRPC 边**恒不成立**，这些边在
+# 探针里永远是空的 —— `latency-payment-800` 的 caller_all_dur.p50 恒为 null 正是
+# 这么来的（F-6 / 决策 027）。已过门的卡走的是别的臂（frontend 的边、靶子侧臂），
+# 所以这个洞一直没露出来。
+#
+# 修法：把容器 IP 反解成服务名后再比。只**新增**匹配、不移除既有匹配，
+# 对既有卡是单调的（空边可能变成有边，有边不会变没）。
+_IP_TO_SVC = None
+
+
+def _service_ip_map():
+    """{ip: service}，来自 docker inspect，尽力而为。
+
+    docker 本来就是每个原语的硬依赖，这里 shell 出去不引入新依赖。
+    失败返回空表，匹配退回今天的「只比名字」行为。
+    """
+    out = {}
+    try:
+        names = subprocess.run(["docker", "ps", "--format", "{{.Names}}"],
+                               capture_output=True, text=True, timeout=30)
+        for name in (names.stdout or "").split():
+            r = subprocess.run(
+                ["docker", "inspect", name, "--format",
+                 "{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}"],
+                capture_output=True, text=True, timeout=30)
+            for ip in (r.stdout or "").split():
+                if ip:
+                    out[ip] = name
+    except Exception:
+        return {}
+    return out
+
+
+def peer_names(tags):
+    """这个 span 的 peer 标签指向的全部服务名（IP 已反解）。"""
+    global _IP_TO_SVC
+    if _IP_TO_SVC is None:
+        _IP_TO_SVC = _service_ip_map()
+    out = set()
+    for k in PEER_KEYS:
+        v = tags.get(k)
+        if not v:
+            continue
+        v = str(v)
+        out.add(v)
+        if v in _IP_TO_SVC:
+            out.add(_IP_TO_SVC[v])
+    return out
 
 # 这些靶子是第三方镜像（PostgreSQL / Valkey），没有 SDK、不产生 server span，
 # 因此在 Jaeger 的 /api/services 里也不存在。它们的「调用方边」只能从调用方的
@@ -152,7 +216,11 @@ def collect_traces(base, svc, t0, t1):
                     # 生效（下游没被误伤），见决策 014。
                     if tg.get("span.kind") != "client":
                         continue
-                    pr = next((tg.get(k) for k in PEER_KEYS if tg.get(k)), None)
+                    names = peer_names(tg)
+                    # 有服务名就用服务名，没有才退回原始取值（可能是 IP），
+                    # 这样下游边按服务分组而不是按地址分组。
+                    named = sorted(n for n in names if not _looks_like_ip(n))
+                    pr = named[0] if named else next(iter(sorted(names)), None)
                     if not pr or pr == svc:
                         continue
                     down.setdefault(pr, {})[sp["spanID"]] = (sp, tg)
@@ -164,7 +232,7 @@ def collect_traces(base, svc, t0, t1):
                 if st is None or not (us0 <= st <= us1):
                     continue
                 tags = {t["key"]: t.get("value") for t in sp.get("tags") or []}
-                if not any(tags.get(k) == svc for k in PEER_KEYS):
+                if svc not in peer_names(tags):
                     continue
                 spans[sp["spanID"]] = (sp, tags, owner)
 
