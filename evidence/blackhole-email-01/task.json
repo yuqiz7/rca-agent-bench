@@ -1,0 +1,124 @@
+{
+ "card_id": "blackhole-email-01",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-28T21:24:20Z",
+   "end": "2026-08-28T21:29:20Z"
+  },
+  "detected_at": "2026-08-28T21:33:30Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on checkout",
+    "service": "checkout",
+    "baseline": {
+     "p95_ms": 87.5,
+     "window": {
+      "start": "2026-08-28T21:23:20Z",
+      "end": "2026-08-28T21:24:20Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14912.5,
+     "ratio": 171.429,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T21:24:20Z",
+      "end": "2026-08-28T21:29:20Z"
+     }
+    },
+    "deviation": 171.429
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/POST /api/checkout",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 95.0,
+     "call_count": 8.0,
+     "window": {
+      "start": "2026-08-28T21:23:20Z",
+      "end": "2026-08-28T21:24:20Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14905.0,
+     "ratio": 157.895,
+     "call_count": 34.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T21:24:20Z",
+      "end": "2026-08-28T21:29:20Z"
+     }
+    },
+    "deviation": 157.895
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend-proxy/POST",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 4300.0,
+     "call_count": 33.0,
+     "window": {
+      "start": "2026-08-28T21:23:20Z",
+      "end": "2026-08-28T21:24:20Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 10700.0,
+     "ratio": 3.488,
+     "call_count": 170.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T21:24:20Z",
+      "end": "2026-08-28T21:29:20Z"
+     }
+    },
+    "deviation": 21.4
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on email",
+    "service": "email",
+    "baseline": {
+     "request_rate_per_s": 0.0667,
+     "window": {
+      "start": "2026-08-28T21:23:20Z",
+      "end": "2026-08-28T21:24:20Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0033,
+     "rate_ceiling_per_s": 0.0067,
+     "consecutive_zero_samples": 19,
+     "zero_span_s": 285,
+     "expected_calls_in_zero_span": 19.0,
+     "min_expected_calls": 5,
+     "samples_in_window": 21,
+     "window": {
+      "start": "2026-08-28T21:24:20Z",
+      "end": "2026-08-28T21:29:20Z"
+     }
+    },
+    "deviation": 19.0
+   }
+  ]
+ },
+ "evidence_dir": "evidence/blackhole-email-01",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

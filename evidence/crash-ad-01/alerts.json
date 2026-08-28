@@ -1,0 +1,132 @@
+{
+ "detected_at": "2026-08-28T21:09:37Z",
+ "window": {
+  "start": "2026-08-28T21:03:43Z",
+  "end": "2026-08-28T21:05:44Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-28T21:01:43Z",
+   "end": "2026-08-28T21:09:14Z"
+  },
+  "baseline": {
+   "start": "2026-08-28T21:02:43Z",
+   "end": "2026-08-28T21:03:43Z"
+  },
+  "inject": {
+   "start": "2026-08-28T21:03:43Z",
+   "end": "2026-08-28T21:05:44Z"
+  },
+  "recover": {
+   "start": "2026-08-28T21:05:44Z",
+   "end": "2026-08-28T21:06:44Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/data",
+   "service": "frontend",
+   "operation": "GET /api/data",
+   "baseline": {
+    "p95_ms": 5.4,
+    "call_count": 31.0,
+    "window": {
+     "start": "2026-08-28T21:02:43Z",
+     "end": "2026-08-28T21:03:43Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 14994.6,
+    "ratio": 2777.778,
+    "call_count": 36.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T21:03:43Z",
+     "end": "2026-08-28T21:05:44Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T21:03:43Z",
+    "end": "2026-08-28T21:05:44Z"
+   },
+   "deviation": 2777.778
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on ad",
+   "service": "ad",
+   "baseline": {
+    "request_rate_per_s": 0.1833,
+    "window": {
+     "start": "2026-08-28T21:02:43Z",
+     "end": "2026-08-28T21:03:43Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0183,
+    "consecutive_zero_samples": 8,
+    "zero_span_s": 120,
+    "expected_calls_in_zero_span": 22.0,
+    "min_expected_calls": 5,
+    "samples_in_window": 9,
+    "window": {
+     "start": "2026-08-28T21:03:43Z",
+     "end": "2026-08-28T21:05:44Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T21:03:43Z",
+    "end": "2026-08-28T21:05:44Z"
+   },
+   "deviation": 22.0,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/data",
+   "service": "frontend",
+   "operation": "GET /api/data",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.5167,
+    "window": {
+     "start": "2026-08-28T21:02:43Z",
+     "end": "2026-08-28T21:03:43Z"
+    }
+   },
+   "observed": {
+    "error_count": 21.0,
+    "threshold_N": 16,
+    "window": {
+     "start": "2026-08-28T21:03:43Z",
+     "end": "2026-08-28T21:05:44Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T21:03:43Z",
+    "end": "2026-08-28T21:05:44Z"
+   },
+   "deviation": 21.0
+  }
+ ],
+ "no_alert": false,
+ "card_id": "crash-ad-01"
+}

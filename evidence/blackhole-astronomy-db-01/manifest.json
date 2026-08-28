@@ -1,0 +1,86 @@
+{
+ "card_id": "blackhole-astronomy-db-01",
+ "packed_at": "2026-08-28T21:16:26Z",
+ "window": {
+  "start": "2026-08-28T21:08:37Z",
+  "end": "2026-08-28T21:16:07Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-28T21:08:37Z",
+   "end": "2026-08-28T21:16:07Z"
+  },
+  "baseline": {
+   "start": "2026-08-28T21:09:37Z",
+   "end": "2026-08-28T21:10:37Z"
+  },
+  "inject": {
+   "start": "2026-08-28T21:10:37Z",
+   "end": "2026-08-28T21:12:37Z"
+  },
+  "recover": {
+   "start": "2026-08-28T21:12:37Z",
+   "end": "2026-08-28T21:13:37Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/blackhole-astronomy-db-01/logs.jsonl",
+   "bytes": 2760841,
+   "sha256": "6b4c59b70e4c495f52fdc3aece73cde7dde2a294a65dc2b269ea07989a41aa54"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/blackhole-astronomy-db-01/metrics.json",
+   "bytes": 351370,
+   "sha256": "8d096219626e81795330cdf2b034dc225a457b21d867358f2c348ed6046d8ecb"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/blackhole-astronomy-db-01/traces.json",
+   "bytes": 6967013,
+   "sha256": "18f39aff80f2b1df4911c6d8e3dbbae1703a4dfa2be58c0bc5d34c39cb414aeb"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/blackhole-astronomy-db-01/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/blackhole-astronomy-db-01/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 8609,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 214
+  },
+  "traces.json": {
+   "spans": 24362,
+   "limit_hit": false,
+   "services_hitting_limit": []
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}

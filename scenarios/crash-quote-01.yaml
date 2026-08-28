@@ -23,5 +23,162 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: 3
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-08-28T21:16:26Z"
+  t_inject: "2026-08-28T21:17:26Z"
+  t_revert: "2026-08-28T21:19:26Z"
+  t_end: "2026-08-28T21:20:26Z"
+  settle_s: 150
+  t_harvest: "2026-08-28T21:22:56Z"
+  batch_dir: scripts/out/batch3_20260828T210242Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/crash-quote-01
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 6528ecaba04469f6b8f974ca68edab5de504bd5a369c7e427fbcea5963eeece8
+    metrics.json: 4de648d5210a5652d1d084c5efdc1c9a6ad0449fc6aee72b9755c10c99bcde36
+    traces.json: 9acc9ffabadc414c938b034aabaceb6cf495d0d0d775e861b1e66f959e233b0a
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 7
+agent_visible_symptom:
+  window:
+    start: "2026-08-28T21:17:26Z"
+    end: "2026-08-28T21:19:26Z"
+  detected_at: "2026-08-28T21:23:20Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on frontend/GET /api/shipping
+      service: frontend
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.1333
+        window:
+          start: "2026-08-28T21:16:26Z"
+          end: "2026-08-28T21:17:26Z"
+      observed:
+        error_count: 32.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T21:17:26Z"
+          end: "2026-08-28T21:19:26Z"
+      deviation: 32.0
+    -
+      rule: error_rate_jump
+      message: elevated error rate on shipping
+      service: shipping
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.1
+        window:
+          start: "2026-08-28T21:16:26Z"
+          end: "2026-08-28T21:17:26Z"
+      observed:
+        error_count: 26.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T21:17:26Z"
+          end: "2026-08-28T21:19:26Z"
+      deviation: 26.0
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on shipping/POST /get-quote
+      service: shipping
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0833
+        window:
+          start: "2026-08-28T21:16:26Z"
+          end: "2026-08-28T21:17:26Z"
+      observed:
+        error_count: 26.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T21:17:26Z"
+          end: "2026-08-28T21:19:26Z"
+      deviation: 26.0
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0
+        window:
+          start: "2026-08-28T21:16:26Z"
+          end: "2026-08-28T21:17:26Z"
+      observed:
+        error_count: 20.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T21:17:26Z"
+          end: "2026-08-28T21:19:26Z"
+      deviation: 20.0
+    -
+      rule: p95_jump
+      message: elevated p95 latency on shipping
+      service: shipping
+      baseline:
+        p95_ms: 3.85
+        window:
+          start: "2026-08-28T21:16:26Z"
+          end: "2026-08-28T21:17:26Z"
+      observed:
+        p95_ms: 48.0
+        delta_ms: 44.15
+        ratio: 12.468
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T21:17:26Z"
+          end: "2026-08-28T21:19:26Z"
+      deviation: 12.468
+    -
+      rule: error_rate_jump
+      message: elevated error rate on checkout
+      service: checkout
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0
+        window:
+          start: "2026-08-28T21:16:26Z"
+          end: "2026-08-28T21:17:26Z"
+      observed:
+        error_count: 10.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T21:17:26Z"
+          end: "2026-08-28T21:19:26Z"
+      deviation: 10.0
+    -
+      rule: method_error_rate_jump
+      message: elevated error rate on checkout/oteldemo.CheckoutService/PlaceOrder
+      service: checkout
+      baseline:
+        error_count: 0.0
+        error_count_scaled_to_inject: 0.0
+        request_rate_per_s: 0.0
+        window:
+          start: "2026-08-28T21:16:26Z"
+          end: "2026-08-28T21:17:26Z"
+      observed:
+        error_count: 10.0
+        threshold_N: 5
+        window:
+          start: "2026-08-28T21:17:26Z"
+          end: "2026-08-28T21:19:26Z"
+      deviation: 10.0

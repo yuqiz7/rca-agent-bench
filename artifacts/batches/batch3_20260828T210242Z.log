@@ -1,0 +1,46 @@
+[2026-08-28T21:02:43Z] batch batch3_20260828T210242Z start; 16 cycles -> scripts/out/batch3_20260828T210242Z
+[2026-08-28T21:02:43Z] cycle 1 kill_container/ad tier=card param=None t0=2026-08-28T21:02:43Z
+[2026-08-28T21:06:44Z] cycle 1 settle 150s -> harvest at 2026-08-28T21:09:14Z
+[2026-08-28T21:09:14Z] cycle 1 baseline(300s)=0.183333/s inject=0.0/s after=0.133333/s
+[2026-08-28T21:09:27Z] cycle 1 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T21:09:37Z] card crash-ad-01: packed 5 files, 3 alerts
+[2026-08-28T21:09:37Z] cycle 2 drop_inbound/astronomy-db tier=card param=None t0=2026-08-28T21:09:37Z
+[2026-08-28T21:13:37Z] cycle 2 settle 150s -> harvest at 2026-08-28T21:16:07Z
+[2026-08-28T21:16:07Z] cycle 2 baseline(300s)=None/s inject=None/s after=None/s
+[2026-08-28T21:16:17Z] cycle 2 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T21:16:26Z] card blackhole-astronomy-db-01: packed 5 files, 16 alerts
+[2026-08-28T21:16:26Z] cycle 3 kill_container/quote tier=card param=None t0=2026-08-28T21:16:26Z
+[2026-08-28T21:20:26Z] cycle 3 settle 150s -> harvest at 2026-08-28T21:22:56Z
+[2026-08-28T21:22:56Z] cycle 3 baseline(300s)=0.1/s inject=0.016667/s after=0.033333/s
+[2026-08-28T21:23:11Z] cycle 3 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T21:23:20Z] card crash-quote-01: packed 5 files, 7 alerts
+[2026-08-28T21:23:20Z] cycle 4 drop_inbound/email tier=card param=None t0=2026-08-28T21:23:20Z
+[2026-08-28T21:30:20Z] cycle 4 settle 150s -> harvest at 2026-08-28T21:32:50Z
+[2026-08-28T21:32:50Z] cycle 4 baseline(300s)=0.06/s inject=0.003333/s after=0.033333/s
+[2026-08-28T21:33:15Z] cycle 4 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T21:33:30Z] card blackhole-email-01: packed 5 files, 4 alerts
+[2026-08-28T21:33:30Z] cycle 5 kill_container/recommendation tier=card param=None t0=2026-08-28T21:33:30Z
+[2026-08-28T21:37:31Z] cycle 5 settle 150s -> harvest at 2026-08-28T21:40:01Z
+[2026-08-28T21:40:01Z] cycle 5 baseline(300s)=0.46/s inject=0.058333/s after=0.5/s
+[2026-08-28T21:40:14Z] cycle 5 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T21:40:23Z] card crash-recommendation-01: packed 5 files, 3 alerts
+[2026-08-28T21:40:23Z] cycle 6 delay_outbound/shipping tier=card param=3000 t0=2026-08-28T21:40:23Z
+[2026-08-28T21:44:24Z] cycle 6 settle 150s -> harvest at 2026-08-28T21:46:54Z
+[2026-08-28T21:46:54Z] cycle 6 baseline(300s)=0.173333/s inject=0.116667/s after=0.233333/s
+[2026-08-28T21:47:08Z] cycle 6 done injected=True symptom=False recovered=True residue_clean=True
+[2026-08-28T21:47:08Z] card latency-shipping-3000: probe gate FAILED, not packing
+[2026-08-28T21:47:08Z] card latency-shipping-3000: FAILED (probe gate failed); streak 1/3, continuing with the next card
+[2026-08-28T21:47:08Z] cycle 7 drop_inbound/ad tier=card param=None t0=2026-08-28T21:47:08Z
+[2026-08-28T21:51:08Z] cycle 7 settle 150s -> harvest at 2026-08-28T21:53:38Z
+[2026-08-28T21:53:38Z] cycle 7 baseline(300s)=0.226667/s inject=0.0/s after=0.0/s
+[2026-08-28T21:53:51Z] cycle 7 done injected=True symptom=True recovered=False residue_clean=True
+[2026-08-28T21:53:51Z] card blackhole-ad-01: probe gate FAILED, not packing
+[2026-08-28T21:53:51Z] card blackhole-ad-01: FAILED (probe gate failed); streak 2/3, continuing with the next card
+[2026-08-28T21:53:51Z] cycle 8 delay_outbound/payment tier=card param=800 t0=2026-08-28T21:53:51Z
+[2026-08-28T22:00:52Z] cycle 8 settle 150s -> harvest at 2026-08-28T22:03:22Z
+[2026-08-28T22:03:22Z] cycle 8 baseline(300s)=0.056667/s inject=0.056667/s after=0.1/s
+[2026-08-28T22:03:45Z] cycle 8 done injected=True symptom=False recovered=True residue_clean=True
+[2026-08-28T22:03:45Z] card latency-payment-800: probe gate FAILED, not packing
+[2026-08-28T22:03:45Z] card latency-payment-800: FAILED (probe gate failed); streak 3/3, continuing with the next card
+[2026-08-28T22:03:45Z] ABORT 3 consecutive card failures (limit 3); last: cycle 8 latency-payment-800: probe gate failed
+[2026-08-28T22:03:45Z] batch batch3_20260828T210242Z finished; summary at scripts/out/batch3_20260828T210242Z/summary.md

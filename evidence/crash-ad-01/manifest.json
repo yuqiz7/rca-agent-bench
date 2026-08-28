@@ -1,0 +1,86 @@
+{
+ "card_id": "crash-ad-01",
+ "packed_at": "2026-08-28T21:09:37Z",
+ "window": {
+  "start": "2026-08-28T21:01:43Z",
+  "end": "2026-08-28T21:09:14Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-28T21:01:43Z",
+   "end": "2026-08-28T21:09:14Z"
+  },
+  "baseline": {
+   "start": "2026-08-28T21:02:43Z",
+   "end": "2026-08-28T21:03:43Z"
+  },
+  "inject": {
+   "start": "2026-08-28T21:03:43Z",
+   "end": "2026-08-28T21:05:44Z"
+  },
+  "recover": {
+   "start": "2026-08-28T21:05:44Z",
+   "end": "2026-08-28T21:06:44Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/crash-ad-01/logs.jsonl",
+   "bytes": 3105820,
+   "sha256": "b3c448ca800b463c77559e97eaaa0b124cccc054320e77719e97eb57ad5e8639"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/crash-ad-01/metrics.json",
+   "bytes": 351941,
+   "sha256": "a05797a4d069e8e1864a1d8ae1a308a01f53ca2e3b1b90280bc78ec5c856462a"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/crash-ad-01/traces.json",
+   "bytes": 7981226,
+   "sha256": "4021232956d35b70d8db52f1f2ddb08a4852e1d6404b420a932f114b3c991183"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/crash-ad-01/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/crash-ad-01/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 9644,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 214
+  },
+  "traces.json": {
+   "spans": 27933,
+   "limit_hit": false,
+   "services_hitting_limit": []
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}

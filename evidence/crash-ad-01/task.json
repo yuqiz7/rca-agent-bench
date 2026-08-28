@@ -1,0 +1,93 @@
+{
+ "card_id": "crash-ad-01",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-28T21:03:43Z",
+   "end": "2026-08-28T21:05:44Z"
+  },
+  "detected_at": "2026-08-28T21:09:37Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/GET /api/data",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 5.4,
+     "call_count": 31.0,
+     "window": {
+      "start": "2026-08-28T21:02:43Z",
+      "end": "2026-08-28T21:03:43Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14994.6,
+     "ratio": 2777.778,
+     "call_count": 36.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T21:03:43Z",
+      "end": "2026-08-28T21:05:44Z"
+     }
+    },
+    "deviation": 2777.778
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on ad",
+    "service": "ad",
+    "baseline": {
+     "request_rate_per_s": 0.1833,
+     "window": {
+      "start": "2026-08-28T21:02:43Z",
+      "end": "2026-08-28T21:03:43Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.0183,
+     "consecutive_zero_samples": 8,
+     "zero_span_s": 120,
+     "expected_calls_in_zero_span": 22.0,
+     "min_expected_calls": 5,
+     "samples_in_window": 9,
+     "window": {
+      "start": "2026-08-28T21:03:43Z",
+      "end": "2026-08-28T21:05:44Z"
+     }
+    },
+    "deviation": 22.0
+   },
+   {
+    "rule": "method_error_rate_jump",
+    "message": "elevated error rate on frontend/GET /api/data",
+    "service": "frontend",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.5167,
+     "window": {
+      "start": "2026-08-28T21:02:43Z",
+      "end": "2026-08-28T21:03:43Z"
+     }
+    },
+    "observed": {
+     "error_count": 21.0,
+     "threshold_N": 16,
+     "window": {
+      "start": "2026-08-28T21:03:43Z",
+      "end": "2026-08-28T21:05:44Z"
+     }
+    },
+    "deviation": 21.0
+   }
+  ]
+ },
+ "evidence_dir": "evidence/crash-ad-01",
+ "trigger": "Monitoring detected an anomaly in the system."
+}
