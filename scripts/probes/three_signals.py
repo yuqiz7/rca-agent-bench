@@ -60,7 +60,24 @@ def fetch(url, data=None, headers=None, label=""):
 
 
 # ── traces ────────────────────────────────────────────────────────────────
-PEER_KEYS = ("net.peer.name", "server.address", "peer.service")
+# 前三个是 OTel semconv 的 peer 命名，语言 SDK 都发这几个。
+# 后两个是 Envoy 的命名（决策 023 / O-P2-19）：frontend-proxy 是 Envoy，不发
+# semconv peer 标签，只发 upstream_cluster —— 而它是**唯一**打到 frontend 的
+# 上游。少了这两个键，frontend 的 caller_edges 恒为空、caller_all_dur.p50 恒为
+# null，latency-frontend-800 的边判据分子取不到值（批次 2 实测即如此失败）。
+# 实测 frontend-proxy 的 client span：upstream_cluster 与 upstream_cluster.name
+# 取值都精确等于服务名（frontend / image-provider / flagservice），
+# 900s 内 router frontend egress 1662 条 = 1.85/s，p50 5.63ms、p95 28.03ms，
+# 800ms 注入是约 140 倍台阶，判据分辨率绰绰有余。
+# upstream_address 未纳入：它是 IP:port，不是服务名，配不上 `== svc` 的匹配。
+#
+# 为何不改成「靶子自身 SERVER span 侧臂」：delay_outbound 按设计只延迟**从服务
+# 端口发出的响应包**（原语注释 §3 / 决策 007），netem 排队发生在应用写完响应
+# 之后，靶子自己的 server span 量不到这段。四张已通过的 latency 卡实测靶子自身
+# p95 位移分别为 +0.3 / +0.0 / +0.0 / +0.0 ms，而调用方 p95 位移 1922~4727ms
+# —— server 侧臂在任何门槛下都不会命中，故不设。
+PEER_KEYS = ("net.peer.name", "server.address", "peer.service",
+             "upstream_cluster.name", "upstream_cluster")
 
 # 这些靶子是第三方镜像（PostgreSQL / Valkey），没有 SDK、不产生 server span，
 # 因此在 Jaeger 的 /api/services 里也不存在。它们的「调用方边」只能从调用方的

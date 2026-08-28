@@ -87,6 +87,29 @@ TARGET_MIN_EXPECTED = 5
 # （决策 018 已为这两个靶子定过同样的口径）。
 NO_SERVER_METRIC_TARGETS = ("valkey-cart", "astronomy-db")
 
+# ── 无 SDK 靶子的 symptom 双臂（决策 023 / O-P2-18）────────────────────────
+# 这两个靶子既没有 server span 可判（靶子侧臂结构上不适用），报错数判据也不成立
+# —— 客户端把故障吞成了别的形状，且两个靶子吞法完全不同：
+#
+#   valkey-cart（.NET Redis 客户端，~5s 同步超时）：blackhole 全拦之下**零报错**，
+#     调用边耗时从 p50 0.49ms 抬到 5702ms（约 11600 倍），span 数只掉 27%。
+#     报错数判据分子恒为 0，怎么调阈值都过不了（O-P2-18 原记录）。
+#   astronomy-db（Go pq 驱动，容器被 kill 后连接直接被拒）：crash 之下 fail-fast，
+#     注入起点 +0.52s 内 2 条报错（driver: bad connection），p50 0.32ms **低于**
+#     基线 1.31ms，此后 119.5s 完全静默（期望约 314 条实收 2 条）。报错数只有 2，
+#     而按调用方基线 2.617/s 算出的 N = 79。
+#
+# 两种形态的共同点不是"报错多"，是"这条调用边不再正常工作"——要么慢得离谱，
+# 要么干脆没了。故判据改成对这两件事各设一臂，或关系：
+#   台阶臂：during p50 >= STEP_ABS_MS，或 >= STEP_MULT x 基线 p50；
+#   边静默臂：during 边速率 <= 基线边速率 x TARGET_RATE_FRAC，
+#             且 基线边速率 x inject_s >= TARGET_MIN_EXPECTED（样本量够静默才算数）。
+# 门槛取值：1000ms 远高于全部靶子的正常边耗时（实测最大 p50 40.96ms），且低于
+# 两个已知台阶（5702ms / 800ms 档注入）；100x 是给低基线边留的相对口子
+# （valkey-cart 基线 0.49ms，绝对臂 1000ms 要 2000 倍才够，相对臂 100 倍即可）。
+NO_SDK_STEP_ABS_MS = 1000.0
+NO_SDK_STEP_MULT = 100.0
+
 # 批次模式：连续多少张卡过不了探针门就停批（决策 021「首批执行补充」）。
 # 单张失败不停 —— 首批 16 张里 8 张 param_validated=false，个别失败是预期可能。
 # 连续 3 张则说明是系统性问题（testbed 挂了、flagd 不应答、后端查不动），
@@ -413,6 +436,54 @@ def target_side_arm(svc, prom_base, inject_rate, inject_s):
         "expected_calls_in_inject": round(expected, 2)}
 
 
+def no_sdk_arms(svc, bt, dt_, base_s, inject_s):
+    """无 SDK 靶子（valkey-cart / astronomy-db）的 symptom 双臂（决策 023）。
+
+    返回 (pass|None, detail)。None = 不适用（不是这两个靶子），与判为不通过不同 ——
+    和 target_side_arm 同一个约定，调用方必须能分辨，否则又是静默的零分母。
+    """
+    if svc not in NO_SERVER_METRIC_TARGETS:
+        return None, {"applicable": False,
+                      "why": f"{svc} has an SDK; caller-error / target-side arms apply"}
+    bp = (bt.get("caller_all_dur") or {}).get("p50_ms")
+    dp = (dt_.get("caller_all_dur") or {}).get("p50_ms")
+    b_spans = bt.get("caller_spans_total") or 0
+    d_spans = dt_.get("caller_spans_total") or 0
+    b_rate = b_spans / (base_s or 1)
+    d_rate = d_spans / (inject_s or 1)
+
+    # 台阶臂
+    step_abs = dp is not None and dp >= NO_SDK_STEP_ABS_MS
+    step_rel = (dp is not None and bp is not None and bp > 0
+                and dp >= NO_SDK_STEP_MULT * bp)
+    step_ok = bool(step_abs or step_rel)
+
+    # 边静默臂
+    expected = b_rate * inject_s
+    ceiling = b_rate * TARGET_RATE_FRAC
+    enough = expected >= TARGET_MIN_EXPECTED
+    silence_ok = bool(enough and b_rate > 0 and d_rate <= ceiling)
+
+    return (step_ok or silence_ok), {
+        "applicable": True,
+        "rule": f"EITHER during edge p50 >= {NO_SDK_STEP_ABS_MS}ms or >= "
+                f"{NO_SDK_STEP_MULT} x baseline edge p50 (step arm) "
+                f"OR during edge rate <= baseline x {TARGET_RATE_FRAC} AND "
+                f"baseline_rate x inject_s >= {TARGET_MIN_EXPECTED} (edge-silence arm) "
+                f"(§5 / 决策 023)",
+        "baseline_edge_p50_ms": bp, "during_edge_p50_ms": dp,
+        "step_abs_threshold_ms": NO_SDK_STEP_ABS_MS,
+        "step_rel_threshold_ms": round(NO_SDK_STEP_MULT * bp, 2) if bp else None,
+        "step_arm_pass": step_ok,
+        "baseline_edge_spans": b_spans, "baseline_edge_rate_per_s": round(b_rate, 6),
+        "during_edge_spans": d_spans, "during_edge_rate_per_s": round(d_rate, 6),
+        "edge_rate_ceiling_per_s": round(ceiling, 6),
+        "expected_edge_calls_in_inject": round(expected, 2),
+        "min_expected": TARGET_MIN_EXPECTED,
+        "silence_arm_applicable": enough,
+        "silence_arm_pass": silence_ok}
+
+
 def judge_symptom(cls, base, during, param, context_value=None,
                   prom_base=None, inject_rate=None, svc=None):
     """返回 (pass: bool, detail: dict)。base/during 是 three_signals 的 summary。
@@ -432,6 +503,9 @@ def judge_symptom(cls, base, during, param, context_value=None,
         if brate is None:
             brate, rate_src = win_rate, "baseline_window_fallback"
         tgt_ok, tgt_d = target_side_arm(svc, prom_base, inject_rate, inject_s)
+        # 无 SDK 靶子的第三、第四条臂（决策 023）。对有 SDK 的靶子返回 None，
+        # 不参与 or —— 判据在别的靶子上一个字没变。
+        nosdk_ok, nosdk_d = no_sdk_arms(svc, bt, dt_, bsec, inject_s)
 
         if cls == "crash":
             got = dt_.get("caller_error_spans") or 0
@@ -441,7 +515,8 @@ def judge_symptom(cls, base, during, param, context_value=None,
                 "snapshot": SYMPTOM_SNAPSHOT[cls],
                 "rule": f"EITHER caller_error_spans > N (N = max({CRASH_N_FLOOR}, "
                         f"ceil({CRASH_N_FRAC} x baseline_rate x inject_s))) "
-                        f"OR the target-side arm (§6 / 决策 022)",
+                        f"OR the target-side arm (§6 / 决策 022) "
+                        f"OR the no-SDK step / edge-silence arms (§5 / 决策 023)",
                 "N": n, "baseline_rate_per_s": round(brate, 6),
                 "baseline_rate_source": rate_src,
                 "baseline_rate_from_window": round(win_rate, 6),
@@ -449,7 +524,8 @@ def judge_symptom(cls, base, during, param, context_value=None,
                 "during_error_spans": got,
                 "baseline_error_spans": bt.get("caller_error_spans"),
                 "caller_arm_pass": caller_ok, "target_arm": tgt_d,
-                "target_arm_pass": tgt_ok}
+                "target_arm_pass": tgt_ok,
+                "no_sdk_arms": nosdk_d, "no_sdk_arms_pass": nosdk_ok}
         else:
             b = bt.get("caller_spans_total") or 0
             d = dt_.get("caller_spans_total") or 0
@@ -458,13 +534,15 @@ def judge_symptom(cls, base, during, param, context_value=None,
             detail = {
                 "snapshot": SYMPTOM_SNAPSHOT[cls],
                 "rule": f"EITHER caller_spans_total < baseline x {BLACKHOLE_SPAN_FRAC} "
-                        f"OR the target-side arm (§6 / 决策 022)",
+                        f"OR the target-side arm (§6 / 决策 022) "
+                        f"OR the no-SDK step / edge-silence arms (§5 / 决策 023)",
                 "baseline_spans": b, "during_spans": d, "threshold": round(thr, 2),
                 "baseline_rate_per_s": round(brate, 6),
                 "baseline_rate_source": rate_src,
                 "caller_arm_pass": caller_ok, "target_arm": tgt_d,
-                "target_arm_pass": tgt_ok}
-        return (caller_ok or bool(tgt_ok)), detail
+                "target_arm_pass": tgt_ok,
+                "no_sdk_arms": nosdk_d, "no_sdk_arms_pass": nosdk_ok}
+        return (caller_ok or bool(tgt_ok) or bool(nosdk_ok)), detail
     if cls == "misconfig":
         flag, variant, ratio = parse_ratio(param)
         if flag in FLAG_TARGETING_ID_KEY:

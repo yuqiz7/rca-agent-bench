@@ -83,6 +83,19 @@ QUERIES = [
         "promql": f'sum by (service_name, span_name) (traces_span_metrics_calls_total{{{SERVER},{ERR}}})',
         "note": "raw error counter per (service, operation); detect.py rule 5 input",
     },
+    # Rule 7 input (决策 023 / O-P2-17). Same relationship to p95_latency_ms that
+    # calls_total_by_operation has to calls_total: a delay that lands on one method
+    # is averaged away in the service-level histogram. latency-checkout-800 passed
+    # the production gate and alerted on nothing -- checkout's service p95 is
+    # dominated by PlaceOrder, and the 800ms landed on the edges its callers use.
+    {
+        "name": "p95_latency_ms_by_operation",
+        "group_by": ["service_name", "span_name"],
+        "unit": "ms",
+        "promql": ('histogram_quantile(0.95, sum by (service_name, span_name, le) '
+                   f'(rate(traces_span_metrics_duration_milliseconds_bucket{{{SERVER}}}[{RATE_WINDOW}])))'),
+        "note": "spanmetrics latency histogram per (service, operation); detect.py rule 7 input",
+    },
     # ── per container ────────────────────────────────────────────────────
     {
         "name": "container_memory_mib",

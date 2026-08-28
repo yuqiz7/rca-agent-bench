@@ -17,9 +17,46 @@ import yaml
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCENARIOS_DIR = os.path.join(REPO, "scenarios")
 
-# Cycle timings are fixed for every card: decision 012 (60/120/60) + decision 016
-# (settle 150s). Kept here so a card file never carries a hand-edited timing.
+# Cycle timings default the same for every card: decision 012 (60/120/60) +
+# decision 016 (settle 150s). Kept here so a card file never carries a hand-edited
+# timing -- a per-card deviation goes in recipe.csv's cycle_override column, not
+# into the yaml by hand (决策 023).
 CYCLE = {"baseline_s": 60, "inject_s": 120, "recover_s": 60, "settle_s": 150}
+
+
+def cycle_for(override_json):
+    """Merge recipe.csv's cycle_override onto CYCLE.
+
+    Decision 012 fixed one cycle for the whole deck and that stays the default; the
+    override column is the *exception* mechanism 决策 023 needed for two cases the
+    uniform cycle cannot serve:
+
+      - R1 low-traffic targets (checkout / email / payment, ~0.057/s): a 120s inject
+        window is expected to carry ~7 calls, and both judgment floors (N >= 5,
+        baseline_rate x inject_s >= 5) sit right on top of that. Batch 2 measured
+        0.04/s -> 4.8 expected and the cards failed on sample size, not on the
+        fault. inject_s=300 puts them at ~17.
+      - O-P2-9 cartFailure: the erroring EmptyCart spans hang for p50 150s, past the
+        evidence window's close, so spanmetrics sees 1 call / 0 errors while the gate
+        (Jaeger, queried at harvest) sees 3 / 2. settle_s=300 lets them land.
+
+    Raises on an unknown key: a typo'd override would otherwise be silently dropped
+    and the card would run the default window while the recipe claimed otherwise.
+    """
+    import json as _json
+    cycle = dict(CYCLE)
+    if not override_json or not override_json.strip():
+        return cycle
+    ov = _json.loads(override_json)
+    unknown = sorted(set(ov) - set(CYCLE))
+    if unknown:
+        raise ValueError(f"cycle_override has unknown keys {unknown}; "
+                         f"allowed: {sorted(CYCLE)}")
+    for k, v in ov.items():
+        if not isinstance(v, int) or v <= 0:
+            raise ValueError(f"cycle_override[{k}] must be a positive int, got {v!r}")
+    cycle.update(ov)
+    return cycle
 
 # Difficulty tiers, decision 021: 0-1 easy, 2-3 medium, >=4 hard; axis C == 2
 # promotes one tier on top of the total.

@@ -28,6 +28,10 @@ Four rules, scanned for every service / container present in the metrics:
      (method level)         touching one method vanishes in a service counter
   6. errors concentrated    >= 5 error spans on one demo.<entity>.id AND >= 50%
      (entity level)         of that entity's spans in the inject window
+  7. elevated p95 latency   per (service, operation): p95 >= 2x baseline AND
+     (method level)         Dp95 >= 100 ms, OR Dp95 >= 500 ms; >= 5 calls in both
+                            windows. A delay landing on one method is averaged
+                            away in the service-level histogram of rule 3.
 
 Alerts are sorted by deviation multiple, descending. An empty list is recorded
 as no_alert -- an explicit "the pager stayed quiet", not a missing field.
@@ -83,6 +87,33 @@ METHOD_ERR_N_FLOOR = 5
 METHOD_ERR_N_FRAC = 0.25
 METHOD_ERR_BASELINE_MULT = 2.0
 
+# Rule 7, method-level p95 (决策 023). Same shape and the same two arms as rule 3
+# but per (service, operation). latency-checkout-800 passed the production gate and
+# alerted on nothing even after rule 3 grew its absolute arm: checkout's service-level
+# p95 is dominated by PlaceOrder (baseline 48ms) while the injected 800ms lands on the
+# edges its callers traverse, so the service histogram barely moves. Grouping by
+# span_name is the same fix rule 5 applied to error counts.
+# Thresholds are deliberately rule 3's, not new numbers -- a method-level p95 that
+# doubles, or gains half a second, means the same thing a service-level one does.
+METHOD_P95_MULT = P95_MULT
+METHOD_P95_ABS_MS = P95_ABS_MS
+# A histogram_quantile over a nearly idle series is noise: with a couple of spans in
+# the window the 0.95 quantile is just the single slowest bucket edge. Rule 3 is
+# implicitly protected by every service carrying traffic; per operation there are
+# many near-idle series, so the floor is explicit here.
+METHOD_P95_MIN_CALLS = 5
+# Absolute floor under the *ratio* arm. Rule 3 does without one because a
+# service-level p95 baseline is an aggregate and already large; per operation the
+# baselines sit at 6-36 ms, where a 2x ratio is 10-40 ms of ordinary jitter on an
+# already-fast frontend route. Without this floor the first re-detect produced 46
+# rule 7 alerts of which 16 were sub-100 ms, and three cards flipped from an honest
+# no_alert to an alert pointing at the wrong service -- crash-email-01's only alert
+# was `frontend/GET /api/cart 6.0 -> 16.0 ms` while the actual fault was the email
+# container being killed. That is worse for the eval than staying quiet.
+# Rules 1, 2 and 5 are all "relative condition AND absolute floor" already; this
+# makes rule 7 the same shape rather than a new idea.
+METHOD_P95_MIN_DELTA_MS = 100.0
+
 # Rule 6, entity-level concentration (O-P2-17). Reads traces.json, which since
 # O-P2-16 carries whitelisted demo.<entity>.id tags. A targeting-style fault fails
 # one entity completely and leaves the rest untouched -- invisible in any rate,
@@ -102,6 +133,7 @@ RULES = {
     "memory_over_line": "memory rising on {name}",
     "method_error_rate_jump": "elevated error rate on {name}",
     "entity_error_concentration": "errors concentrated on {name}",
+    "method_latency_jump": "elevated p95 latency on {name}",
 }
 
 
@@ -362,6 +394,47 @@ def detect(metrics_path, traces_path=None):
                 "deviation": round(i_errs / max(scaled_b, 1.0), 3),
             })
 
+    # ── rule 7: per (service, operation) p95 latency ──
+    # Absent from packs built before 决策 023; an older pack simply yields no rule 7
+    # alerts rather than an error, so a re-detect over the existing deck still runs.
+    m_p95 = (q.get("p95_latency_ms_by_operation") or {}).get("series") or {}
+    for key in sorted(m_p95):
+        svc, _, op = key.partition(SERIES_SEP)
+        bp = median([v for _, v in _in(m_p95[key], b0, b1)])
+        ip = median([v for _, v in _in(m_p95[key], i0, i1)])
+        if bp is None or ip is None or bp <= 0:
+            continue
+        # sample floor: use the operation's own call counter, the series rule 5 reads
+        i_calls = counter_delta(_in((m_calls.get(key) or []), i0, i1))
+        b_calls_op = counter_delta(_in((m_calls.get(key) or []), b0, b1))
+        if i_calls < METHOD_P95_MIN_CALLS or b_calls_op < METHOD_P95_MIN_CALLS:
+            continue
+        ratio = ip / bp
+        delta = ip - bp
+        if ((ratio >= METHOD_P95_MULT and delta >= METHOD_P95_MIN_DELTA_MS)
+                or delta >= METHOD_P95_ABS_MS):
+            alerts.append({
+                "rule": "method_latency_jump",
+                "message": RULES["method_latency_jump"].format(name=f"{svc}/{op}"),
+                "service": svc, "operation": op,
+                "baseline": {"p95_ms": round(bp, 2), "call_count": round(b_calls_op, 2),
+                             "window": w["baseline"]},
+                "observed": {"p95_ms": round(ip, 2),
+                             "delta_ms": round(delta, 2),
+                             "ratio": round(ratio, 3),
+                             "call_count": round(i_calls, 2),
+                             "min_calls": METHOD_P95_MIN_CALLS,
+                             "threshold_ratio": METHOD_P95_MULT,
+                             "threshold_min_delta_ms": METHOD_P95_MIN_DELTA_MS,
+                             "threshold_delta_ms": METHOD_P95_ABS_MS,
+                             "arm": ("ratio" if (ratio >= METHOD_P95_MULT
+                                                and delta >= METHOD_P95_MIN_DELTA_MS)
+                                     else "absolute"),
+                             "window": w["inject"]},
+                "window": w["inject"],
+                "deviation": round(max(ratio, delta / METHOD_P95_ABS_MS), 3),
+            })
+
     # ── rule 6: entity-level concentration (needs traces.json) ──
     alerts.extend(detect_entity_concentration(traces_path, i0, i1, w))
 
@@ -371,7 +444,7 @@ def detect(metrics_path, traces_path=None):
         "window": w["inject"],
         "windows": w,
         "rules": {k: v.replace("{name}", "<service>") for k, v in RULES.items()},
-        "rules_version": "2026-08-27 (O-P2-17: absolute p95 arm, rules 5 and 6)",
+        "rules_version": "2026-08-28 (决策 023: rule 7 method-level p95)",
         "alerts": alerts,
         "no_alert": not alerts,
     }

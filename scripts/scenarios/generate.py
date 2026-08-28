@@ -61,7 +61,7 @@ def build_card(row, existing=None):
         "ground_truth": {"service": row["gt_service"], "class": row["gt_class"]},
         "difficulty_predicted": {"A": a, "B": b, "C": c, "total": total, "tier": tier},
         "difficulty_measured": None,
-        "cycle": dict(cards.CYCLE),
+        "cycle": cards.cycle_for(row.get("cycle_override")),
         "param_validated": row["param_validated"] == "true",
         "batch": int(row["batch"]) if row["batch"] else None,
         "production": None,
@@ -81,16 +81,18 @@ def params_str(params):
 
 
 def docs_table(rows):
-    L = ["| card_id | class | target | primitive | params | A | B | C | total | 档位 | param_validated | batch | note |",
-         "| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | ---: | --- |"]
+    L = ["| card_id | class | target | primitive | params | A | B | C | total | 档位 | param_validated | batch | 周期覆盖 | note |",
+         "| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | ---: | --- | --- |"]
     for r in rows:
         a, b, c = int(r["axis_a"]), int(r["axis_b"]), int(r["axis_c"])
         total, tier = cards.tier_of(a, b, c)
-        L.append("| `{cid}` | {cls} | `{tgt}` | `{prim}` | {par} | {a} | {b} | {c} | {t} | {tier} | {pv} | {batch} | {note} |".format(
+        ov = (r.get("cycle_override") or "").strip()
+        ov_s = " ".join(f"`{k}={v}`" for k, v in sorted(json.loads(ov).items())) if ov else "—"
+        L.append("| `{cid}` | {cls} | `{tgt}` | `{prim}` | {par} | {a} | {b} | {c} | {t} | {tier} | {pv} | {batch} | {ov} | {note} |".format(
             cid=r["card_id"], cls=r["class"], tgt=r["target"], prim=r["primitive"],
             par=params_str(json.loads(r["params"])), a=a, b=b, c=c, t=total, tier=tier,
             pv="yes" if r["param_validated"] == "true" else "no",
-            batch=r["batch"] or "—", note=r["note"] or ""))
+            batch=r["batch"] or "—", ov=ov_s, note=r["note"] or ""))
     return "\n".join(L)
 
 
