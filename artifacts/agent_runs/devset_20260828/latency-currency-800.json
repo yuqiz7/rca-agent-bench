@@ -1,0 +1,365 @@
+{
+ "card_id": "latency-currency-800",
+ "model": "claude-sonnet-5",
+ "started_at": "2026-08-28T19:56:20Z",
+ "wall_s": 11.297,
+ "terminated": "submit",
+ "error": null,
+ "answer": {
+  "service": "currency",
+  "fault_type": "latency"
+ },
+ "steps": 3,
+ "counters": {
+  "api_calls": 3,
+  "tool_calls": 5,
+  "validation_rejects": 0,
+  "tool_retries": 0,
+  "nudges": 0
+ },
+ "usage": {
+  "input": 6,
+  "output": 981,
+  "cache_write": 7536,
+  "cache_read": 8445
+ },
+ "cost_usd": 0.030351,
+ "prices": {
+  "source_url": "https://platform.claude.com/docs/en/about-claude/pricing",
+  "fetched_at": "2026-08-28"
+ },
+ "run_config": {
+  "max_steps": 20,
+  "max_usd_per_card": 0.2,
+  "tool_retries": 2,
+  "api_max_retries": 3,
+  "max_tokens": 16000,
+  "thinking": "adaptive",
+  "effort": "high",
+  "prompt_caching": true
+ },
+ "leak_check": [
+  "no_forbidden_keys",
+  "no_card_id",
+  "fixed_prompt_and_tools",
+  "user_turn_subset_of_task_json"
+ ],
+ "input": {
+  "system": "You are a site reliability engineer diagnosing a single fault in a running microservice deployment. Monitoring has flagged an anomaly and handed you a frozen evidence pack: logs, metrics, distributed traces, a configuration diff, the service dependency graph, and the alerts that fired.\n\nExactly one fault was introduced, into exactly one service. Downstream services reporting errors is expected cascade, not a second root cause -- your job is to find where the fault was introduced, not where it was felt.\n\nThe candidate services are:\nad, astronomy-db, cart, checkout, currency, email, flagd, frontend, frontend-proxy, image-provider, payment, product-catalog, quote, recommendation, shipping, valkey-cart\n\nThe fault types are:\n- crash: the service's container is not running. Callers see address-unreachable errors in bulk; the service's own logs and spans stop.\n- latency: the service is up and reachable but responds slowly. Caller-side spans get much longer; errors stay rare. The service's own server-side latency may look normal, because the delay is added on the way out.\n- blackhole: the service is up but its port silently drops packets. Callers see neither success nor error -- the edge simply goes quiet, with no timeout errors during the fault.\n- misconfig: the service's configuration or feature flag was changed. The service itself returns errors on its own spans and logs.\n- mem_leak: the service's memory grows without bound, and it eventually slows down or restarts.\n\nInvestigate with the read-only tools. Work from the alerts and the dependency graph towards the source: an alert naming a service usually means that service *observed* the problem, which is often one hop from the service that *caused* it. Distinguish crash from blackhole by whether the caller's spans are loud with errors or silent. Distinguish latency from both by whether calls still succeed.\n\nBe economical: each tool call costs a step, and you have a limited budget. Prefer narrow, targeted queries over broad ones. When the evidence identifies one service and one fault type, call submit. If your budget is nearly spent, submit your best current hypothesis rather than running out of steps -- an unsubmitted investigation scores zero.\n",
+  "user": "{\n \"trigger\": \"Monitoring detected an anomaly in the system.\",\n \"agent_visible_symptom\": {\n  \"window\": {\n   \"start\": \"2026-08-27T23:40:15Z\",\n   \"end\": \"2026-08-27T23:42:15Z\"\n  },\n  \"detected_at\": \"2026-08-27T23:46:08Z\",\n  \"no_alert\": false,\n  \"alerts\": [\n   {\n    \"rule\": \"p95_jump\",\n    \"message\": \"elevated p95 latency on checkout\",\n    \"service\": \"checkout\",\n    \"baseline\": {\n     \"p95_ms\": 48.0,\n     \"window\": {\n      \"start\": \"2026-08-27T23:39:15Z\",\n      \"end\": \"2026-08-27T23:40:15Z\"\n     }\n    },\n    \"observed\": {\n     \"p95_ms\": 4775.0,\n     \"delta_ms\": 4727.0,\n     \"ratio\": 99.479,\n     \"threshold_ratio\": 2.0,\n     \"threshold_delta_ms\": 500.0,\n     \"arm\": \"ratio\",\n     \"window\": {\n      \"start\": \"2026-08-27T23:40:15Z\",\n      \"end\": \"2026-08-27T23:42:15Z\"\n     }\n    },\n    \"deviation\": 99.479\n   }\n  ]\n }\n}",
+  "tools": [
+   {
+    "name": "logs_search",
+    "description": "Search the collected application logs for this incident. Filter by keyword (case-insensitive substring), service, severity, and time window. Returns match counts broken down by service and severity plus the most recent matching records.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "keyword": {
+       "type": "string",
+       "description": "case-insensitive substring to match in the log body"
+      },
+      "service": {
+       "type": "string",
+       "description": "restrict to one service; must be a service that appears in this incident's telemetry"
+      },
+      "severity": {
+       "type": "string",
+       "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+       ]
+      },
+      "start": {
+       "type": "string",
+       "description": "ISO8601, e.g. 2026-08-27T19:24:03Z; defaults to the start of the collection window"
+      },
+      "end": {
+       "type": "string",
+       "description": "ISO8601; defaults to the end of the collection window"
+      },
+      "limit": {
+       "type": "integer",
+       "description": "max records to return (1-200, default 30)"
+      }
+     },
+     "required": []
+    }
+   },
+   {
+    "name": "metrics_query",
+    "description": "Query one collected metric over a time window. 'summary' returns min/max/mean/first/last per series; 'series' additionally returns a downsampled time series. Metrics ending in _by_operation are keyed '<service>|<operation>'.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "metric": {
+       "type": "string",
+       "enum": [
+        "req_rate_per_s",
+        "error_rate_per_s",
+        "p95_latency_ms",
+        "calls_total",
+        "errors_total",
+        "calls_total_by_operation",
+        "errors_total_by_operation",
+        "p95_latency_ms_by_operation",
+        "container_memory_mib",
+        "container_cpu_ratio"
+       ]
+      },
+      "service": {
+       "type": "string",
+       "description": "restrict to one service"
+      },
+      "start": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "end": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "aggregate": {
+       "type": "string",
+       "enum": [
+        "summary",
+        "series"
+       ],
+       "description": "default summary"
+      },
+      "max_points": {
+       "type": "integer",
+       "description": "cap on returned series points (default 40)"
+      }
+     },
+     "required": [
+      "metric"
+     ]
+    }
+   },
+   {
+    "name": "traces_query",
+    "description": "Aggregate distributed-tracing spans. Filter by the span's own service, by caller (the service that owns the parent span, i.e. the calling side of an edge), by operation substring, by status, and by time. Returns per-(service, operation) counts, error counts and latency percentiles, plus a few sample spans -- never the full span list.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "service": {
+       "type": "string",
+       "description": "the service the span belongs to (callee side)"
+      },
+      "caller": {
+       "type": "string",
+       "description": "the service that owns the parent span (caller side of an edge)"
+      },
+      "operation_contains": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string",
+       "enum": [
+        "ERROR",
+        "OK",
+        "UNSET",
+        "ANY"
+       ]
+      },
+      "start": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "end": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "samples": {
+       "type": "integer",
+       "description": "sample spans to return (1-20, default 5)"
+      }
+     },
+     "required": []
+    }
+   },
+   {
+    "name": "config_diff",
+    "description": "Return the unified diff of the deployment configuration (compose environment and feature-flag file) against the pre-incident baseline snapshot, verbatim.",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "topology",
+    "description": "Return the service dependency graph as a list of caller -> callee edges, derived from a healthy baseline window.",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "alerts",
+    "description": "Return the full list of alerts the monitoring rules fired for this incident, with each alert's rule, baseline and observed values.",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "submit",
+    "description": "Submit your final root-cause diagnosis. Exactly one service is the root cause and exactly one fault type describes it. Calling this ends the investigation -- you get no further tool calls, so make sure the evidence supports the answer before calling it.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "service": {
+       "type": "string",
+       "enum": [
+        "ad",
+        "astronomy-db",
+        "cart",
+        "checkout",
+        "currency",
+        "email",
+        "flagd",
+        "frontend",
+        "frontend-proxy",
+        "image-provider",
+        "payment",
+        "product-catalog",
+        "quote",
+        "recommendation",
+        "shipping",
+        "valkey-cart"
+       ],
+       "description": "the single service where the fault was introduced"
+      },
+      "fault_type": {
+       "type": "string",
+       "enum": [
+        "crash",
+        "latency",
+        "blackhole",
+        "misconfig",
+        "mem_leak"
+       ],
+       "description": "crash: the service's container is not running. latency: the service is up and reachable but responds slowly. blackhole: the service is up but its port silently drops packets, so callers see neither success nor error. misconfig: the service's configuration or feature flag was changed and it returns errors. mem_leak: the service's memory grows without bound."
+      }
+     },
+     "required": [
+      "service",
+      "fault_type"
+     ]
+    }
+   }
+  ]
+ },
+ "transcript": [
+  {
+   "step": 1,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 71,
+    "cache_write": 3237,
+    "cache_read": 0
+   },
+   "cumulative_cost_usd": 0.008807,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "topology",
+     "input": {},
+     "ok": true,
+     "result": {
+      "bytes": 2136,
+      "preview": "{\"generated_at\": \"2026-08-27T18:12:57Z\", \"method\": \"spanmetrics CLIENT/SERVER span_name join, supplemented by Jaeger client-span peer tags for SDK-less and generic-HTTP peers\", \"edge_count\": 33, \"edges\": [{\"from\": \"ad\", \"to\": \"flagd\"}, {\"from\": \"cart\", \"to\": \"flagd\"}, {\"from\": \"cart\", \"to\": \"frontend-proxy\"}, {\"from\": \"cart\", \"to\": \"valkey-cart\"}, {\"from\": \"checkout\", \"to\": \"cart\"}, {\"from\": \"checkout\", \"to\": \"currency\"}, {\"from\": \"checkout\", \"to\": \"email\"}, {\"from\": \"checkout\", \"to\": \"flagd\"}, {\"from\": \"checkout\", \"to\": \"frontend-proxy\"}, {\"from\": \"checkout\", \"to\": \"payment\"}, {\"from\": \"checkout\", \"to\": \"product-catalog\"}, {\"from\": \"checkout\", \"to\": \"shipping\"}, {\"from\": \"frontend\", \"to\": \"ad\"}, {\"from\": \"frontend\", \"to\": \"cart\"}, {\"from\": \"frontend\", \"to\": \"checkout\"}, {\"from\": \"frontend\", \"to\": \"currency\"}, {\"from\": \"frontend\", \"to\": \"flagd\"}, {\"from\": \"frontend\", \"to\": \"frontend-proxy\"}, {\"from\": \"frontend\", \"to\": \"product-catalog\"}, {\"from\": \"frontend\", \"to\": \"recommendation\"}, {\"from\": \"frontend\", \"to\": \"shipping\"}, {\"from\": \"frontend-web\", \"to\": \"flagd\"}, {\"from\": \"frontend-web\", \"to\": \"frontend\"}, {\"from\": \"frontend-web\", \"to\": \"frontend-proxy\"}, {\"from\": \"frontend-web\", \"t",
+      "truncated": true
+     }
+    },
+    {
+     "name": "alerts",
+     "input": {},
+     "ok": true,
+     "result": {
+      "bytes": 1678,
+      "preview": "{\"window\": {\"start\": \"2026-08-27T23:40:15Z\", \"end\": \"2026-08-27T23:42:15Z\"}, \"rules\": {\"error_rate_jump\": \"elevated error rate on <service>\", \"traffic_zero\": \"traffic dropped to zero on <service>\", \"p95_jump\": \"elevated p95 latency on <service>\", \"memory_over_line\": \"memory rising on <service>\", \"method_error_rate_jump\": \"elevated error rate on <service>\", \"entity_error_concentration\": \"errors concentrated on <service>\", \"method_latency_jump\": \"elevated p95 latency on <service>\"}, \"count\": 2, \"alerts\": [{\"rule\": \"method_latency_jump\", \"message\": \"elevated p95 latency on frontend/GET /api/currency\", \"service\": \"frontend\", \"operation\": \"GET /api/currency\", \"baseline\": {\"p95_ms\": 3.9, \"call_count\": 12.0, \"window\": {\"start\": \"2026-08-27T23:39:15Z\", \"end\": \"2026-08-27T23:40:15Z\"}}, \"observed\": {\"p95_ms\": 990.0, \"delta_ms\": 986.1, \"ratio\": 253.846, \"call_count\": 28.0, \"min_calls\": 5, \"threshold_ratio\": 2.0, \"threshold_min_delta_ms\": 100.0, \"threshold_delta_ms\": 500.0, \"arm\": \"ratio\", \"window\": {\"start\": \"2026-08-27T23:40:15Z\", \"end\": \"2026-08-27T23:42:15Z\"}}, \"window\": {\"start\": \"2026-08-27T23:40:15Z\", \"end\": \"2026-08-27T23:42:15Z\"}, \"deviation\": 253.846}, {\"rule\": \"p95_jump\", \"message\":",
+      "truncated": true
+     }
+    }
+   ]
+  },
+  {
+   "step": 2,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 323,
+    "cache_write": 1971,
+    "cache_read": 3237
+   },
+   "cumulative_cost_usd": 0.017615,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "traces_query",
+     "input": {
+      "service": "currency",
+      "start": "2026-08-27T23:40:15Z",
+      "end": "2026-08-27T23:42:15Z",
+      "status": "ANY"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 1325,
+      "preview": "{\"window\": {\"start\": \"2026-08-27T23:40:15Z\", \"end\": \"2026-08-27T23:42:15Z\"}, \"matched_spans\": 45, \"error_spans\": 0, \"group_count\": 2, \"groups\": [{\"service\": \"currency\", \"operation\": \"oteldemo.CurrencyService/Convert\", \"count\": 30, \"errors\": 0, \"p50_ms\": 0.058, \"p95_ms\": 0.094, \"max_ms\": 0.109}, {\"service\": \"currency\", \"operation\": \"oteldemo.CurrencyService/GetSupportedCurrencies\", \"count\": 15, \"errors\": 0, \"p50_ms\": 0.041, \"p95_ms\": 0.044, \"max_ms\": 0.067}], \"samples\": [{\"ts\": \"2026-08-27T23:40:17Z\", \"service\": \"currency\", \"operation\": \"oteldemo.CurrencyService/Convert\", \"status\": \"OK\", \"duration_ms\": 0.047, \"caller\": \"checkout\"}, {\"ts\": \"2026-08-27T23:40:39Z\", \"service\": \"currency\", \"operation\": \"oteldemo.CurrencyService/Convert\", \"status\": \"OK\", \"duration_ms\": 0.062, \"caller\": \"checkout\"}, {\"ts\": \"2026-08-27T23:40:49Z\", \"service\": \"currency\", \"operation\": \"oteldemo.CurrencyService/GetSupportedCurrencies\", \"status\": \"OK\", \"duration_ms\": 0.038, \"caller\": \"frontend\"}, {\"ts\": \"2026-08-27T23:41:26Z\", \"service\": \"currency\", \"operation\": \"oteldemo.CurrencyService/GetSupportedCurrencies\", \"status\": \"OK\", \"duration_ms\": 0.041, \"caller\": \"frontend\"}, {\"ts\": \"2026-08-27T23:41:47Z\", \"service",
+      "truncated": true
+     }
+    },
+    {
+     "name": "traces_query",
+     "input": {
+      "caller": "checkout",
+      "start": "2026-08-27T23:40:15Z",
+      "end": "2026-08-27T23:42:15Z",
+      "status": "ANY"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 2476,
+      "preview": "{\"window\": {\"start\": \"2026-08-27T23:40:15Z\", \"end\": \"2026-08-27T23:42:15Z\"}, \"matched_spans\": 188, \"error_spans\": 0, \"group_count\": 15, \"groups\": [{\"service\": \"checkout\", \"operation\": \"oteldemo.CurrencyService/Convert\", \"count\": 25, \"errors\": 0, \"p50_ms\": 801.501, \"p95_ms\": 802.022, \"max_ms\": 802.07}, {\"service\": \"currency\", \"operation\": \"oteldemo.CurrencyService/Convert\", \"count\": 25, \"errors\": 0, \"p50_ms\": 0.058, \"p95_ms\": 0.088, \"max_ms\": 0.109}, {\"service\": \"checkout\", \"operation\": \"POST\", \"count\": 24, \"errors\": 0, \"p50_ms\": 4.979, \"p95_ms\": 7.163, \"max_ms\": 9.39}, {\"service\": \"checkout\", \"operation\": \"oteldemo.ProductCatalogService/GetProduct\", \"count\": 17, \"errors\": 0, \"p50_ms\": 4.521, \"p95_ms\": 5.449, \"max_ms\": 6.139}, {\"service\": \"product-catalog\", \"operation\": \"oteldemo.ProductCatalogService/GetProduct\", \"count\": 17, \"errors\": 0, \"p50_ms\": 3.142, \"p95_ms\": 4.19, \"max_ms\": 4.657}, {\"service\": \"checkout\", \"operation\": \"prepareOrderItemsAndShippingQuoteFromCart\", \"count\": 8, \"errors\": 0, \"p50_ms\": 2421.4, \"p95_ms\": 4037.092, \"max_ms\": 4037.092}, {\"service\": \"checkout\", \"operation\": \"oteldemo.CartService/GetCart\", \"count\": 8, \"errors\": 0, \"p50_ms\": 1.696, \"p95_ms\": 1.997, \"max",
+      "truncated": true
+     }
+    }
+   ]
+  },
+  {
+   "step": 3,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 587,
+    "cache_write": 2328,
+    "cache_read": 5208
+   },
+   "cumulative_cost_usd": 0.030351,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "submit",
+     "input": {
+      "service": "currency",
+      "fault_type": "latency"
+     },
+     "ok": true,
+     "result": {
+      "accepted": true
+     }
+    }
+   ]
+  }
+ ]
+}

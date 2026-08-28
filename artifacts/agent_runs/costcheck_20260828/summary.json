@@ -1,0 +1,49 @@
+{
+ "run_id": "costcheck_20260828",
+ "model": "claude-sonnet-5",
+ "cards": [
+  "crash-cart-01",
+  "blackhole-quote-01",
+  "misconfig-payment-90"
+ ],
+ "started_at": "2026-08-28T19:37:34Z",
+ "wall_s": 77.014,
+ "rows": [
+  {
+   "card_id": "crash-cart-01",
+   "ground_truth": {
+    "service": "cart",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "blackhole-quote-01",
+   "ground_truth": {
+    "service": "quote",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "misconfig-payment-90",
+   "ground_truth": {
+    "service": "payment",
+    "fault_type": "misconfig",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  }
+ ]
+}

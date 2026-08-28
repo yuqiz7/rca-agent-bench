@@ -1006,3 +1006,102 @@ agent 再聪明也拿不到。这把「证据包该装什么」变成了评测�
 - **规则 7 让告警总数从 91 涨到 121**（24 卡合计）。多出来的 30 条里绝大多数落在
   `frontend` / `frontend-proxy` 的具体路由上，比服务级告警更接近可行动的信息；
   但 agent 侧的输入变长了，`task.json` 的噪声比需要在评测中复核。
+
+---
+
+## 024 agent 与评测 harness v1：六工具窄接口 + submit 作工具 + 四道保险，开发集 19 张显式清单（2026-08-28 ET）
+
+**选了什么**
+
+1. **六个只读工具 + `submit` 第七工具。** agent 的全部动作面是
+   `logs_search` / `metrics_query` / `traces_query` / `config_diff` / `topology` /
+   `alerts`，参数与返回都走 JSON schema；**交卷本身也是一次工具调用**
+   `submit(service, fault_type)`，调用即终止循环。五类 `fault_type` 与 16 项
+   `service` 直接写进 `submit` 的 enum（fault_schema §2 / §3）。
+2. **返回是聚合，不是文件。** 每张证据包约 10 MB（9 k 条日志、27 k 条 span、
+   205 条指标序列）。`traces_query` 只回 per-`(service, operation)` 的计数 / 报错数 /
+   p50 / p95 加 ≤ 20 条样本 span，**永不回全量**；`logs_search` 回按服务与等级分组的
+   命中数加尾部 ≤ 200 条（body 截 300 字）；`metrics_query` 默认回 summary，
+   要序列才降采样回 ≤ 40 点。上限集中在 `config.yaml` 的 `tools` 段。
+3. **手写 function-calling 循环，不用 SDK 的 tool runner。** 四道保险各需要一个
+   runner 不暴露的钩子，各自计数入结果：
+   - **参数校验拦截**：非法服务名 / 非法 metric / 未知参数名**不执行**，错误信息回喂；
+     服务名的合法集是**该证据包里实际出现过的服务**（27 项），不是 16 项 `target_enum` ——
+     `load-generator` 不是合法答案但是合法查询对象，按 enum 拒会造成假拦截。
+   - **工具重试**：工具实现内部抛异常时有限次重试（默认 2）。`ToolError`（参数问题）
+     **不重试** —— 同样的参数重跑必然同样失败。
+   - **步数熔断**：默认 20 步，超限强制终止判错。
+   - **单卡成本熔断**：每次响应后按 `prices.yaml` 折美元累计，超 `max_usd_per_card` 即停。
+4. **判分与执行分家。** `run_agent.py` **不 import `scripts/scenarios/cards.py`**，
+   结构上看不到答案，因此也无法判分；`run_eval.py` 是唯一读 `scenarios/` 的一侧，
+   从 transcript 判分。四指标：top-1（`(service, fault_type)` 双匹配，决策 006）、
+   service-only（参考列）、平均步数、单卡平均美元成本、p95 端到端延迟。
+5. **开发集 19 张，显式清单写死进 `config.yaml`，不做运行时扫描。**
+   筛选条件三条：`production.probe.verdict == passed`、五件证据齐、**不在重跑批
+   `rerun1_20260828T185549Z` 的 12 张名单内**。25 张 passed 且五件齐，其中 6 张
+   （`crash-astronomy-db-01` / `crash-checkout-01` / `crash-email-01` /
+   `misconfig-cart-75` / `misconfig-payment-50` / `misconfig-payment-75`）正被该批次
+   改写，25 − 6 = **19**。
+6. **泄漏自检 fail-closed，卡在首个 API 请求之前。** 检四条：无 `FORBIDDEN_KEYS` 键名、
+   `card_id` 不出现、系统 prompt 与工具 schema 与「手上没有卡时」产出的字节完全相同、
+   用户轮是 `task.json` 的真子集。`scripts/agent/leak_check.py` 同时是
+   `tests/test_agent_no_leak.py` 的被测体。
+
+**为什么**
+
+- **`card_id` 是此前没堵上的泄漏面。** `task_view.py` 的白名单包含 `card_id`（管线按它
+  寻址证据包，`tests/test_no_leak.py` 查的是**键名**不是值），而 `crash-cart-01`
+  这个取值**字面写着 `(cart, crash)` 两半答案**。fault_schema §2 定义 agent 的输入是
+  trigger + window + symptom，本就不含它，所以 agent 只收 `trigger` 与
+  `agent_visible_symptom`，并把「`card_id` 不得出现在请求字节中」做成硬断言。
+  这是全套检查里唯一**按值**查的一条，因为这里泄的是值不是键。
+- **判分方不能是执行方。** 准确率数字值钱的前提是 agent 拿不到答案；把判分放进
+  `run_agent.py` 只需一次手滑就能把 ground_truth 读进同一个进程。
+- **清单写死，是为了让「开发集」这四个字在两次评测之间意义不变。** 运行时扫描下，
+  一个批次在两次 eval 之间落地就会悄悄改变卡集，两份 report 不再可比。
+- **缓存净省约 37%。** 系统 prompt + 工具 schema 每步一字不变，历史只在尾部增长，
+  顶层自动缓存从第二步起整段命中。19 卡合计缓存读 469 k token（$0.20/M）对
+  缓存写 209 k（$2.50/M）—— 按基础输入价 $2.00/M 折算，净省约 $0.42。
+
+**实测（`artifacts/agent_runs/devset_20260828/report.md`，claude-sonnet-5，effort=high）**
+
+| 指标 | 数值 |
+| --- | --- |
+| top-1 准确率 | **52.6%**（10/19） |
+| service-only 准确率 | **84.2%**（16/19） |
+| 平均诊断步数 | 4.42 |
+| 单卡平均成本 | **$0.0563** |
+| p95 端到端延迟 | 74.0 s |
+
+19 卡合计 $1.0698，墙钟 517 s。四道保险：参数校验拦截 1 次，工具重试 0，步数熔断 0，
+成本熔断 0，19 张全部正常 `submit`。
+
+**放弃了什么**
+
+- **SDK 的 tool runner。** 放弃 —— 四道保险要的每一个钩子它都不暴露：拦截要在执行**之前**
+  介入并回喂、重试要区分「参数错」与「工具坏」、两个熔断要在每次响应后读 usage。
+  在 runner 外面再包一层判断，比直接写 `while` 更绕。
+- **`submit` 做成「最后一轮自由文本 + 正则解析」。** 放弃 —— 那样答案格式要靠 prompt 约束
+  并在解析侧兜底，enum 违规只能事后发现。做成工具后 schema 直接把答案空间钉死，
+  违规在 `validate_submit` 处被拦下并回喂，还能自然地终止循环。
+- **按 16 项 `target_enum` 校验查询工具的服务名。** 放弃 —— 见上文，会把
+  `load-generator` / `frontend-web` 这类合法查询对象误判为非法。
+- **给 agent 一个「读文件」式的宽工具。** 放弃 —— 单张卡 10 MB，第一步就把上下文吃满，
+  之后每一步都为同一堆字节反复付钱。
+
+**trade-off**
+
+- **fault_type 分类是短板，不是定位。** service 定位 84.2%，双匹配只有 52.6% ——
+  9 张错卡里 **6 张服务对、类别错**。集中在两个方向：
+  - **crash → blackhole**：4 张 crash 卡错了 3 张（`crash-cart-01` /
+    `crash-currency-01` / `crash-frontend-01`）。这正是决策 010 划的「吵 vs 哑」分界线，
+    而证据包是 **harvest 视角**（决策 016：blackhole 撤除后积压回放会把注入窗填满），
+    agent 看到的两类形态比 immediate 视角下接近得多。
+  - **mem_leak → latency**：2 张全错。`container_memory_mib` 在工具面里，但系统 prompt
+    没有把「先查内存曲线」写成 mem_leak 的必经步骤。
+  两条都是**证据面 / prompt 的问题，不是 agent 循环的问题**，留作 findings 与下一轮迭代。
+- **单卡 $0.0563 意味着全集 68 卡主模型约 $3.6**，加两条 LLM 基线约 $6.6。本轮按用户裁决
+  保持 `effort=high` 不降档、以追加余额覆盖。`effort` 是最直接的成本旋钮
+  （输出 token 占单卡成本 26–51%），下调会同时动准确率，不该在没有基线对照时先动。
+- **19 张的开发集偏小**，单张卡的对错就值 5.3 个百分点；这些数字是**基线**不是结论。
+  重跑批结束后 6 张回归、加上其余卡量产，卡集会变，届时 `config.yaml` 的清单要显式改一次。

@@ -1,0 +1,257 @@
+{
+ "run_id": "devset_20260828",
+ "model": "claude-sonnet-5",
+ "cards": [
+  "blackhole-cart-01",
+  "blackhole-currency-01",
+  "blackhole-frontend-01",
+  "blackhole-quote-01",
+  "crash-cart-01",
+  "crash-currency-01",
+  "crash-frontend-01",
+  "crash-product-catalog-01",
+  "latency-cart-800",
+  "latency-checkout-800",
+  "latency-currency-800",
+  "latency-email-800",
+  "latency-product-catalog-800",
+  "memleak-email-10000x",
+  "memleak-email-1000x",
+  "misconfig-checkout-on",
+  "misconfig-payment-100",
+  "misconfig-payment-90",
+  "misconfig-pc-OLJCESPC7Z"
+ ],
+ "started_at": "2026-08-28T19:50:19Z",
+ "wall_s": 516.991,
+ "rows": [
+  {
+   "card_id": "blackhole-cart-01",
+   "ground_truth": {
+    "service": "cart",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "blackhole-currency-01",
+   "ground_truth": {
+    "service": "currency",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "blackhole-frontend-01",
+   "ground_truth": {
+    "service": "frontend",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "blackhole-quote-01",
+   "ground_truth": {
+    "service": "quote",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "crash-cart-01",
+   "ground_truth": {
+    "service": "cart",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "crash-currency-01",
+   "ground_truth": {
+    "service": "currency",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "crash-frontend-01",
+   "ground_truth": {
+    "service": "frontend",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "crash-product-catalog-01",
+   "ground_truth": {
+    "service": "product-catalog",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": false,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "latency-cart-800",
+   "ground_truth": {
+    "service": "cart",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "latency-checkout-800",
+   "ground_truth": {
+    "service": "checkout",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "latency-currency-800",
+   "ground_truth": {
+    "service": "currency",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "latency-email-800",
+   "ground_truth": {
+    "service": "email",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": false,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "latency-product-catalog-800",
+   "ground_truth": {
+    "service": "product-catalog",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "memleak-email-10000x",
+   "ground_truth": {
+    "service": "email",
+    "fault_type": "mem_leak",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "memleak-email-1000x",
+   "ground_truth": {
+    "service": "email",
+    "fault_type": "mem_leak",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "misconfig-checkout-on",
+   "ground_truth": {
+    "service": "checkout",
+    "fault_type": "misconfig",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": false,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "misconfig-payment-100",
+   "ground_truth": {
+    "service": "payment",
+    "fault_type": "misconfig",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "misconfig-payment-90",
+   "ground_truth": {
+    "service": "payment",
+    "fault_type": "misconfig",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "misconfig-pc-OLJCESPC7Z",
+   "ground_truth": {
+    "service": "product-catalog",
+    "fault_type": "misconfig",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  }
+ ]
+}

@@ -1,0 +1,367 @@
+{
+ "card_id": "misconfig-payment-90",
+ "model": "claude-sonnet-5",
+ "started_at": "2026-08-28T19:58:37Z",
+ "wall_s": 7.696,
+ "terminated": "submit",
+ "error": null,
+ "answer": {
+  "service": "payment",
+  "fault_type": "misconfig"
+ },
+ "steps": 3,
+ "counters": {
+  "api_calls": 3,
+  "tool_calls": 5,
+  "validation_rejects": 0,
+  "tool_retries": 0,
+  "nudges": 0
+ },
+ "usage": {
+  "input": 6,
+  "output": 651,
+  "cache_write": 7499,
+  "cache_read": 8926
+ },
+ "cost_usd": 0.027055,
+ "prices": {
+  "source_url": "https://platform.claude.com/docs/en/about-claude/pricing",
+  "fetched_at": "2026-08-28"
+ },
+ "run_config": {
+  "max_steps": 20,
+  "max_usd_per_card": 0.2,
+  "tool_retries": 2,
+  "api_max_retries": 3,
+  "max_tokens": 16000,
+  "thinking": "adaptive",
+  "effort": "high",
+  "prompt_caching": true
+ },
+ "leak_check": [
+  "no_forbidden_keys",
+  "no_card_id",
+  "fixed_prompt_and_tools",
+  "user_turn_subset_of_task_json"
+ ],
+ "input": {
+  "system": "You are a site reliability engineer diagnosing a single fault in a running microservice deployment. Monitoring has flagged an anomaly and handed you a frozen evidence pack: logs, metrics, distributed traces, a configuration diff, the service dependency graph, and the alerts that fired.\n\nExactly one fault was introduced, into exactly one service. Downstream services reporting errors is expected cascade, not a second root cause -- your job is to find where the fault was introduced, not where it was felt.\n\nThe candidate services are:\nad, astronomy-db, cart, checkout, currency, email, flagd, frontend, frontend-proxy, image-provider, payment, product-catalog, quote, recommendation, shipping, valkey-cart\n\nThe fault types are:\n- crash: the service's container is not running. Callers see address-unreachable errors in bulk; the service's own logs and spans stop.\n- latency: the service is up and reachable but responds slowly. Caller-side spans get much longer; errors stay rare. The service's own server-side latency may look normal, because the delay is added on the way out.\n- blackhole: the service is up but its port silently drops packets. Callers see neither success nor error -- the edge simply goes quiet, with no timeout errors during the fault.\n- misconfig: the service's configuration or feature flag was changed. The service itself returns errors on its own spans and logs.\n- mem_leak: the service's memory grows without bound, and it eventually slows down or restarts.\n\nInvestigate with the read-only tools. Work from the alerts and the dependency graph towards the source: an alert naming a service usually means that service *observed* the problem, which is often one hop from the service that *caused* it. Distinguish crash from blackhole by whether the caller's spans are loud with errors or silent. Distinguish latency from both by whether calls still succeed.\n\nBe economical: each tool call costs a step, and you have a limited budget. Prefer narrow, targeted queries over broad ones. When the evidence identifies one service and one fault type, call submit. If your budget is nearly spent, submit your best current hypothesis rather than running out of steps -- an unsubmitted investigation scores zero.\n",
+  "user": "{\n \"trigger\": \"Monitoring detected an anomaly in the system.\",\n \"agent_visible_symptom\": {\n  \"window\": {\n   \"start\": \"2026-08-27T22:52:16Z\",\n   \"end\": \"2026-08-27T22:54:17Z\"\n  },\n  \"detected_at\": \"2026-08-27T22:58:11Z\",\n  \"no_alert\": false,\n  \"alerts\": [\n   {\n    \"rule\": \"method_error_rate_jump\",\n    \"message\": \"elevated error rate on frontend/POST /api/checkout\",\n    \"service\": \"frontend\",\n    \"baseline\": {\n     \"error_count\": 0.0,\n     \"error_count_scaled_to_inject\": 0.0,\n     \"request_rate_per_s\": 0.1935,\n     \"window\": {\n      \"start\": \"2026-08-27T22:51:14Z\",\n      \"end\": \"2026-08-27T22:52:16Z\"\n     }\n    },\n    \"observed\": {\n     \"error_count\": 22.0,\n     \"threshold_N\": 6,\n     \"window\": {\n      \"start\": \"2026-08-27T22:52:16Z\",\n      \"end\": \"2026-08-27T22:54:17Z\"\n     }\n    },\n    \"deviation\": 22.0\n   },\n   {\n    \"rule\": \"error_rate_jump\",\n    \"message\": \"elevated error rate on payment\",\n    \"service\": \"payment\",\n    \"baseline\": {\n     \"error_count\": 0.0,\n     \"error_count_scaled_to_inject\": 0.0,\n     \"request_rate_per_s\": 0.0968,\n     \"window\": {\n      \"start\": \"2026-08-27T22:51:14Z\",\n      \"end\": \"2026-08-27T22:52:16Z\"\n     }\n    },\n    \"observed\": {\n     \"error_count\": 13.0,\n     \"threshold_N\": 5,\n     \"window\": {\n      \"start\": \"2026-08-27T22:52:16Z\",\n      \"end\": \"2026-08-27T22:54:17Z\"\n     }\n    },\n    \"deviation\": 13.0\n   },\n   {\n    \"rule\": \"method_error_rate_jump\",\n    \"message\": \"elevated error rate on payment/oteldemo.PaymentService/Charge\",\n    \"service\": \"payment\",\n    \"baseline\": {\n     \"error_count\": 0.0,\n     \"error_count_scaled_to_inject\": 0.0,\n     \"request_rate_per_s\": 0.0968,\n     \"window\": {\n      \"start\": \"2026-08-27T22:51:14Z\",\n      \"end\": \"2026-08-27T22:52:16Z\"\n     }\n    },\n    \"observed\": {\n     \"error_count\": 13.0,\n     \"threshold_N\": 5,\n     \"window\": {\n      \"start\": \"2026-08-27T22:52:16Z\",\n      \"end\": \"2026-08-27T22:54:17Z\"\n     }\n    },\n    \"deviation\": 13.0\n   },\n   {\n    \"rule\": \"error_rate_jump\",\n    \"message\": \"elevated error rate on checkout\",\n    \"service\": \"checkout\",\n    \"baseline\": {\n     \"error_count\": 0.0,\n     \"error_count_scaled_to_inject\": 0.0,\n     \"request_rate_per_s\": 0.0968,\n     \"window\": {\n      \"start\": \"2026-08-27T22:51:14Z\",\n      \"end\": \"2026-08-27T22:52:16Z\"\n     }\n    },\n    \"observed\": {\n     \"error_count\": 11.0,\n     \"threshold_N\": 5,\n     \"window\": {\n      \"start\": \"2026-08-27T22:52:16Z\",\n      \"end\": \"2026-08-27T22:54:17Z\"\n     }\n    },\n    \"deviation\": 11.0\n   },\n   {\n    \"rule\": \"method_error_rate_jump\",\n    \"message\": \"elevated error rate on checkout/oteldemo.CheckoutService/PlaceOrder\",\n    \"service\": \"checkout\",\n    \"baseline\": {\n     \"error_count\": 0.0,\n     \"error_count_scaled_to_inject\": 0.0,\n     \"request_rate_per_s\": 0.0968,\n     \"window\": {\n      \"start\": \"2026-08-27T22:51:14Z\",\n      \"end\": \"2026-08-27T22:52:16Z\"\n     }\n    },\n    \"observed\": {\n     \"error_count\": 11.0,\n     \"threshold_N\": 5,\n     \"window\": {\n      \"start\": \"2026-08-27T22:52:16Z\",\n      \"end\": \"2026-08-27T22:54:17Z\"\n     }\n    },\n    \"deviation\": 11.0\n   }\n  ]\n }\n}",
+  "tools": [
+   {
+    "name": "logs_search",
+    "description": "Search the collected application logs for this incident. Filter by keyword (case-insensitive substring), service, severity, and time window. Returns match counts broken down by service and severity plus the most recent matching records.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "keyword": {
+       "type": "string",
+       "description": "case-insensitive substring to match in the log body"
+      },
+      "service": {
+       "type": "string",
+       "description": "restrict to one service; must be a service that appears in this incident's telemetry"
+      },
+      "severity": {
+       "type": "string",
+       "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+       ]
+      },
+      "start": {
+       "type": "string",
+       "description": "ISO8601, e.g. 2026-08-27T19:24:03Z; defaults to the start of the collection window"
+      },
+      "end": {
+       "type": "string",
+       "description": "ISO8601; defaults to the end of the collection window"
+      },
+      "limit": {
+       "type": "integer",
+       "description": "max records to return (1-200, default 30)"
+      }
+     },
+     "required": []
+    }
+   },
+   {
+    "name": "metrics_query",
+    "description": "Query one collected metric over a time window. 'summary' returns min/max/mean/first/last per series; 'series' additionally returns a downsampled time series. Metrics ending in _by_operation are keyed '<service>|<operation>'.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "metric": {
+       "type": "string",
+       "enum": [
+        "req_rate_per_s",
+        "error_rate_per_s",
+        "p95_latency_ms",
+        "calls_total",
+        "errors_total",
+        "calls_total_by_operation",
+        "errors_total_by_operation",
+        "p95_latency_ms_by_operation",
+        "container_memory_mib",
+        "container_cpu_ratio"
+       ]
+      },
+      "service": {
+       "type": "string",
+       "description": "restrict to one service"
+      },
+      "start": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "end": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "aggregate": {
+       "type": "string",
+       "enum": [
+        "summary",
+        "series"
+       ],
+       "description": "default summary"
+      },
+      "max_points": {
+       "type": "integer",
+       "description": "cap on returned series points (default 40)"
+      }
+     },
+     "required": [
+      "metric"
+     ]
+    }
+   },
+   {
+    "name": "traces_query",
+    "description": "Aggregate distributed-tracing spans. Filter by the span's own service, by caller (the service that owns the parent span, i.e. the calling side of an edge), by operation substring, by status, and by time. Returns per-(service, operation) counts, error counts and latency percentiles, plus a few sample spans -- never the full span list.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "service": {
+       "type": "string",
+       "description": "the service the span belongs to (callee side)"
+      },
+      "caller": {
+       "type": "string",
+       "description": "the service that owns the parent span (caller side of an edge)"
+      },
+      "operation_contains": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string",
+       "enum": [
+        "ERROR",
+        "OK",
+        "UNSET",
+        "ANY"
+       ]
+      },
+      "start": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "end": {
+       "type": "string",
+       "description": "ISO8601"
+      },
+      "samples": {
+       "type": "integer",
+       "description": "sample spans to return (1-20, default 5)"
+      }
+     },
+     "required": []
+    }
+   },
+   {
+    "name": "config_diff",
+    "description": "Return the unified diff of the deployment configuration (compose environment and feature-flag file) against the pre-incident baseline snapshot, verbatim.",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "topology",
+    "description": "Return the service dependency graph as a list of caller -> callee edges, derived from a healthy baseline window.",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "alerts",
+    "description": "Return the full list of alerts the monitoring rules fired for this incident, with each alert's rule, baseline and observed values.",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "submit",
+    "description": "Submit your final root-cause diagnosis. Exactly one service is the root cause and exactly one fault type describes it. Calling this ends the investigation -- you get no further tool calls, so make sure the evidence supports the answer before calling it.",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "service": {
+       "type": "string",
+       "enum": [
+        "ad",
+        "astronomy-db",
+        "cart",
+        "checkout",
+        "currency",
+        "email",
+        "flagd",
+        "frontend",
+        "frontend-proxy",
+        "image-provider",
+        "payment",
+        "product-catalog",
+        "quote",
+        "recommendation",
+        "shipping",
+        "valkey-cart"
+       ],
+       "description": "the single service where the fault was introduced"
+      },
+      "fault_type": {
+       "type": "string",
+       "enum": [
+        "crash",
+        "latency",
+        "blackhole",
+        "misconfig",
+        "mem_leak"
+       ],
+       "description": "crash: the service's container is not running. latency: the service is up and reachable but responds slowly. blackhole: the service is up but its port silently drops packets, so callers see neither success nor error. misconfig: the service's configuration or feature flag was changed and it returns errors. mem_leak: the service's memory grows without bound."
+      }
+     },
+     "required": [
+      "service",
+      "fault_type"
+     ]
+    }
+   }
+  ]
+ },
+ "transcript": [
+  {
+   "step": 1,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 130,
+    "cache_write": 4287,
+    "cache_read": 0
+   },
+   "cumulative_cost_usd": 0.012021,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "config_diff",
+     "input": {},
+     "ok": true,
+     "result": {
+      "bytes": 150,
+      "preview": "{\"text\": \"# unified diff against evidence/_baseline/ (snapshot taken 2026-08-27T17:51:26Z)\\n# no diff: demo.flagd.json\\n# no diff: compose_env.txt\\n\"}",
+      "truncated": false
+     }
+    },
+    {
+     "name": "logs_search",
+     "input": {
+      "service": "payment",
+      "severity": "error"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 171,
+      "preview": "{\"window\": {\"start\": \"2026-08-27T22:50:14Z\", \"end\": \"2026-08-27T22:57:47Z\"}, \"matched\": 0, \"returned\": 0, \"counts_by_service\": {}, \"counts_by_severity\": {}, \"records\": []}",
+      "truncated": false
+     }
+    }
+   ]
+  },
+  {
+   "step": 2,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 323,
+    "cache_write": 352,
+    "cache_read": 4287
+   },
+   "cumulative_cost_usd": 0.016993,
+   "text": "",
+   "tool_calls": [
+    {
+     "name": "traces_query",
+     "input": {
+      "service": "payment",
+      "status": "ERROR",
+      "start": "2026-08-27T22:52:16Z",
+      "end": "2026-08-27T22:54:17Z"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 1228,
+      "preview": "{\"window\": {\"start\": \"2026-08-27T22:52:16Z\", \"end\": \"2026-08-27T22:54:17Z\"}, \"matched_spans\": 26, \"error_spans\": 26, \"group_count\": 2, \"groups\": [{\"service\": \"payment\", \"operation\": \"oteldemo.PaymentService/Charge\", \"count\": 13, \"errors\": 13, \"p50_ms\": 0.891, \"p95_ms\": 1.085, \"max_ms\": 4.423}, {\"service\": \"payment\", \"operation\": \"charge\", \"count\": 13, \"errors\": 13, \"p50_ms\": 0.343, \"p95_ms\": 0.485, \"max_ms\": 3.303}], \"samples\": [{\"ts\": \"2026-08-27T22:52:16Z\", \"service\": \"payment\", \"operation\": \"oteldemo.PaymentService/Charge\", \"status\": \"ERROR\", \"duration_ms\": 4.423, \"caller\": \"checkout\"}, {\"ts\": \"2026-08-27T22:52:38Z\", \"service\": \"payment\", \"operation\": \"oteldemo.PaymentService/Charge\", \"status\": \"ERROR\", \"duration_ms\": 0.915, \"caller\": \"checkout\"}, {\"ts\": \"2026-08-27T22:52:49Z\", \"service\": \"payment\", \"operation\": \"oteldemo.PaymentService/Charge\", \"status\": \"ERROR\", \"duration_ms\": 0.832, \"caller\": \"checkout\"}, {\"ts\": \"2026-08-27T22:52:57Z\", \"service\": \"payment\", \"operation\": \"oteldemo.PaymentService/Charge\", \"status\": \"ERROR\", \"duration_ms\": 0.795, \"caller\": \"checkout\"}, {\"ts\": \"2026-08-27T22:53:17Z\", \"service\": \"payment\", \"operation\": \"charge\", \"status\": \"ERROR\", \"duration_ms\": 0",
+      "truncated": true
+     }
+    },
+    {
+     "name": "logs_search",
+     "input": {
+      "service": "payment",
+      "start": "2026-08-27T22:52:16Z",
+      "end": "2026-08-27T22:54:17Z"
+     },
+     "ok": true,
+     "result": {
+      "bytes": 4256,
+      "preview": "{\"window\": {\"start\": \"2026-08-27T22:52:16Z\", \"end\": \"2026-08-27T22:54:17Z\"}, \"matched\": 43, \"returned\": 30, \"counts_by_service\": {\"payment\": 43}, \"counts_by_severity\": {\"info\": 30, \"warn\": 13}, \"records\": [{\"ts\": \"2026-08-27T22:52:48.721286541Z\", \"service\": \"payment\", \"severity\": \"warn\", \"body\": \"Payment request failed. Invalid token. demo.user_context.loyalty_level=gold\"}, {\"ts\": \"2026-08-27T22:52:48.721413531Z\", \"service\": \"payment\", \"severity\": \"info\", \"body\": \"Charge request received.\"}, {\"ts\": \"2026-08-27T22:52:50.962906872Z\", \"service\": \"payment\", \"severity\": \"info\", \"body\": \"Charge request received.\"}, {\"ts\": \"2026-08-27T22:52:50.962974012Z\", \"service\": \"payment\", \"severity\": \"warn\", \"body\": \"Payment request failed. Invalid token. demo.user_context.loyalty_level=gold\"}, {\"ts\": \"2026-08-27T22:52:50.963098862Z\", \"service\": \"payment\", \"severity\": \"info\", \"body\": \"Charge request received.\"}, {\"ts\": \"2026-08-27T22:52:55.723867988Z\", \"service\": \"payment\", \"severity\": \"info\", \"body\": \"Charge request received.\"}, {\"ts\": \"2026-08-27T22:52:55.723903518Z\", \"service\": \"payment\", \"severity\": \"warn\", \"body\": \"Payment request failed. Invalid token. demo.user_context.loyalty_level=gold\"}, {",
+      "truncated": true
+     }
+    }
+   ]
+  },
+  {
+   "step": 3,
+   "stop_reason": "tool_use",
+   "usage": {
+    "input": 2,
+    "output": 198,
+    "cache_write": 2860,
+    "cache_read": 4639
+   },
+   "cumulative_cost_usd": 0.027055,
+   "text": "Payment logs show \"Invalid token\" errors correlated with `demo.user_context.loyalty_level=gold` — indicating a misconfiguration in payment's token validation logic causing errors on its own spans, cascading to checkout and frontend. This matches misconfig fault type clearly (service returns errors on its own spans/logs, not a crash/blackhole/latency pattern).",
+   "tool_calls": [
+    {
+     "name": "submit",
+     "input": {
+      "service": "payment",
+      "fault_type": "misconfig"
+     },
+     "ok": true,
+     "result": {
+      "accepted": true
+     }
+    }
+   ]
+  }
+ ]
+}
