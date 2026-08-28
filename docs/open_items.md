@@ -1324,3 +1324,61 @@ recovered 侧一直没有同形的守卫。**修 symptom 时没有回头看 reco
 
 **处置**：卡**不出库**，按 [O-P2-22](#o-p2-22valkey-cart-撤除-drop_inbound-后重连滞后超过-recover-窗) 先量重连时长再定 `recover_s`。
 `crash-valkey-cart-01`（配方里未量产）大概率同病，第三批**不选它**。
+
+---
+
+## F-5　把长连接靶子的 blackhole 特例写成通例，两张卡被判成 latency（2026-08-28）
+
+**一句话**：v2 prompt 里 crash/blackhole 那段，我把 `valkey-cart` 的
+**「超时台阶」**形态写成了 blackhole 的**通例**，而 [fingerprints.md](fingerprints.md)
+归档的通例是**「哑」—— 0 span、0 报错、连一条完成的 span 都没有**；
+台阶形态只对**有客户端超时的长连接 / 无 SDK 靶子**成立。
+
+**写进 prompt 的原话（v2，已随决策 025 冻结）**：
+
+> A silently dropped packet gives the caller nothing to react to, so the caller waits.
+> The signature is a step up in caller-side latency -- p50 rising by orders of
+> magnitude, into seconds -- with few or no errors during the fault itself.
+
+**fingerprints.md 实际归档的两种形态**：
+
+| 靶子类型 | 注入窗形态 | 出处 |
+| --- | --- | --- |
+| 普通 SDK 靶子（`cart` 等，**多数**） | caller span **0 条**、报错 **0 条**、无时延可测 —— TCP 卡在重传退避，调用方**既不成功也不报错，就是挂着** | 「crash vs blackhole 分辨结论」「为什么 blackhole 是"哑"的」 |
+| 长连接 / 无 SDK 靶子（`valkey-cart`，**例外**） | p50 **0.49 → 5702 ms**、报错 **0 条**、span 数只掉到 36%；+74.4 s 后才转静默 | 「长连接靶子的 blackhole 指纹与「哑」不同」 |
+
+fingerprints.md 对这个例外写得很清楚：**「`blackhole` 类的「注入期间哑」对有客户端
+超时的长连接靶子不成立，它先表现为极端延迟且零报错（与 `latency` 类同形、只差量级）」**
+—— 「与 latency 同形」这半句正是危险所在，而我把它当成了 blackhole 的定义。
+
+**后果（实测）**：blackhole 类 top-1 **3/4 → 1/4**。
+
+| card | v1 | v2 |
+| --- | --- | --- |
+| `blackhole-frontend-01` | frontend/黑洞 ✓ | frontend/**延迟** ✗ |
+| `blackhole-cart-01` | cart/黑洞 ✓ | **valkey-cart**/黑洞 ✗ |
+| `blackhole-currency-01` | currency/延迟 ✗ | currency/延迟 ✗（v1 就错，未变） |
+
+`blackhole-frontend-01` 是干净的因果：prompt 说 blackhole 的签名是「p50 抬到秒级、
+几乎无报错」，这句话同时也是 latency 的签名，模型选了 latency。
+`blackhole-cart-01` 更细 —— 模型顺着「台阶 = blackhole」把答案挪到了真正会出台阶的
+那个邻居 `valkey-cart`，服务因此错了一格。
+
+**这条说明了什么**：**往 prompt 里灌指纹知识时，「例外」和「通例」必须标清楚，
+否则例外会把通例吃掉。** 两段方法论里，写对的那两段（内存曲线、crash fail-fast）
+各自把目标类别从 0 抬到 2/4 与 1/2；写错的这一段把一个本来就对的类别从 3/4 打到 1/4。
+**知识注入的收益和风险是同一个量级的**，所以素材的准确性不是文档卫生问题，
+是准确率问题。
+
+**处置**：**本轮不修。** 决策 025 的一次迭代纪律是在看到结果之前定的
+（top-1 变好则定版），v2 的 top-1 确实变好（52.6% → 57.9%），所以 **v2 定版、prompt 冻结**，
+本条修正**留给第三版**。修法已经明确、留档在此：
+
+> 通例回到「哑」：callers see neither success nor error, the edge simply goes quiet.
+> 台阶形态降级为一句限定的例外：a target that keeps a long-lived connection and whose
+> client has its own timeout will first show extreme latency with zero errors before
+> going quiet -- do not read that shape as latency.
+
+触发条件同决策 025：**卡集扩大后重测一次 v2 基线，再发第三版**，不单独为这一条改 prompt。
+
+**相关**：决策 025、决策 024 trade-off、[fingerprints.md](fingerprints.md) 的两节 blackhole 指纹。
