@@ -167,7 +167,7 @@ latency 26／misconfig 21／mem_leak 3，v1.1 已改为 69）；难度三轴与�
 
 | card_id | class | target | primitive | params | A | B | C | total | 档位 | param_validated | batch | 周期覆盖 | note |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | ---: | --- | --- |
-| `crash-ad-01` | crash | `ad` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | — | — |  |
+| `crash-ad-01` | crash | `ad` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 3 | — |  |
 | `crash-astronomy-db-01` | crash | `astronomy-db` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 2 | — |  |
 | `crash-cart-01` | crash | `cart` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | yes | 1 | — |  |
 | `crash-checkout-01` | crash | `checkout` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 2 | `inject_s=300` |  |
@@ -176,27 +176,27 @@ latency 26／misconfig 21／mem_leak 3，v1.1 已改为 69）；难度三轴与�
 | `crash-frontend-01` | crash | `frontend` | `kill_container` | — | 0 | 0 | 0 | 0 | 易 | no | 1 | — |  |
 | `crash-payment-01` | crash | `payment` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 1 | `inject_s=300` |  |
 | `crash-product-catalog-01` | crash | `product-catalog` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 2 | — |  |
-| `crash-quote-01` | crash | `quote` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | — | — |  |
-| `crash-recommendation-01` | crash | `recommendation` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | — | — |  |
-| `crash-shipping-01` | crash | `shipping` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | — | — |  |
+| `crash-quote-01` | crash | `quote` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 3 | — |  |
+| `crash-recommendation-01` | crash | `recommendation` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 3 | — |  |
+| `crash-shipping-01` | crash | `shipping` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 3 | — |  |
 | `crash-valkey-cart-01` | crash | `valkey-cart` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | — | — |  |
-| `blackhole-ad-01` | blackhole | `ad` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | — | — |  |
-| `blackhole-astronomy-db-01` | blackhole | `astronomy-db` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | — | — |  |
+| `blackhole-ad-01` | blackhole | `ad` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | — |  |
+| `blackhole-astronomy-db-01` | blackhole | `astronomy-db` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 3 | — |  |
 | `blackhole-cart-01` | blackhole | `cart` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | yes | 1 | — |  |
 | `blackhole-checkout-01` | blackhole | `checkout` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 2 | `inject_s=300` |  |
 | `blackhole-currency-01` | blackhole | `currency` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 2 | — |  |
-| `blackhole-email-01` | blackhole | `email` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | — | `inject_s=300` |  |
+| `blackhole-email-01` | blackhole | `email` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 3 | `inject_s=300` |  |
 | `blackhole-frontend-01` | blackhole | `frontend` | `drop_inbound` | — | 0 | 0 | 1 | 1 | 易 | no | 2 | — |  |
 | `blackhole-payment-01` | blackhole | `payment` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 1 | `inject_s=300` |  |
 | `blackhole-product-catalog-01` | blackhole | `product-catalog` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 2 | — |  |
 | `blackhole-quote-01` | blackhole | `quote` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 2 | — |  |
-| `blackhole-recommendation-01` | blackhole | `recommendation` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | — | — |  |
-| `blackhole-shipping-01` | blackhole | `shipping` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | — | — |  |
+| `blackhole-recommendation-01` | blackhole | `recommendation` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | — |  |
+| `blackhole-shipping-01` | blackhole | `shipping` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | — |  |
 | `blackhole-valkey-cart-01` | blackhole | `valkey-cart` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 1 | — |  |
-| `latency-ad-800` | latency | `ad` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | — | — | 低档，入库档实测值 |
+| `latency-ad-800` | latency | `ad` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | 3 | — | 低档，入库档实测值 |
 | `latency-ad-3000` | latency | `ad` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-astronomy-db-800` | latency | `astronomy-db` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | — | — | 低档，入库档实测值 |
-| `latency-astronomy-db-3000` | latency | `astronomy-db` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
+| `latency-astronomy-db-3000` | latency | `astronomy-db` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | 3 | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-cart-800` | latency | `cart` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | yes | 1 | — | 低档，入库档实测值 |
 | `latency-cart-3000` | latency | `cart` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-checkout-800` | latency | `checkout` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | 1 | `inject_s=300` | 低档，入库档实测值 |
@@ -207,17 +207,17 @@ latency 26／misconfig 21／mem_leak 3，v1.1 已改为 69）；难度三轴与�
 | `latency-email-3000` | latency | `email` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | `inject_s=300` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-frontend-800` | latency | `frontend` | `delay_outbound` | delay_ms=800 | 0 | 0 | 0 | 0 | 易 | no | 2 | — | 低档，入库档实测值 |
 | `latency-frontend-3000` | latency | `frontend` | `delay_outbound` | delay_ms=3000 | 0 | 0 | 0 | 0 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-payment-800` | latency | `payment` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | — | `inject_s=300` | 低档，入库档实测值 |
+| `latency-payment-800` | latency | `payment` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | `inject_s=300` | 低档，入库档实测值 |
 | `latency-payment-3000` | latency | `payment` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | `inject_s=300` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-product-catalog-800` | latency | `product-catalog` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | 2 | — | 低档，入库档实测值 |
 | `latency-product-catalog-3000` | latency | `product-catalog` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-quote-800` | latency | `quote` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | — | — | 低档，入库档实测值 |
+| `latency-quote-800` | latency | `quote` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | — | 低档，入库档实测值 |
 | `latency-quote-3000` | latency | `quote` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-recommendation-800` | latency | `recommendation` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | — | — | 低档，入库档实测值 |
-| `latency-recommendation-3000` | latency | `recommendation` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
+| `latency-recommendation-3000` | latency | `recommendation` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | 3 | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-shipping-800` | latency | `shipping` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | — | — | 低档，入库档实测值 |
-| `latency-shipping-3000` | latency | `shipping` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-valkey-cart-800` | latency | `valkey-cart` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | — | — | 低档，入库档实测值 |
+| `latency-shipping-3000` | latency | `shipping` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | 3 | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
+| `latency-valkey-cart-800` | latency | `valkey-cart` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | — | 低档，入库档实测值 |
 | `latency-valkey-cart-3000` | latency | `valkey-cart` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `misconfig-cart-75` | misconfig | `cart` | `set_flag` | flag=cartFailure variant=75% | 1 | 2 | 0 | 3 | 中 | no | 1 | `settle_s=300` | 方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈4.3%；10%/25%/50% 三档按 O-P2-9 排除 |
 | `misconfig-cart-90` | misconfig | `cart` | `set_flag` | flag=cartFailure variant=90% | 1 | 2 | 0 | 3 | 中 | no | — | `settle_s=300` | 方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈5.1%；10%/25%/50% 三档按 O-P2-9 排除 |

@@ -22,6 +22,6 @@ cycle:
   recover_s: 60
   settle_s: 150
 param_validated: false
-batch: null
+batch: 3
 production: null
 agent_visible_symptom: null
