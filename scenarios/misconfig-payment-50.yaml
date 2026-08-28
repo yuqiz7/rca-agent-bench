@@ -21,7 +21,7 @@ difficulty_measured: null
 cycle:
   baseline_s: 60
   inject_s: 300
-  recover_s: 60
+  recover_s: 150
   settle_s: 150
 param_validated: false
 batch: 2

@@ -65,6 +65,10 @@ CRASH_N_FLOOR = 5
 CRASH_N_FRAC = 0.25
 BLACKHOLE_SPAN_FRAC = 0.10        # §5: caller_spans_total 低于基线 10%
 LATENCY_SHIFT_FRAC = 0.80         # §5: 耗时分布右移 ≥ delay_ms × 0.8
+# §5 / 决策 027: 注入期调用方报错占比的上限。延迟注入本来就会把尾部请求推过上游
+# 超时，实测 800 档 1.45%、3000 档 8.70%，两档都在这条线下。注意 3000 档只剩
+# 1.3 个百分点余量 —— 若日后加更高档位，这条线要连同实测一起重定。
+LATENCY_MAX_ERROR_FRAC = 0.10
 # §5 未给各类 recovered 的统一数值判据，此处按"symptom 判定为假 + caller span
 # 数回到基线 50% 以上"实现，待 ⑤ 定稿后回填 §5。
 RECOVER_SPAN_FRAC = 0.50
@@ -588,13 +592,35 @@ def judge_symptom(cls, base, during, param, context_value=None,
     delay = int(param or 800)
     need = delay * LATENCY_SHIFT_FRAC
     shift = (dp - bp) if (bp is not None and dp is not None) else None
-    err_ok = (dt_.get("caller_error_spans") or 0) <= (bt.get("caller_error_spans") or 0)
+    # F-3 / 决策 027: the old second conjunct was "errors must not go up at all".
+    # Its premise -- that pure added latency produces no errors -- is false from
+    # 800 ms upward: some requests get pushed past an upstream timeout, and the
+    # tail errors are a real consequence of the delay rather than a sign the
+    # injection went wrong. Measured on the two cards it rejected, the error share
+    # is 1.45% at the 800 ms tier and 8.70% at 3000 ms. So the conjunct becomes a
+    # CEILING on the error share instead of a ban on any increase.
+    #
+    # Simulated over every in-stock latency and misconfig card before landing:
+    # dropping the conjunct entirely and capping it at 10% admit exactly the same
+    # 7 of 8 latency cards and exactly 0 of 7 misconfig cards, so the two options
+    # are indistinguishable on discrimination and the ceiling is the conservative
+    # one. The separation was never coming from this conjunct anyway -- it comes
+    # from the p50 gate, which every misconfig card misses by two orders of
+    # magnitude (their shift is 0.5 ms or undefined against a 640 ms requirement).
+    d_err = dt_.get("caller_error_spans") or 0
+    d_n = dt_.get("caller_spans_total") or 0
+    err_frac = (d_err / d_n) if d_n else None
+    err_ok = d_err == 0 or (err_frac is not None and err_frac < LATENCY_MAX_ERROR_FRAC)
     ok = shift is not None and shift >= need and err_ok
     return ok, {"snapshot": SYMPTOM_SNAPSHOT[cls],
-                "rule": f"p50 shift >= delay x {LATENCY_SHIFT_FRAC} and errors not up (§5)",
+                "rule": f"p50 shift >= delay x {LATENCY_SHIFT_FRAC} and caller error share "
+                        f"< {LATENCY_MAX_ERROR_FRAC} (§5 / 决策 027)",
                 "baseline_p50_ms": bp, "during_p50_ms": dp,
                 "shift_ms": round(shift, 2) if shift is not None else None,
-                "required_shift_ms": need, "errors_not_up": err_ok,
+                "required_shift_ms": need,
+                "caller_error_spans": d_err, "caller_spans_total": d_n,
+                "caller_error_frac": round(err_frac, 4) if err_frac is not None else None,
+                "max_error_frac": LATENCY_MAX_ERROR_FRAC, "errors_ok": err_ok,
                 "downstream_edges_during": (dt_.get("downstream_edges") or {})}
 
 

@@ -170,71 +170,71 @@ latency 26／misconfig 21／mem_leak 3，v1.1 已改为 69）；难度三轴与�
 | `crash-ad-01` | crash | `ad` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 3 | — |  |
 | `crash-astronomy-db-01` | crash | `astronomy-db` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 2 | — |  |
 | `crash-cart-01` | crash | `cart` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | yes | 1 | — |  |
-| `crash-checkout-01` | crash | `checkout` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 2 | `inject_s=300` |  |
+| `crash-checkout-01` | crash | `checkout` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 2 | `inject_s=300` `recover_s=150` |  |
 | `crash-currency-01` | crash | `currency` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 2 | — |  |
-| `crash-email-01` | crash | `email` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 2 | `inject_s=300` |  |
+| `crash-email-01` | crash | `email` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 2 | `inject_s=300` `recover_s=150` |  |
 | `crash-frontend-01` | crash | `frontend` | `kill_container` | — | 0 | 0 | 0 | 0 | 易 | no | 1 | — |  |
-| `crash-payment-01` | crash | `payment` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 1 | `inject_s=300` |  |
+| `crash-payment-01` | crash | `payment` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 1 | `inject_s=300` `recover_s=150` |  |
 | `crash-product-catalog-01` | crash | `product-catalog` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 2 | — |  |
-| `crash-quote-01` | crash | `quote` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 3 | — |  |
+| `crash-quote-01` | crash | `quote` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 3 | `recover_s=90` |  |
 | `crash-recommendation-01` | crash | `recommendation` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 3 | — |  |
-| `crash-shipping-01` | crash | `shipping` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 3 | — |  |
-| `crash-valkey-cart-01` | crash | `valkey-cart` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | — | — |  |
+| `crash-shipping-01` | crash | `shipping` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 3 | `recover_s=70` |  |
+| `crash-valkey-cart-01` | crash | `valkey-cart` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | — | `recover_s=150` |  |
 | `blackhole-ad-01` | blackhole | `ad` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | — |  |
 | `blackhole-astronomy-db-01` | blackhole | `astronomy-db` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 3 | — |  |
 | `blackhole-cart-01` | blackhole | `cart` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | yes | 1 | — |  |
-| `blackhole-checkout-01` | blackhole | `checkout` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 2 | `inject_s=300` |  |
+| `blackhole-checkout-01` | blackhole | `checkout` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 2 | `inject_s=300` `recover_s=150` |  |
 | `blackhole-currency-01` | blackhole | `currency` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 2 | — |  |
-| `blackhole-email-01` | blackhole | `email` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 3 | `inject_s=300` |  |
+| `blackhole-email-01` | blackhole | `email` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 3 | `inject_s=300` `recover_s=150` |  |
 | `blackhole-frontend-01` | blackhole | `frontend` | `drop_inbound` | — | 0 | 0 | 1 | 1 | 易 | no | 2 | — |  |
-| `blackhole-payment-01` | blackhole | `payment` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 1 | `inject_s=300` |  |
+| `blackhole-payment-01` | blackhole | `payment` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 1 | `inject_s=300` `recover_s=150` |  |
 | `blackhole-product-catalog-01` | blackhole | `product-catalog` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 2 | — |  |
-| `blackhole-quote-01` | blackhole | `quote` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 2 | — |  |
+| `blackhole-quote-01` | blackhole | `quote` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 2 | `recover_s=90` |  |
 | `blackhole-recommendation-01` | blackhole | `recommendation` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | — |  |
-| `blackhole-shipping-01` | blackhole | `shipping` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | — |  |
-| `blackhole-valkey-cart-01` | blackhole | `valkey-cart` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 1 | — |  |
+| `blackhole-shipping-01` | blackhole | `shipping` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | `recover_s=70` |  |
+| `blackhole-valkey-cart-01` | blackhole | `valkey-cart` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 1 | `recover_s=150` |  |
 | `latency-ad-800` | latency | `ad` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | 3 | — | 低档，入库档实测值 |
 | `latency-ad-3000` | latency | `ad` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-astronomy-db-800` | latency | `astronomy-db` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | — | — | 低档，入库档实测值 |
 | `latency-astronomy-db-3000` | latency | `astronomy-db` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | 3 | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-cart-800` | latency | `cart` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | yes | 1 | — | 低档，入库档实测值 |
 | `latency-cart-3000` | latency | `cart` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-checkout-800` | latency | `checkout` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | 1 | `inject_s=300` | 低档，入库档实测值 |
-| `latency-checkout-3000` | latency | `checkout` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | `inject_s=300` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
+| `latency-checkout-800` | latency | `checkout` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | 1 | `inject_s=300` `recover_s=150` | 低档，入库档实测值 |
+| `latency-checkout-3000` | latency | `checkout` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | `inject_s=300` `recover_s=150` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-currency-800` | latency | `currency` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | 2 | — | 低档，入库档实测值 |
 | `latency-currency-3000` | latency | `currency` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-email-800` | latency | `email` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 1 | `inject_s=300` | 低档，入库档实测值 |
-| `latency-email-3000` | latency | `email` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | `inject_s=300` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
+| `latency-email-800` | latency | `email` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 1 | `inject_s=300` `recover_s=150` | 低档，入库档实测值 |
+| `latency-email-3000` | latency | `email` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | `inject_s=300` `recover_s=150` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-frontend-800` | latency | `frontend` | `delay_outbound` | delay_ms=800 | 0 | 0 | 0 | 0 | 易 | no | 2 | — | 低档，入库档实测值 |
 | `latency-frontend-3000` | latency | `frontend` | `delay_outbound` | delay_ms=3000 | 0 | 0 | 0 | 0 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-payment-800` | latency | `payment` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | `inject_s=300` | 低档，入库档实测值 |
-| `latency-payment-3000` | latency | `payment` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | `inject_s=300` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
+| `latency-payment-800` | latency | `payment` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | `inject_s=300` `recover_s=150` | 低档，入库档实测值 |
+| `latency-payment-3000` | latency | `payment` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | `inject_s=300` `recover_s=150` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-product-catalog-800` | latency | `product-catalog` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | 2 | — | 低档，入库档实测值 |
 | `latency-product-catalog-3000` | latency | `product-catalog` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-quote-800` | latency | `quote` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | — | 低档，入库档实测值 |
-| `latency-quote-3000` | latency | `quote` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
+| `latency-quote-800` | latency | `quote` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | `recover_s=90` | 低档，入库档实测值 |
+| `latency-quote-3000` | latency | `quote` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | `recover_s=90` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-recommendation-800` | latency | `recommendation` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | — | — | 低档，入库档实测值 |
 | `latency-recommendation-3000` | latency | `recommendation` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | 3 | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-shipping-800` | latency | `shipping` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | — | — | 低档，入库档实测值 |
-| `latency-shipping-3000` | latency | `shipping` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | 3 | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-valkey-cart-800` | latency | `valkey-cart` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | — | 低档，入库档实测值 |
-| `latency-valkey-cart-3000` | latency | `valkey-cart` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
+| `latency-shipping-800` | latency | `shipping` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | — | `recover_s=70` | 低档，入库档实测值 |
+| `latency-shipping-3000` | latency | `shipping` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | 3 | `recover_s=70` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
+| `latency-valkey-cart-800` | latency | `valkey-cart` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | `recover_s=150` | 低档，入库档实测值 |
+| `latency-valkey-cart-3000` | latency | `valkey-cart` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | `recover_s=150` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `misconfig-cart-75` | misconfig | `cart` | `set_flag` | flag=cartFailure variant=75% | 1 | 2 | 0 | 3 | 中 | no | 1 | `settle_s=300` | 方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈4.3%；10%/25%/50% 三档按 O-P2-9 排除 |
 | `misconfig-cart-90` | misconfig | `cart` | `set_flag` | flag=cartFailure variant=90% | 1 | 2 | 0 | 3 | 中 | no | — | `settle_s=300` | 方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈5.1%；10%/25%/50% 三档按 O-P2-9 排除 |
 | `misconfig-cart-100` | misconfig | `cart` | `set_flag` | flag=cartFailure variant=100% | 1 | 2 | 0 | 3 | 中 | no | — | `settle_s=300` | 方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈5.7%；10%/25%/50% 三档按 O-P2-9 排除 |
-| `misconfig-payment-10` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=10% | 2 | 2 | 0 | 4 | 难 | no | — | `inject_s=300` | Charge 为 payment 唯一被调方法，服务级比例=10%；该开关无入库档实测，按决策 021 标未验证 |
-| `misconfig-payment-25` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=25% | 2 | 1 | 0 | 3 | 中 | no | — | `inject_s=300` | Charge 为 payment 唯一被调方法，服务级比例=25%；该开关无入库档实测，按决策 021 标未验证 |
-| `misconfig-payment-50` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=50% | 2 | 0 | 0 | 2 | 中 | no | 2 | `inject_s=300` | Charge 为 payment 唯一被调方法，服务级比例=50%；该开关无入库档实测，按决策 021 标未验证 |
-| `misconfig-payment-75` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=75% | 2 | 0 | 0 | 2 | 中 | no | 2 | `inject_s=300` | Charge 为 payment 唯一被调方法，服务级比例=75%；该开关无入库档实测，按决策 021 标未验证 |
-| `misconfig-payment-90` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=90% | 2 | 0 | 0 | 2 | 中 | no | 2 | `inject_s=300` | Charge 为 payment 唯一被调方法，服务级比例=90%；该开关无入库档实测，按决策 021 标未验证 |
-| `misconfig-payment-100` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=100% | 2 | 0 | 0 | 2 | 中 | no | 1 | `inject_s=300` | Charge 为 payment 唯一被调方法，服务级比例=100%；该开关无入库档实测，按决策 021 标未验证 |
-| `misconfig-checkout-on` | misconfig | `checkout` | `set_flag` | flag=paymentUnreachable variant=on | 1 | 0 | 2 | 3 | 难 | yes | 1 | `inject_s=300` | 下游边消失形态；obs2card_001542 实测 PlaceOrder 11/11 报错 |
+| `misconfig-payment-10` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=10% | 2 | 2 | 0 | 4 | 难 | no | — | `inject_s=300` `recover_s=150` | Charge 为 payment 唯一被调方法，服务级比例=10%；该开关无入库档实测，按决策 021 标未验证 |
+| `misconfig-payment-25` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=25% | 2 | 1 | 0 | 3 | 中 | no | — | `inject_s=300` `recover_s=150` | Charge 为 payment 唯一被调方法，服务级比例=25%；该开关无入库档实测，按决策 021 标未验证 |
+| `misconfig-payment-50` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=50% | 2 | 0 | 0 | 2 | 中 | no | 2 | `inject_s=300` `recover_s=150` | Charge 为 payment 唯一被调方法，服务级比例=50%；该开关无入库档实测，按决策 021 标未验证 |
+| `misconfig-payment-75` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=75% | 2 | 0 | 0 | 2 | 中 | no | 2 | `inject_s=300` `recover_s=150` | Charge 为 payment 唯一被调方法，服务级比例=75%；该开关无入库档实测，按决策 021 标未验证 |
+| `misconfig-payment-90` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=90% | 2 | 0 | 0 | 2 | 中 | no | 2 | `inject_s=300` `recover_s=150` | Charge 为 payment 唯一被调方法，服务级比例=90%；该开关无入库档实测，按决策 021 标未验证 |
+| `misconfig-payment-100` | misconfig | `payment` | `set_flag` | flag=paymentFailure variant=100% | 2 | 0 | 0 | 2 | 中 | no | 1 | `inject_s=300` `recover_s=150` | Charge 为 payment 唯一被调方法，服务级比例=100%；该开关无入库档实测，按决策 021 标未验证 |
+| `misconfig-checkout-on` | misconfig | `checkout` | `set_flag` | flag=paymentUnreachable variant=on | 1 | 0 | 2 | 3 | 难 | yes | 1 | `inject_s=300` `recover_s=150` | 下游边消失形态；obs2card_001542 实测 PlaceOrder 11/11 报错 |
 | `misconfig-pc-2ZYFJ3GM2N` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=2ZYFJ3GM2N variant=on | 1 | 1 | 0 | 2 | 中 | no | — | — | targeting 变体；该 product 在基线 GetProduct 中占比 12.1%（20 min 实测 371/3072） |
 | `misconfig-pc-66VCHSJNUP` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=66VCHSJNUP variant=on | 1 | 2 | 0 | 3 | 中 | no | — | — | targeting 变体；该 product 在基线 GetProduct 中占比 9.9%（20 min 实测 304/3072） |
 | `misconfig-pc-OLJCESPC7Z` | misconfig | `product-catalog` | `set_flag` | flag=productCatalogFailure product_id=OLJCESPC7Z variant=on | 1 | 2 | 0 | 3 | 中 | yes | 1 | — | targeting 变体；该 product 在基线 GetProduct 中占比 9.8%（20 min 实测 302/3072）；obs2card_001542 实测 r=7.6% |
-| `memleak-email-10000x` | mem_leak | `email` | `set_flag` | flag=emailMemoryLeak variant=10000x | 2 | 2 | 1 | 5 | 难 | yes | 1 | `inject_s=300` | judge_222727 实测 +171.5 MiB/120s |
-| `memleak-email-1000x` | mem_leak | `email` | `set_flag` | flag=emailMemoryLeak variant=1000x | 2 | 2 | 1 | 5 | 难 | yes | 1 | `inject_s=300` | judge_222727 实测 +35.5 MiB/120s |
-| `memleak-email-100x` | mem_leak | `email` | `set_flag` | flag=emailMemoryLeak variant=100x | 2 | 2 | 1 | 5 | 难 | no | — | `inject_s=300` | 更低倍率，检验判据下限；待验证 |
+| `memleak-email-10000x` | mem_leak | `email` | `set_flag` | flag=emailMemoryLeak variant=10000x | 2 | 2 | 1 | 5 | 难 | yes | 1 | `inject_s=300` `recover_s=150` | judge_222727 实测 +171.5 MiB/120s |
+| `memleak-email-1000x` | mem_leak | `email` | `set_flag` | flag=emailMemoryLeak variant=1000x | 2 | 2 | 1 | 5 | 难 | yes | 1 | `inject_s=300` `recover_s=150` | judge_222727 实测 +35.5 MiB/120s |
+| `memleak-email-100x` | mem_leak | `email` | `set_flag` | flag=emailMemoryLeak variant=100x | 2 | 2 | 1 | 5 | 难 | no | — | `inject_s=300` `recover_s=150` | 更低倍率，检验判据下限；待验证 |
 
 <!-- END GENERATED: recipe-table -->
 
