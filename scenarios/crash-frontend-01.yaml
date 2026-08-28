@@ -51,7 +51,7 @@ agent_visible_symptom:
   window:
     start: "2026-08-27T22:17:00Z"
     end: "2026-08-27T22:19:01Z"
-  detected_at: "2026-08-27T22:22:45Z"
+  detected_at: "2026-08-28T18:47:48Z"
   no_alert: false
   alerts:
     -
@@ -116,6 +116,30 @@ agent_visible_symptom:
           start: "2026-08-27T22:17:00Z"
           end: "2026-08-27T22:19:01Z"
       deviation: 147.662
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/GET
+      service: frontend-proxy
+      baseline:
+        p95_ms: 36.7
+        call_count: 473.0
+        window:
+          start: "2026-08-27T22:16:00Z"
+          end: "2026-08-27T22:17:00Z"
+      observed:
+        p95_ms: 4912.5
+        delta_ms: 4875.8
+        ratio: 133.871
+        call_count: 70.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T22:17:00Z"
+          end: "2026-08-27T22:19:01Z"
+      deviation: 133.871
     -
       rule: traffic_zero
       message: traffic dropped to zero on cart
@@ -239,6 +263,30 @@ agent_visible_symptom:
           start: "2026-08-27T22:17:00Z"
           end: "2026-08-27T22:19:01Z"
       deviation: 10.0
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/POST
+      service: frontend-proxy
+      baseline:
+        p95_ms: 4460.0
+        call_count: 28.0
+        window:
+          start: "2026-08-27T22:16:00Z"
+          end: "2026-08-27T22:17:00Z"
+      observed:
+        p95_ms: 8750.0
+        delta_ms: 4290.0
+        ratio: 1.962
+        call_count: 21.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: absolute
+        window:
+          start: "2026-08-27T22:17:00Z"
+          end: "2026-08-27T22:19:01Z"
+      deviation: 8.58
     -
       rule: p95_jump
       message: elevated p95 latency on shipping

@@ -19,7 +19,7 @@ difficulty_predicted:
 difficulty_measured: null
 cycle:
   baseline_s: 60
-  inject_s: 120
+  inject_s: 300
   recover_s: 60
   settle_s: 150
 param_validated: false
@@ -52,7 +52,7 @@ agent_visible_symptom:
   window:
     start: "2026-08-27T19:58:17Z"
     end: "2026-08-27T20:00:17Z"
-  detected_at: "2026-08-27T21:46:46Z"
+  detected_at: "2026-08-28T18:47:49Z"
   no_alert: false
   alerts:
     -

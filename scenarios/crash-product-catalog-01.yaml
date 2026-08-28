@@ -51,7 +51,7 @@ agent_visible_symptom:
   window:
     start: "2026-08-27T22:59:12Z"
     end: "2026-08-27T23:01:12Z"
-  detected_at: "2026-08-27T23:04:58Z"
+  detected_at: "2026-08-28T18:47:48Z"
   no_alert: false
   alerts:
     -
@@ -74,6 +74,30 @@ agent_visible_symptom:
           start: "2026-08-27T22:59:12Z"
           end: "2026-08-27T23:01:12Z"
       deviation: 1269.451
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/GET
+      service: frontend-proxy
+      baseline:
+        p95_ms: 35.88
+        call_count: 438.0
+        window:
+          start: "2026-08-27T22:58:11Z"
+          end: "2026-08-27T22:59:12Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 14964.12
+        ratio: 418.089
+        call_count: 202.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T22:59:12Z"
+          end: "2026-08-27T23:01:12Z"
+      deviation: 418.089
     -
       rule: p95_jump
       message: elevated p95 latency on frontend
@@ -136,6 +160,30 @@ agent_visible_symptom:
           end: "2026-08-27T23:01:12Z"
       deviation: 342.54
     -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/recommendations
+      service: frontend
+      baseline:
+        p95_ms: 48.0
+        call_count: 46.0
+        window:
+          start: "2026-08-27T22:58:11Z"
+          end: "2026-08-27T22:59:12Z"
+      observed:
+        p95_ms: 2449.0
+        delta_ms: 2401.0
+        ratio: 51.021
+        call_count: 30.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T22:59:12Z"
+          end: "2026-08-27T23:01:12Z"
+      deviation: 51.021
+    -
       rule: traffic_zero
       message: traffic dropped to zero on shipping
       service: shipping
@@ -174,6 +222,54 @@ agent_visible_symptom:
           start: "2026-08-27T22:59:12Z"
           end: "2026-08-27T23:01:12Z"
       deviation: 24.0
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/POST
+      service: frontend-proxy
+      baseline:
+        p95_ms: 4250.0
+        call_count: 42.0
+        window:
+          start: "2026-08-27T22:58:11Z"
+          end: "2026-08-27T22:59:12Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 10750.0
+        ratio: 3.529
+        call_count: 24.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T22:59:12Z"
+          end: "2026-08-27T23:01:12Z"
+      deviation: 21.5
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on flagd/flagd.evaluation.v1.Service/EventStream
+      service: flagd
+      baseline:
+        p95_ms: 4850.0
+        call_count: 6.0
+        window:
+          start: "2026-08-27T22:58:11Z"
+          end: "2026-08-27T22:59:12Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 10150.0
+        ratio: 3.093
+        call_count: 5.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T22:59:12Z"
+          end: "2026-08-27T23:01:12Z"
+      deviation: 20.3
     -
       rule: traffic_zero
       message: traffic dropped to zero on currency

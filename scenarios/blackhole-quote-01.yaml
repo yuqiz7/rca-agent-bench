@@ -51,7 +51,7 @@ agent_visible_symptom:
   window:
     start: "2026-08-28T00:14:23Z"
     end: "2026-08-28T00:16:23Z"
-  detected_at: "2026-08-28T00:20:18Z"
+  detected_at: "2026-08-28T18:47:47Z"
   no_alert: false
   alerts:
     -
@@ -74,6 +74,54 @@ agent_visible_symptom:
           start: "2026-08-28T00:14:23Z"
           end: "2026-08-28T00:16:23Z"
       deviation: 2490.107
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on shipping/POST /get-quote
+      service: shipping
+      baseline:
+        p95_ms: 3.9
+        call_count: 5.0
+        window:
+          start: "2026-08-28T00:13:23Z"
+          end: "2026-08-28T00:14:23Z"
+      observed:
+        p95_ms: 9689.21
+        delta_ms: 9685.31
+        ratio: 2484.412
+        call_count: 15.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T00:14:23Z"
+          end: "2026-08-28T00:16:23Z"
+      deviation: 2484.412
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/shipping
+      service: frontend
+      baseline:
+        p95_ms: 48.0
+        call_count: 8.0
+        window:
+          start: "2026-08-28T00:13:23Z"
+          end: "2026-08-28T00:14:23Z"
+      observed:
+        p95_ms: 9750.0
+        delta_ms: 9702.0
+        ratio: 203.125
+        call_count: 9.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T00:14:23Z"
+          end: "2026-08-28T00:16:23Z"
+      deviation: 203.125
     -
       rule: p95_jump
       message: elevated p95 latency on checkout

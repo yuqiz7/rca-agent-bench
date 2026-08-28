@@ -52,9 +52,33 @@ agent_visible_symptom:
   window:
     start: "2026-08-27T23:40:15Z"
     end: "2026-08-27T23:42:15Z"
-  detected_at: "2026-08-27T23:46:08Z"
+  detected_at: "2026-08-28T18:47:48Z"
   no_alert: false
   alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/currency
+      service: frontend
+      baseline:
+        p95_ms: 3.9
+        call_count: 12.0
+        window:
+          start: "2026-08-27T23:39:15Z"
+          end: "2026-08-27T23:40:15Z"
+      observed:
+        p95_ms: 990.0
+        delta_ms: 986.1
+        ratio: 253.846
+        call_count: 28.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T23:40:15Z"
+          end: "2026-08-27T23:42:15Z"
+      deviation: 253.846
     -
       rule: p95_jump
       message: elevated p95 latency on checkout

@@ -19,7 +19,7 @@ difficulty_predicted:
 difficulty_measured: null
 cycle:
   baseline_s: 60
-  inject_s: 120
+  inject_s: 300
   recover_s: 60
   settle_s: 150
 param_validated: false
@@ -52,6 +52,30 @@ agent_visible_symptom:
   window:
     start: "2026-08-27T19:51:19Z"
     end: "2026-08-27T19:53:19Z"
-  detected_at: "2026-08-27T21:46:46Z"
-  no_alert: true
-  alerts: []
+  detected_at: "2026-08-28T18:47:48Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        p95_ms: 87.5
+        call_count: 10.0
+        window:
+          start: "2026-08-27T19:50:19Z"
+          end: "2026-08-27T19:51:19Z"
+      observed:
+        p95_ms: 990.0
+        delta_ms: 902.5
+        ratio: 11.314
+        call_count: 18.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T19:51:19Z"
+          end: "2026-08-27T19:53:19Z"
+      deviation: 11.314

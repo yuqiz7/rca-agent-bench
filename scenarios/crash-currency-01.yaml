@@ -51,7 +51,7 @@ agent_visible_symptom:
   window:
     start: "2026-08-27T23:26:32Z"
     end: "2026-08-27T23:28:32Z"
-  detected_at: "2026-08-27T23:32:23Z"
+  detected_at: "2026-08-28T18:47:48Z"
   no_alert: false
   alerts:
     -

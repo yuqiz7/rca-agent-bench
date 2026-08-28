@@ -51,9 +51,57 @@ agent_visible_symptom:
   window:
     start: "2026-08-27T19:24:03Z"
     end: "2026-08-27T19:26:04Z"
-  detected_at: "2026-08-27T21:46:46Z"
+  detected_at: "2026-08-28T18:47:48Z"
   no_alert: false
   alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/cart
+      service: frontend
+      baseline:
+        p95_ms: 35.71
+        call_count: 62.0
+        window:
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 14964.29
+        ratio: 420.0
+        call_count: 90.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 420.0
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/POST /api/cart
+      service: frontend
+      baseline:
+        p95_ms: 36.0
+        call_count: 50.0
+        window:
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 14964.0
+        ratio: 416.667
+        call_count: 38.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 416.667
     -
       rule: traffic_zero
       message: traffic dropped to zero on cart
@@ -155,6 +203,30 @@ agent_visible_symptom:
           start: "2026-08-27T19:24:03Z"
           end: "2026-08-27T19:26:04Z"
       deviation: 24.5
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/POST
+      service: frontend-proxy
+      baseline:
+        p95_ms: 4190.0
+        call_count: 48.0
+        window:
+          start: "2026-08-27T19:23:03Z"
+          end: "2026-08-27T19:24:03Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 10810.0
+        ratio: 3.58
+        call_count: 50.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T19:24:03Z"
+          end: "2026-08-27T19:26:04Z"
+      deviation: 21.62
     -
       rule: traffic_zero
       message: traffic dropped to zero on email

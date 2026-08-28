@@ -52,9 +52,81 @@ agent_visible_symptom:
   window:
     start: "2026-08-27T19:44:22Z"
     end: "2026-08-27T19:46:22Z"
-  detected_at: "2026-08-27T21:46:46Z"
+  detected_at: "2026-08-28T18:47:48Z"
   no_alert: false
   alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/POST /api/cart
+      service: frontend
+      baseline:
+        p95_ms: 9.3
+        call_count: 40.0
+        window:
+          start: "2026-08-27T19:43:21Z"
+          end: "2026-08-27T19:44:22Z"
+      observed:
+        p95_ms: 1970.0
+        delta_ms: 1960.7
+        ratio: 211.828
+        call_count: 52.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T19:44:22Z"
+          end: "2026-08-27T19:46:22Z"
+      deviation: 211.828
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/cart
+      service: frontend
+      baseline:
+        p95_ms: 9.9
+        call_count: 68.0
+        window:
+          start: "2026-08-27T19:43:21Z"
+          end: "2026-08-27T19:44:22Z"
+      observed:
+        p95_ms: 989.09
+        delta_ms: 979.19
+        ratio: 99.908
+        call_count: 86.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T19:44:22Z"
+          end: "2026-08-27T19:46:22Z"
+      deviation: 99.908
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on checkout/oteldemo.CheckoutService/PlaceOrder
+      service: checkout
+      baseline:
+        p95_ms: 48.0
+        call_count: 6.0
+        window:
+          start: "2026-08-27T19:43:21Z"
+          end: "2026-08-27T19:44:22Z"
+      observed:
+        p95_ms: 1970.0
+        delta_ms: 1922.0
+        ratio: 41.042
+        call_count: 8.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T19:44:22Z"
+          end: "2026-08-27T19:46:22Z"
+      deviation: 41.042
     -
       rule: p95_jump
       message: elevated p95 latency on checkout
@@ -115,6 +187,54 @@ agent_visible_symptom:
           start: "2026-08-27T19:44:22Z"
           end: "2026-08-27T19:46:22Z"
       deviation: 29.25
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        p95_ms: 93.75
+        call_count: 12.0
+        window:
+          start: "2026-08-27T19:43:21Z"
+          end: "2026-08-27T19:44:22Z"
+      observed:
+        p95_ms: 1970.0
+        delta_ms: 1876.25
+        ratio: 21.013
+        call_count: 16.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T19:44:22Z"
+          end: "2026-08-27T19:46:22Z"
+      deviation: 21.013
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/GET
+      service: frontend-proxy
+      baseline:
+        p95_ms: 35.81
+        call_count: 508.0
+        window:
+          start: "2026-08-27T19:43:21Z"
+          end: "2026-08-27T19:44:22Z"
+      observed:
+        p95_ms: 304.97
+        delta_ms: 269.16
+        ratio: 8.516
+        call_count: 791.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T19:44:22Z"
+          end: "2026-08-27T19:46:22Z"
+      deviation: 8.516
     -
       rule: memory_over_line
       message: memory rising on payment

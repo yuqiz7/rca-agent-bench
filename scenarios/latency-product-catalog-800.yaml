@@ -52,9 +52,33 @@ agent_visible_symptom:
   window:
     start: "2026-08-27T23:12:41Z"
     end: "2026-08-27T23:14:41Z"
-  detected_at: "2026-08-27T23:18:34Z"
+  detected_at: "2026-08-28T18:47:49Z"
   no_alert: false
   alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on recommendation/oteldemo.RecommendationService/ListRecommendations
+      service: recommendation
+      baseline:
+        p95_ms: 7.7
+        call_count: 29.0
+        window:
+          start: "2026-08-27T23:11:40Z"
+          end: "2026-08-27T23:12:41Z"
+      observed:
+        p95_ms: 1692.5
+        delta_ms: 1684.8
+        ratio: 219.805
+        call_count: 35.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T23:12:41Z"
+          end: "2026-08-27T23:14:41Z"
+      deviation: 219.805
     -
       rule: p95_jump
       message: elevated p95 latency on recommendation
@@ -76,6 +100,30 @@ agent_visible_symptom:
           end: "2026-08-27T23:14:41Z"
       deviation: 219.805
     -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/products/[productId]/index
+      service: frontend
+      baseline:
+        p95_ms: 9.5
+        call_count: 66.0
+        window:
+          start: "2026-08-27T23:11:40Z"
+          end: "2026-08-27T23:12:41Z"
+      observed:
+        p95_ms: 990.0
+        delta_ms: 980.5
+        ratio: 104.211
+        call_count: 108.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T23:12:41Z"
+          end: "2026-08-27T23:14:41Z"
+      deviation: 104.211
+    -
       rule: p95_jump
       message: elevated p95 latency on checkout
       service: checkout
@@ -95,6 +143,30 @@ agent_visible_symptom:
           start: "2026-08-27T23:12:41Z"
           end: "2026-08-27T23:14:41Z"
       deviation: 96.354
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/recommendations
+      service: frontend
+      baseline:
+        p95_ms: 49.58
+        call_count: 58.0
+        window:
+          start: "2026-08-27T23:11:40Z"
+          end: "2026-08-27T23:12:41Z"
+      observed:
+        p95_ms: 4187.5
+        delta_ms: 4137.92
+        ratio: 84.454
+        call_count: 70.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T23:12:41Z"
+          end: "2026-08-27T23:14:41Z"
+      deviation: 84.454
     -
       rule: p95_jump
       message: elevated p95 latency on frontend
@@ -135,3 +207,75 @@ agent_visible_symptom:
           start: "2026-08-27T23:12:41Z"
           end: "2026-08-27T23:14:41Z"
       deviation: 41.785
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/GET
+      service: frontend-proxy
+      baseline:
+        p95_ms: 36.08
+        call_count: 434.0
+        window:
+          start: "2026-08-27T23:11:40Z"
+          end: "2026-08-27T23:12:41Z"
+      observed:
+        p95_ms: 1425.68
+        delta_ms: 1389.6
+        ratio: 39.514
+        call_count: 657.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T23:12:41Z"
+          end: "2026-08-27T23:14:41Z"
+      deviation: 39.514
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/products/index
+      service: frontend
+      baseline:
+        p95_ms: 34.0
+        call_count: 12.0
+        window:
+          start: "2026-08-27T23:11:40Z"
+          end: "2026-08-27T23:12:41Z"
+      observed:
+        p95_ms: 990.0
+        delta_ms: 956.0
+        ratio: 29.118
+        call_count: 24.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T23:12:41Z"
+          end: "2026-08-27T23:14:41Z"
+      deviation: 29.118
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/cart
+      service: frontend
+      baseline:
+        p95_ms: 33.0
+        call_count: 50.0
+        window:
+          start: "2026-08-27T23:11:40Z"
+          end: "2026-08-27T23:12:41Z"
+      observed:
+        p95_ms: 918.33
+        delta_ms: 885.33
+        ratio: 27.828
+        call_count: 82.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-27T23:12:41Z"
+          end: "2026-08-27T23:14:41Z"
+      deviation: 27.828

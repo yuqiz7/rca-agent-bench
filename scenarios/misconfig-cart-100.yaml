@@ -22,7 +22,7 @@ cycle:
   baseline_s: 60
   inject_s: 120
   recover_s: 60
-  settle_s: 150
+  settle_s: 300
 param_validated: false
 batch: null
 production: null
