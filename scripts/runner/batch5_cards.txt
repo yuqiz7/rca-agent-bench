@@ -1,0 +1,19 @@
+# batch 5 -- 2 cards, the two batch 4 failures the None-vs-zero fix actually saves.
+#
+# Both failed batch 4's recovered gate for the same reason and neither is a
+# sample-size problem: their caller arm was healthy in the recover window (5 of 6
+# spans back, 9 of 25) and their rate arm passed. What failed them was the
+# target-side arm reading a spanmetrics rate of exactly 0.0 over a 30 s window,
+# because the collector had not exported inside it. Offline replay against their
+# stored snapshots shows both now pass. They are re-run rather than written back
+# from the replay because a failed gate means no evidence pack was ever built.
+#
+# latency-shipping-3000 is deliberately NOT here. F-3 applied to it correctly and
+# it was rejected on a caller error share of 12.0% against the 10% ceiling; the
+# previous run measured 8.70%. Two data points now straddle the line, which is
+# the re-measurement decision 027 said this tier would need -- not something to
+# push through by moving the threshold mid-batch.
+#
+# The valkey-cart cards are out of the recipe entirely (F-8).
+scenarios/blackhole-ad-01.yaml
+scenarios/blackhole-recommendation-01.yaml

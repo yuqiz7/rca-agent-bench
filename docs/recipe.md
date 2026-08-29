@@ -179,7 +179,6 @@ latency 26／misconfig 21／mem_leak 3，v1.1 已改为 69）；难度三轴与�
 | `crash-quote-01` | crash | `quote` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | 3 | `recover_s=90` |  |
 | `crash-recommendation-01` | crash | `recommendation` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 3 | — |  |
 | `crash-shipping-01` | crash | `shipping` | `kill_container` | — | 1 | 0 | 0 | 1 | 易 | no | 3 | `recover_s=70` |  |
-| `crash-valkey-cart-01` | crash | `valkey-cart` | `kill_container` | — | 2 | 0 | 0 | 2 | 中 | no | — | `recover_s=150` |  |
 | `blackhole-ad-01` | blackhole | `ad` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | — |  |
 | `blackhole-astronomy-db-01` | blackhole | `astronomy-db` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 3 | — |  |
 | `blackhole-cart-01` | blackhole | `cart` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | yes | 1 | — |  |
@@ -192,7 +191,6 @@ latency 26／misconfig 21／mem_leak 3，v1.1 已改为 69）；难度三轴与�
 | `blackhole-quote-01` | blackhole | `quote` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 2 | `recover_s=90` |  |
 | `blackhole-recommendation-01` | blackhole | `recommendation` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | — |  |
 | `blackhole-shipping-01` | blackhole | `shipping` | `drop_inbound` | — | 1 | 0 | 1 | 2 | 中 | no | 3 | `recover_s=70` |  |
-| `blackhole-valkey-cart-01` | blackhole | `valkey-cart` | `drop_inbound` | — | 2 | 0 | 1 | 3 | 中 | no | 1 | `recover_s=150` |  |
 | `latency-ad-800` | latency | `ad` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | 3 | — | 低档，入库档实测值 |
 | `latency-ad-3000` | latency | `ad` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | — | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-astronomy-db-800` | latency | `astronomy-db` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | — | — | 低档，入库档实测值 |
@@ -217,8 +215,6 @@ latency 26／misconfig 21／mem_leak 3，v1.1 已改为 69）；难度三轴与�
 | `latency-recommendation-3000` | latency | `recommendation` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | 3 | — | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `latency-shipping-800` | latency | `shipping` | `delay_outbound` | delay_ms=800 | 1 | 0 | 0 | 1 | 易 | no | — | `recover_s=70` | 低档，入库档实测值 |
 | `latency-shipping-3000` | latency | `shipping` | `delay_outbound` | delay_ms=3000 | 1 | 0 | 0 | 1 | 易 | no | 3 | `recover_s=70` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
-| `latency-valkey-cart-800` | latency | `valkey-cart` | `delay_outbound` | delay_ms=800 | 2 | 0 | 0 | 2 | 中 | no | 3 | `recover_s=150` | 低档，入库档实测值 |
-| `latency-valkey-cart-3000` | latency | `valkey-cart` | `delay_outbound` | delay_ms=3000 | 2 | 0 | 0 | 2 | 中 | no | — | `recover_s=150` | 高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline） |
 | `misconfig-cart-75` | misconfig | `cart` | `set_flag` | flag=cartFailure variant=75% | 1 | 2 | 0 | 3 | 中 | no | 1 | `settle_s=300` | 方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈4.3%；10%/25%/50% 三档按 O-P2-9 排除 |
 | `misconfig-cart-90` | misconfig | `cart` | `set_flag` | flag=cartFailure variant=90% | 1 | 2 | 0 | 3 | 中 | no | — | `settle_s=300` | 方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈5.1%；10%/25%/50% 三档按 O-P2-9 排除 |
 | `misconfig-cart-100` | misconfig | `cart` | `set_flag` | flag=cartFailure variant=100% | 1 | 2 | 0 | 3 | 中 | no | — | `settle_s=300` | 方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈5.7%；10%/25%/50% 三档按 O-P2-9 排除 |
