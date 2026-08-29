@@ -1,0 +1,123 @@
+{
+ "card_id": "latency-recommendation-3000",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-28T23:33:03Z",
+   "end": "2026-08-28T23:35:03Z"
+  },
+  "detected_at": "2026-08-28T23:39:00Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/GET /api/recommendations",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 48.0,
+     "call_count": 52.0,
+     "window": {
+      "start": "2026-08-28T23:32:03Z",
+      "end": "2026-08-28T23:33:03Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 4802.0,
+     "ratio": 101.042,
+     "call_count": 90.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T23:33:03Z",
+      "end": "2026-08-28T23:35:03Z"
+     }
+    },
+    "deviation": 101.042
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on frontend",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 41.14,
+     "window": {
+      "start": "2026-08-28T23:32:03Z",
+      "end": "2026-08-28T23:33:03Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 3367.65,
+     "delta_ms": 3326.5,
+     "ratio": 81.853,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T23:33:03Z",
+      "end": "2026-08-28T23:35:03Z"
+     }
+    },
+    "deviation": 81.853
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend-proxy/GET",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 35.0,
+     "call_count": 464.0,
+     "window": {
+      "start": "2026-08-28T23:32:03Z",
+      "end": "2026-08-28T23:33:03Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 2375.0,
+     "delta_ms": 2340.0,
+     "ratio": 67.857,
+     "call_count": 722.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T23:33:03Z",
+      "end": "2026-08-28T23:35:03Z"
+     }
+    },
+    "deviation": 67.857
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on frontend-proxy",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 41.49,
+     "window": {
+      "start": "2026-08-28T23:32:03Z",
+      "end": "2026-08-28T23:33:03Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 2792.86,
+     "delta_ms": 2751.37,
+     "ratio": 67.317,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-28T23:33:03Z",
+      "end": "2026-08-28T23:35:03Z"
+     }
+    },
+    "deviation": 67.317
+   }
+  ]
+ },
+ "evidence_dir": "evidence/latency-recommendation-3000",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

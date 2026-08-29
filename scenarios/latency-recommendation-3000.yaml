@@ -24,5 +24,122 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: 3
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-08-28T23:32:03Z"
+  t_inject: "2026-08-28T23:33:03Z"
+  t_revert: "2026-08-28T23:35:03Z"
+  t_end: "2026-08-28T23:36:03Z"
+  settle_s: 150
+  t_harvest: "2026-08-28T23:38:33Z"
+  batch_dir: scripts/out/batch4_20260828T225020Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/latency-recommendation-3000
+  packed: true
+  manifest_sha256:
+    logs.jsonl: d6e3c139673fc142d231443db5659c8fafbd7d263a3899f9242ba8987ed5c939
+    metrics.json: 267a3c8c22a28b2ff1aebb1c0b99e19ed34d674cef15eca54b78ba0a7a31beed
+    traces.json: 00426191e330a64c675cc437fc95f02dfddb2b5f834cd09338c0eaf0fef61fd5
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 4
+agent_visible_symptom:
+  window:
+    start: "2026-08-28T23:33:03Z"
+    end: "2026-08-28T23:35:03Z"
+  detected_at: "2026-08-28T23:39:00Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/recommendations
+      service: frontend
+      baseline:
+        p95_ms: 48.0
+        call_count: 52.0
+        window:
+          start: "2026-08-28T23:32:03Z"
+          end: "2026-08-28T23:33:03Z"
+      observed:
+        p95_ms: 4850.0
+        delta_ms: 4802.0
+        ratio: 101.042
+        call_count: 90.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T23:33:03Z"
+          end: "2026-08-28T23:35:03Z"
+      deviation: 101.042
+    -
+      rule: p95_jump
+      message: elevated p95 latency on frontend
+      service: frontend
+      baseline:
+        p95_ms: 41.14
+        window:
+          start: "2026-08-28T23:32:03Z"
+          end: "2026-08-28T23:33:03Z"
+      observed:
+        p95_ms: 3367.65
+        delta_ms: 3326.5
+        ratio: 81.853
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T23:33:03Z"
+          end: "2026-08-28T23:35:03Z"
+      deviation: 81.853
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/GET
+      service: frontend-proxy
+      baseline:
+        p95_ms: 35.0
+        call_count: 464.0
+        window:
+          start: "2026-08-28T23:32:03Z"
+          end: "2026-08-28T23:33:03Z"
+      observed:
+        p95_ms: 2375.0
+        delta_ms: 2340.0
+        ratio: 67.857
+        call_count: 722.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T23:33:03Z"
+          end: "2026-08-28T23:35:03Z"
+      deviation: 67.857
+    -
+      rule: p95_jump
+      message: elevated p95 latency on frontend-proxy
+      service: frontend-proxy
+      baseline:
+        p95_ms: 41.49
+        window:
+          start: "2026-08-28T23:32:03Z"
+          end: "2026-08-28T23:33:03Z"
+      observed:
+        p95_ms: 2792.86
+        delta_ms: 2751.37
+        ratio: 67.317
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T23:33:03Z"
+          end: "2026-08-28T23:35:03Z"
+      deviation: 67.317

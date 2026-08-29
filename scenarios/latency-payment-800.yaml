@@ -25,21 +25,77 @@ cycle:
 param_validated: false
 batch: 3
 production:
-  t_start: "2026-08-28T21:53:51Z"
-  t_inject: "2026-08-28T21:54:52Z"
-  t_revert: "2026-08-28T21:59:52Z"
-  t_end: "2026-08-28T22:00:52Z"
+  t_start: "2026-08-28T23:52:55Z"
+  t_inject: "2026-08-28T23:53:55Z"
+  t_revert: "2026-08-28T23:58:55Z"
+  t_end: "2026-08-29T00:01:25Z"
   settle_s: 150
-  t_harvest: "2026-08-28T22:03:22Z"
-  batch_dir: scripts/out/batch3_20260828T210242Z
+  t_harvest: "2026-08-29T00:03:55Z"
+  batch_dir: scripts/out/batch4_20260828T225020Z
   probe:
     injected: true
-    symptom: false
+    symptom: true
     recovered: true
     residue_clean: true
-    verdict: failed
+    verdict: passed
     observe_only: false
-  evidence_dir: null
-  packed: false
-  note: probe gate failed; evidence not packed (decision 021)
-agent_visible_symptom: null
+  evidence_dir: evidence/latency-payment-800
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 2a9d144b191d9efea046be986ecf955efc46895beeff21cd384f85e893ccabf9
+    metrics.json: 2879091478358df23b56866a711f5932765c18ff7754bf9f4b42e25fe7da4314
+    traces.json: 2b9cfbef64d1312fe5e2fa627d2f97cf175b4a7152ebb4d4a9170dd2707ed0d6
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 2
+agent_visible_symptom:
+  window:
+    start: "2026-08-28T23:53:55Z"
+    end: "2026-08-28T23:58:55Z"
+  detected_at: "2026-08-29T00:04:45Z"
+  no_alert: false
+  alerts:
+    -
+      rule: p95_jump
+      message: elevated p95 latency on checkout
+      service: checkout
+      baseline:
+        p95_ms: 48.0
+        window:
+          start: "2026-08-28T23:52:55Z"
+          end: "2026-08-28T23:53:55Z"
+      observed:
+        p95_ms: 990.0
+        delta_ms: 942.0
+        ratio: 20.625
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T23:53:55Z"
+          end: "2026-08-28T23:58:55Z"
+      deviation: 20.625
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        p95_ms: 92.5
+        call_count: 6.0
+        window:
+          start: "2026-08-28T23:52:55Z"
+          end: "2026-08-28T23:53:55Z"
+      observed:
+        p95_ms: 990.0
+        delta_ms: 897.5
+        ratio: 10.703
+        call_count: 36.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-28T23:53:55Z"
+          end: "2026-08-28T23:58:55Z"
+      deviation: 10.703

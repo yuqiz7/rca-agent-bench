@@ -1,0 +1,291 @@
+{
+ "detected_at": "2026-08-29T00:38:55Z",
+ "window": {
+  "start": "2026-08-29T00:32:46Z",
+  "end": "2026-08-29T00:34:47Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-29T00:30:46Z",
+   "end": "2026-08-29T00:38:27Z"
+  },
+  "baseline": {
+   "start": "2026-08-29T00:31:46Z",
+   "end": "2026-08-29T00:32:46Z"
+  },
+  "inject": {
+   "start": "2026-08-29T00:32:46Z",
+   "end": "2026-08-29T00:34:47Z"
+  },
+  "recover": {
+   "start": "2026-08-29T00:34:47Z",
+   "end": "2026-08-29T00:35:57Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/shipping",
+   "service": "frontend",
+   "operation": "GET /api/shipping",
+   "baseline": {
+    "p95_ms": 48.0,
+    "call_count": 6.0,
+    "window": {
+     "start": "2026-08-29T00:31:46Z",
+     "end": "2026-08-29T00:32:46Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 14750.0,
+    "delta_ms": 14702.0,
+    "ratio": 307.292,
+    "call_count": 5.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-29T00:32:46Z",
+     "end": "2026-08-29T00:34:47Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:32:46Z",
+    "end": "2026-08-29T00:34:47Z"
+   },
+   "deviation": 307.292
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "p95_ms": 94.17,
+    "call_count": 8.0,
+    "window": {
+     "start": "2026-08-29T00:31:46Z",
+     "end": "2026-08-29T00:32:46Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 14905.83,
+    "ratio": 159.292,
+    "call_count": 7.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-29T00:32:46Z",
+     "end": "2026-08-29T00:34:47Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:32:46Z",
+    "end": "2026-08-29T00:34:47Z"
+   },
+   "deviation": 159.292
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on checkout",
+   "service": "checkout",
+   "baseline": {
+    "p95_ms": 87.5,
+    "window": {
+     "start": "2026-08-29T00:31:46Z",
+     "end": "2026-08-29T00:32:46Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 7546.25,
+    "delta_ms": 7458.75,
+    "ratio": 86.243,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-29T00:32:46Z",
+     "end": "2026-08-29T00:34:47Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:32:46Z",
+    "end": "2026-08-29T00:34:47Z"
+   },
+   "deviation": 86.243
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on shipping",
+   "service": "shipping",
+   "baseline": {
+    "request_rate_per_s": 0.1833,
+    "window": {
+     "start": "2026-08-29T00:31:46Z",
+     "end": "2026-08-29T00:32:46Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0165,
+    "rate_ceiling_per_s": 0.0183,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 19.25,
+    "min_expected_calls": 5,
+    "samples_in_window": 9,
+    "window": {
+     "start": "2026-08-29T00:32:46Z",
+     "end": "2026-08-29T00:34:47Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:32:46Z",
+    "end": "2026-08-29T00:34:47Z"
+   },
+   "deviation": 19.25,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on quote",
+   "service": "quote",
+   "baseline": {
+    "request_rate_per_s": 0.1333,
+    "window": {
+     "start": "2026-08-29T00:31:46Z",
+     "end": "2026-08-29T00:32:46Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0083,
+    "rate_ceiling_per_s": 0.0133,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 14.0,
+    "min_expected_calls": 5,
+    "samples_in_window": 9,
+    "window": {
+     "start": "2026-08-29T00:32:46Z",
+     "end": "2026-08-29T00:34:47Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:32:46Z",
+    "end": "2026-08-29T00:34:47Z"
+   },
+   "deviation": 14.0,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on payment",
+   "service": "payment",
+   "baseline": {
+    "request_rate_per_s": 0.0833,
+    "window": {
+     "start": "2026-08-29T00:31:46Z",
+     "end": "2026-08-29T00:32:46Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0083,
+    "rate_ceiling_per_s": 0.0083,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 8.75,
+    "min_expected_calls": 5,
+    "samples_in_window": 9,
+    "window": {
+     "start": "2026-08-29T00:32:46Z",
+     "end": "2026-08-29T00:34:47Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:32:46Z",
+    "end": "2026-08-29T00:34:47Z"
+   },
+   "deviation": 8.75,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "method_error_rate_jump",
+   "message": "elevated error rate on frontend/GET /api/shipping",
+   "service": "frontend",
+   "operation": "GET /api/shipping",
+   "baseline": {
+    "error_count": 0.0,
+    "error_count_scaled_to_inject": 0.0,
+    "request_rate_per_s": 0.1,
+    "window": {
+     "start": "2026-08-29T00:31:46Z",
+     "end": "2026-08-29T00:32:46Z"
+    }
+   },
+   "observed": {
+    "error_count": 5.0,
+    "threshold_N": 5,
+    "window": {
+     "start": "2026-08-29T00:32:46Z",
+     "end": "2026-08-29T00:34:47Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:32:46Z",
+    "end": "2026-08-29T00:34:47Z"
+   },
+   "deviation": 5.0
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/POST",
+   "service": "frontend-proxy",
+   "operation": "POST",
+   "baseline": {
+    "p95_ms": 3987.5,
+    "call_count": 32.0,
+    "window": {
+     "start": "2026-08-29T00:31:46Z",
+     "end": "2026-08-29T00:32:46Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 4925.0,
+    "delta_ms": 937.5,
+    "ratio": 1.235,
+    "call_count": 58.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "absolute",
+    "window": {
+     "start": "2026-08-29T00:32:46Z",
+     "end": "2026-08-29T00:34:47Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:32:46Z",
+    "end": "2026-08-29T00:34:47Z"
+   },
+   "deviation": 1.875
+  }
+ ],
+ "no_alert": false,
+ "card_id": "blackhole-shipping-01"
+}

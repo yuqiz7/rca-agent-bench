@@ -1,0 +1,151 @@
+{
+ "card_id": "blackhole-payment-01",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-29T00:12:31Z",
+   "end": "2026-08-29T00:17:32Z"
+  },
+  "detected_at": "2026-08-29T00:23:24Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/POST /api/checkout",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 96.25,
+     "call_count": 12.0,
+     "window": {
+      "start": "2026-08-29T00:11:31Z",
+      "end": "2026-08-29T00:12:31Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14903.75,
+     "ratio": 155.844,
+     "call_count": 15.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:12:31Z",
+      "end": "2026-08-29T00:17:32Z"
+     }
+    },
+    "deviation": 155.844
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on payment",
+    "service": "payment",
+    "baseline": {
+     "request_rate_per_s": 0.1167,
+     "window": {
+      "start": "2026-08-29T00:11:31Z",
+      "end": "2026-08-29T00:12:31Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.0117,
+     "consecutive_zero_samples": 20,
+     "zero_span_s": 300,
+     "expected_calls_in_zero_span": 35.0,
+     "min_expected_calls": 5,
+     "samples_in_window": 21,
+     "window": {
+      "start": "2026-08-29T00:12:31Z",
+      "end": "2026-08-29T00:17:32Z"
+     }
+    },
+    "deviation": 35.0
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on checkout",
+    "service": "checkout",
+    "baseline": {
+     "request_rate_per_s": 0.1,
+     "window": {
+      "start": "2026-08-29T00:11:31Z",
+      "end": "2026-08-29T00:12:31Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.01,
+     "consecutive_zero_samples": 20,
+     "zero_span_s": 300,
+     "expected_calls_in_zero_span": 30.0,
+     "min_expected_calls": 5,
+     "samples_in_window": 21,
+     "window": {
+      "start": "2026-08-29T00:12:31Z",
+      "end": "2026-08-29T00:17:32Z"
+     }
+    },
+    "deviation": 30.0
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on email",
+    "service": "email",
+    "baseline": {
+     "request_rate_per_s": 0.1,
+     "window": {
+      "start": "2026-08-29T00:11:31Z",
+      "end": "2026-08-29T00:12:31Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.01,
+     "consecutive_zero_samples": 20,
+     "zero_span_s": 300,
+     "expected_calls_in_zero_span": 30.0,
+     "min_expected_calls": 5,
+     "samples_in_window": 21,
+     "window": {
+      "start": "2026-08-29T00:12:31Z",
+      "end": "2026-08-29T00:17:32Z"
+     }
+    },
+    "deviation": 30.0
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend-proxy/POST",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 4250.0,
+     "call_count": 39.0,
+     "window": {
+      "start": "2026-08-29T00:11:31Z",
+      "end": "2026-08-29T00:12:31Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 10750.0,
+     "ratio": 3.529,
+     "call_count": 156.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:12:31Z",
+      "end": "2026-08-29T00:17:32Z"
+     }
+    },
+    "deviation": 21.5
+   }
+  ]
+ },
+ "evidence_dir": "evidence/blackhole-payment-01",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

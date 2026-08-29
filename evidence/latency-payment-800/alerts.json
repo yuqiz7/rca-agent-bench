@@ -1,0 +1,102 @@
+{
+ "detected_at": "2026-08-29T00:04:45Z",
+ "window": {
+  "start": "2026-08-28T23:53:55Z",
+  "end": "2026-08-28T23:58:55Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-28T23:51:55Z",
+   "end": "2026-08-29T00:03:55Z"
+  },
+  "baseline": {
+   "start": "2026-08-28T23:52:55Z",
+   "end": "2026-08-28T23:53:55Z"
+  },
+  "inject": {
+   "start": "2026-08-28T23:53:55Z",
+   "end": "2026-08-28T23:58:55Z"
+  },
+  "recover": {
+   "start": "2026-08-28T23:58:55Z",
+   "end": "2026-08-29T00:01:25Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on checkout",
+   "service": "checkout",
+   "baseline": {
+    "p95_ms": 48.0,
+    "window": {
+     "start": "2026-08-28T23:52:55Z",
+     "end": "2026-08-28T23:53:55Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 990.0,
+    "delta_ms": 942.0,
+    "ratio": 20.625,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T23:53:55Z",
+     "end": "2026-08-28T23:58:55Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T23:53:55Z",
+    "end": "2026-08-28T23:58:55Z"
+   },
+   "deviation": 20.625
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "p95_ms": 92.5,
+    "call_count": 6.0,
+    "window": {
+     "start": "2026-08-28T23:52:55Z",
+     "end": "2026-08-28T23:53:55Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 990.0,
+    "delta_ms": 897.5,
+    "ratio": 10.703,
+    "call_count": 36.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-28T23:53:55Z",
+     "end": "2026-08-28T23:58:55Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-28T23:53:55Z",
+    "end": "2026-08-28T23:58:55Z"
+   },
+   "deviation": 10.703
+  }
+ ],
+ "no_alert": false,
+ "card_id": "latency-payment-800"
+}

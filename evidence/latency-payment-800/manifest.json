@@ -1,0 +1,88 @@
+{
+ "card_id": "latency-payment-800",
+ "packed_at": "2026-08-29T00:04:45Z",
+ "window": {
+  "start": "2026-08-28T23:51:55Z",
+  "end": "2026-08-29T00:03:55Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-28T23:51:55Z",
+   "end": "2026-08-29T00:03:55Z"
+  },
+  "baseline": {
+   "start": "2026-08-28T23:52:55Z",
+   "end": "2026-08-28T23:53:55Z"
+  },
+  "inject": {
+   "start": "2026-08-28T23:53:55Z",
+   "end": "2026-08-28T23:58:55Z"
+  },
+  "recover": {
+   "start": "2026-08-28T23:58:55Z",
+   "end": "2026-08-29T00:01:25Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/latency-payment-800/logs.jsonl",
+   "bytes": 5227891,
+   "sha256": "2a9d144b191d9efea046be986ecf955efc46895beeff21cd384f85e893ccabf9"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/latency-payment-800/metrics.json",
+   "bytes": 561731,
+   "sha256": "2879091478358df23b56866a711f5932765c18ff7754bf9f4b42e25fe7da4314"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/latency-payment-800/traces.json",
+   "bytes": 13373589,
+   "sha256": "2b9cfbef64d1312fe5e2fa627d2f97cf175b4a7152ebb4d4a9170dd2707ed0d6"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/latency-payment-800/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/latency-payment-800/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 15878,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 218
+  },
+  "traces.json": {
+   "spans": 46954,
+   "limit_hit": true,
+   "services_hitting_limit": [
+    "frontend-proxy"
+   ]
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}

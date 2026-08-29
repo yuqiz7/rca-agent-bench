@@ -1,0 +1,200 @@
+{
+ "detected_at": "2026-08-29T00:23:24Z",
+ "window": {
+  "start": "2026-08-29T00:12:31Z",
+  "end": "2026-08-29T00:17:32Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-29T00:10:31Z",
+   "end": "2026-08-29T00:22:32Z"
+  },
+  "baseline": {
+   "start": "2026-08-29T00:11:31Z",
+   "end": "2026-08-29T00:12:31Z"
+  },
+  "inject": {
+   "start": "2026-08-29T00:12:31Z",
+   "end": "2026-08-29T00:17:32Z"
+  },
+  "recover": {
+   "start": "2026-08-29T00:17:32Z",
+   "end": "2026-08-29T00:20:02Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "p95_ms": 96.25,
+    "call_count": 12.0,
+    "window": {
+     "start": "2026-08-29T00:11:31Z",
+     "end": "2026-08-29T00:12:31Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 14903.75,
+    "ratio": 155.844,
+    "call_count": 15.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-29T00:12:31Z",
+     "end": "2026-08-29T00:17:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:12:31Z",
+    "end": "2026-08-29T00:17:32Z"
+   },
+   "deviation": 155.844
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on payment",
+   "service": "payment",
+   "baseline": {
+    "request_rate_per_s": 0.1167,
+    "window": {
+     "start": "2026-08-29T00:11:31Z",
+     "end": "2026-08-29T00:12:31Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0117,
+    "consecutive_zero_samples": 20,
+    "zero_span_s": 300,
+    "expected_calls_in_zero_span": 35.0,
+    "min_expected_calls": 5,
+    "samples_in_window": 21,
+    "window": {
+     "start": "2026-08-29T00:12:31Z",
+     "end": "2026-08-29T00:17:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:12:31Z",
+    "end": "2026-08-29T00:17:32Z"
+   },
+   "deviation": 35.0,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on checkout",
+   "service": "checkout",
+   "baseline": {
+    "request_rate_per_s": 0.1,
+    "window": {
+     "start": "2026-08-29T00:11:31Z",
+     "end": "2026-08-29T00:12:31Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.01,
+    "consecutive_zero_samples": 20,
+    "zero_span_s": 300,
+    "expected_calls_in_zero_span": 30.0,
+    "min_expected_calls": 5,
+    "samples_in_window": 21,
+    "window": {
+     "start": "2026-08-29T00:12:31Z",
+     "end": "2026-08-29T00:17:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:12:31Z",
+    "end": "2026-08-29T00:17:32Z"
+   },
+   "deviation": 30.0,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on email",
+   "service": "email",
+   "baseline": {
+    "request_rate_per_s": 0.1,
+    "window": {
+     "start": "2026-08-29T00:11:31Z",
+     "end": "2026-08-29T00:12:31Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.01,
+    "consecutive_zero_samples": 20,
+    "zero_span_s": 300,
+    "expected_calls_in_zero_span": 30.0,
+    "min_expected_calls": 5,
+    "samples_in_window": 21,
+    "window": {
+     "start": "2026-08-29T00:12:31Z",
+     "end": "2026-08-29T00:17:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:12:31Z",
+    "end": "2026-08-29T00:17:32Z"
+   },
+   "deviation": 30.0,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/POST",
+   "service": "frontend-proxy",
+   "operation": "POST",
+   "baseline": {
+    "p95_ms": 4250.0,
+    "call_count": 39.0,
+    "window": {
+     "start": "2026-08-29T00:11:31Z",
+     "end": "2026-08-29T00:12:31Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 10750.0,
+    "ratio": 3.529,
+    "call_count": 156.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-29T00:12:31Z",
+     "end": "2026-08-29T00:17:32Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:12:31Z",
+    "end": "2026-08-29T00:17:32Z"
+   },
+   "deviation": 21.5
+  }
+ ],
+ "no_alert": false,
+ "card_id": "blackhole-payment-01"
+}

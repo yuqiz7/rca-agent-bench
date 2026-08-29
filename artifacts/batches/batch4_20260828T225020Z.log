@@ -1,0 +1,77 @@
+[2026-08-28T22:50:20Z] batch batch4_20260828T225020Z start; 14 cycles -> scripts/out/batch4_20260828T225020Z
+[2026-08-28T22:50:20Z] cycle 1 delay_outbound/quote tier=card param=800 t0=2026-08-28T22:50:20Z
+[2026-08-28T22:54:50Z] cycle 1 settle 150s -> harvest at 2026-08-28T22:57:20Z
+[2026-08-28T22:57:20Z] cycle 1 baseline(300s)=0.126667/s inject=0.158333/s after=0.116667/s
+[2026-08-28T22:57:47Z] cycle 1 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T22:57:59Z] card latency-quote-800: packed 5 files, 5 alerts
+[2026-08-28T22:57:59Z] cycle 2 kill_container/payment tier=card param=None t0=2026-08-28T22:57:59Z
+[2026-08-28T23:06:30Z] cycle 2 settle 150s -> harvest at 2026-08-28T23:09:00Z
+[2026-08-28T23:09:01Z] cycle 2 baseline(300s)=0.05/s inject=0.0/s after=0.05/s
+[2026-08-28T23:09:32Z] cycle 2 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T23:09:49Z] card crash-payment-01: packed 5 files, 5 alerts
+[2026-08-28T23:09:49Z] cycle 3 delay_outbound/shipping tier=card param=3000 t0=2026-08-28T23:09:49Z
+[2026-08-28T23:13:59Z] cycle 3 settle 150s -> harvest at 2026-08-28T23:16:29Z
+[2026-08-28T23:16:29Z] cycle 3 baseline(300s)=0.19/s inject=0.141667/s after=0.133333/s
+[2026-08-28T23:16:46Z] cycle 3 done injected=True symptom=False recovered=True residue_clean=True
+[2026-08-28T23:16:46Z] card latency-shipping-3000: probe gate FAILED, not packing
+[2026-08-28T23:16:46Z] card latency-shipping-3000: FAILED (probe gate failed); streak 1/3, continuing with the next card
+[2026-08-28T23:16:46Z] cycle 4 delay_outbound/ad tier=card param=800 t0=2026-08-28T23:16:46Z
+[2026-08-28T23:20:46Z] cycle 4 settle 150s -> harvest at 2026-08-28T23:23:16Z
+[2026-08-28T23:23:16Z] cycle 4 baseline(300s)=0.2/s inject=0.183333/s after=0.133333/s
+[2026-08-28T23:23:33Z] cycle 4 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T23:23:44Z] card latency-ad-800: packed 5 files, 1 alerts
+[2026-08-28T23:23:44Z] cycle 5 drop_inbound/valkey-cart tier=card param=None t0=2026-08-28T23:23:44Z
+[2026-08-28T23:29:14Z] cycle 5 settle 150s -> harvest at 2026-08-28T23:31:44Z
+[2026-08-28T23:31:44Z] cycle 5 baseline(300s)=None/s inject=None/s after=None/s
+[2026-08-28T23:32:03Z] cycle 5 done injected=True symptom=False recovered=False residue_clean=True
+[2026-08-28T23:32:03Z] card blackhole-valkey-cart-01: probe gate FAILED, not packing
+[2026-08-28T23:32:03Z] card blackhole-valkey-cart-01: FAILED (probe gate failed); streak 1/3, continuing with the next card
+[2026-08-28T23:32:03Z] cycle 6 delay_outbound/recommendation tier=card param=3000 t0=2026-08-28T23:32:03Z
+[2026-08-28T23:36:03Z] cycle 6 settle 150s -> harvest at 2026-08-28T23:38:33Z
+[2026-08-28T23:38:33Z] cycle 6 baseline(300s)=0.426667/s inject=0.4/s after=0.333333/s
+[2026-08-28T23:38:50Z] cycle 6 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T23:39:00Z] card latency-recommendation-3000: packed 5 files, 4 alerts
+[2026-08-28T23:39:00Z] cycle 7 kill_container/shipping tier=card param=None t0=2026-08-28T23:39:00Z
+[2026-08-28T23:43:11Z] cycle 7 settle 150s -> harvest at 2026-08-28T23:45:41Z
+[2026-08-28T23:45:41Z] cycle 7 baseline(300s)=0.103333/s inject=0.0/s after=0.133333/s
+[2026-08-28T23:45:58Z] cycle 7 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-28T23:46:08Z] card crash-shipping-01: packed 5 files, 6 alerts
+[2026-08-28T23:46:08Z] cycle 8 drop_inbound/ad tier=card param=None t0=2026-08-28T23:46:08Z
+[2026-08-28T23:50:08Z] cycle 8 settle 150s -> harvest at 2026-08-28T23:52:38Z
+[2026-08-28T23:52:38Z] cycle 8 baseline(300s)=0.21/s inject=0.0/s after=0.0/s
+[2026-08-28T23:52:55Z] cycle 8 done injected=True symptom=True recovered=False residue_clean=True
+[2026-08-28T23:52:55Z] card blackhole-ad-01: probe gate FAILED, not packing
+[2026-08-28T23:52:55Z] card blackhole-ad-01: FAILED (probe gate failed); streak 1/3, continuing with the next card
+[2026-08-28T23:52:55Z] cycle 9 delay_outbound/payment tier=card param=800 t0=2026-08-28T23:52:55Z
+[2026-08-29T00:01:25Z] cycle 9 settle 150s -> harvest at 2026-08-29T00:03:55Z
+[2026-08-29T00:03:55Z] cycle 9 baseline(300s)=0.036667/s inject=0.056667/s after=0.05/s
+[2026-08-29T00:04:28Z] cycle 9 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-29T00:04:45Z] card latency-payment-800: packed 5 files, 2 alerts
+[2026-08-29T00:04:45Z] cycle 10 drop_inbound/recommendation tier=card param=None t0=2026-08-29T00:04:45Z
+[2026-08-29T00:08:45Z] cycle 10 settle 150s -> harvest at 2026-08-29T00:11:15Z
+[2026-08-29T00:11:15Z] cycle 10 baseline(300s)=0.42/s inject=0.058333/s after=0.0/s
+[2026-08-29T00:11:31Z] cycle 10 done injected=True symptom=True recovered=False residue_clean=True
+[2026-08-29T00:11:31Z] card blackhole-recommendation-01: probe gate FAILED, not packing
+[2026-08-29T00:11:31Z] card blackhole-recommendation-01: FAILED (probe gate failed); streak 1/3, continuing with the next card
+[2026-08-29T00:11:31Z] cycle 11 drop_inbound/payment tier=card param=None t0=2026-08-29T00:11:31Z
+[2026-08-29T00:20:02Z] cycle 11 settle 150s -> harvest at 2026-08-29T00:22:32Z
+[2026-08-29T00:22:32Z] cycle 11 baseline(300s)=0.07/s inject=0.0/s after=0.191667/s
+[2026-08-29T00:23:07Z] cycle 11 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-29T00:23:24Z] card blackhole-payment-01: packed 5 files, 5 alerts
+[2026-08-29T00:23:24Z] cycle 12 delay_outbound/valkey-cart tier=card param=800 t0=2026-08-29T00:23:24Z
+[2026-08-29T00:28:54Z] cycle 12 settle 150s -> harvest at 2026-08-29T00:31:24Z
+[2026-08-29T00:31:24Z] cycle 12 baseline(300s)=None/s inject=None/s after=None/s
+[2026-08-29T00:31:46Z] cycle 12 done injected=True symptom=False recovered=False residue_clean=True
+[2026-08-29T00:31:46Z] card latency-valkey-cart-800: probe gate FAILED, not packing
+[2026-08-29T00:31:46Z] card latency-valkey-cart-800: FAILED (probe gate failed); streak 1/3, continuing with the next card
+[2026-08-29T00:31:46Z] cycle 13 drop_inbound/shipping tier=card param=None t0=2026-08-29T00:31:46Z
+[2026-08-29T00:35:57Z] cycle 13 settle 150s -> harvest at 2026-08-29T00:38:27Z
+[2026-08-29T00:38:27Z] cycle 13 baseline(300s)=0.176667/s inject=0.016667/s after=0.266667/s
+[2026-08-29T00:38:44Z] cycle 13 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-29T00:38:55Z] card blackhole-shipping-01: packed 5 files, 8 alerts
+[2026-08-29T00:38:55Z] cycle 14 delay_outbound/astronomy-db tier=card param=3000 t0=2026-08-29T00:38:55Z
+[2026-08-29T00:42:56Z] cycle 14 settle 150s -> harvest at 2026-08-29T00:45:26Z
+[2026-08-29T00:45:26Z] cycle 14 baseline(300s)=None/s inject=None/s after=None/s
+[2026-08-29T00:45:39Z] cycle 14 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-29T00:45:48Z] card latency-astronomy-db-3000: packed 5 files, 12 alerts
+[2026-08-29T00:45:48Z] batch batch4_20260828T225020Z finished; summary at scripts/out/batch4_20260828T225020Z/summary.md

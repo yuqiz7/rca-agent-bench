@@ -1,0 +1,344 @@
+{
+ "card_id": "latency-astronomy-db-3000",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-29T00:39:55Z",
+   "end": "2026-08-29T00:41:56Z"
+  },
+  "detected_at": "2026-08-29T00:45:48Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on product-catalog/oteldemo.ProductCatalogService/ListProducts",
+    "service": "product-catalog",
+    "baseline": {
+     "p95_ms": 3.67,
+     "call_count": 28.0,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14996.33,
+     "ratio": 4081.633,
+     "call_count": 40.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 4081.633
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on recommendation/oteldemo.RecommendationService/ListRecommendations",
+    "service": "recommendation",
+    "baseline": {
+     "p95_ms": 7.3,
+     "call_count": 25.0,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14992.7,
+     "ratio": 2054.795,
+     "call_count": 39.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 2054.795
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on recommendation",
+    "service": "recommendation",
+    "baseline": {
+     "p95_ms": 7.3,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14992.7,
+     "ratio": 2054.795,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 2054.795
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/GET /api/products/index",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 9.4,
+     "call_count": 12.0,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 4840.6,
+     "ratio": 515.957,
+     "call_count": 5.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 515.957
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/GET /api/products/[productId]/index",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 30.0,
+     "call_count": 76.0,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14970.0,
+     "ratio": 500.0,
+     "call_count": 34.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 500.0
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on product-catalog",
+    "service": "product-catalog",
+    "baseline": {
+     "p95_ms": 38.83,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14961.17,
+     "ratio": 386.266,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 386.266
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on frontend",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 39.22,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14960.78,
+     "ratio": 382.47,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 382.47
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on product-catalog/oteldemo.ProductCatalogService/GetProduct",
+    "service": "product-catalog",
+    "baseline": {
+     "p95_ms": 40.86,
+     "call_count": 148.0,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14959.14,
+     "ratio": 367.133,
+     "call_count": 155.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 367.133
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/GET /api/recommendations",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 48.0,
+     "call_count": 56.0,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14952.0,
+     "ratio": 312.5,
+     "call_count": 69.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 312.5
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend-proxy/GET",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 36.79,
+     "call_count": 408.0,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4350.0,
+     "delta_ms": 4313.21,
+     "ratio": 118.231,
+     "call_count": 452.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 118.231
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on frontend-proxy",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 41.76,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4431.25,
+     "delta_ms": 4389.49,
+     "ratio": 106.1,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 106.1
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on shipping",
+    "service": "shipping",
+    "baseline": {
+     "request_rate_per_s": 0.1667,
+     "window": {
+      "start": "2026-08-29T00:38:55Z",
+      "end": "2026-08-29T00:39:55Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0165,
+     "rate_ceiling_per_s": 0.0167,
+     "consecutive_zero_samples": 7,
+     "zero_span_s": 105,
+     "expected_calls_in_zero_span": 17.5,
+     "min_expected_calls": 5,
+     "samples_in_window": 9,
+     "window": {
+      "start": "2026-08-29T00:39:55Z",
+      "end": "2026-08-29T00:41:56Z"
+     }
+    },
+    "deviation": 17.5
+   }
+  ]
+ },
+ "evidence_dir": "evidence/latency-astronomy-db-3000",
+ "trigger": "Monitoring detected an anomaly in the system."
+}
