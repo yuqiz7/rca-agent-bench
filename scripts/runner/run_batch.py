@@ -72,6 +72,11 @@ LATENCY_MAX_ERROR_FRAC = 0.10
 # §5 未给各类 recovered 的统一数值判据，此处按"symptom 判定为假 + caller span
 # 数回到基线 50% 以上"实现，待 ⑤ 定稿后回填 §5。
 RECOVER_SPAN_FRAC = 0.50
+# The collector's spanmetrics connector aggregates and exports on an interval, so
+# its counters step rather than climb. A rate read off a window shorter than this
+# can be 0.0 purely because no export landed inside it. Measured on batch 4:
+# counters flat for 90-105 s after a recover window opened, then stepping.
+SPANMETRICS_EXPORT_S = 60
 
 # ── 判据分母（决策 022）────────────────────────────────────────────────────
 # 基线速率与基线 span 数不再取自 runner 那 60 s 静默窗，改从 Prometheus 的
@@ -244,7 +249,10 @@ def prom_rate_in_window(svc, t0, t1):
         return None
     vals = [(float(ts), float(v)) for ts, v in res[0]["values"]]
     if len(vals) < 2:
-        return 0.0
+        # Fewer than two samples means the rate is UNMEASURABLE, not zero. This
+        # returned 0.0 and the callers could not tell the difference, which is the
+        # same None-vs-zero shape as F-6 one layer down (决策 029).
+        return None
     total = 0.0
     for (_, a), (_, b) in zip(vals, vals[1:]):
         total += (b - a) if b >= a else b
@@ -408,7 +416,7 @@ def judge_targeting(flag, variant, base, during, context_value):
     }
 
 
-def target_side_arm(svc, prom_base, inject_rate, inject_s):
+def target_side_arm(svc, prom_base, inject_rate, inject_s, window_s=None):
     """crash / blackhole 的靶子侧判据（决策 022）。返回 (pass|None, detail)。
 
     None = 这一档不适用（无 SDK 靶子没有 server 系列，或 Prometheus 没数），
@@ -430,6 +438,22 @@ def target_side_arm(svc, prom_base, inject_rate, inject_s):
                       "why": "baseline rate too low for the silence to mean anything"}
     if inject_rate is None:
         return None, {"applicable": False, "why": "inject-window rate unavailable"}
+    # The spanmetrics counter is a step function: the collector aggregates and
+    # exports on its own interval, so between two exports the counter is flat and
+    # a rate computed off it is exactly 0.0 no matter how much traffic there was.
+    # Measured on batch 4: after the recover window opened the counter sat still
+    # for ~90 s (ad) and ~105 s (recommendation) and only then stepped, while
+    # Jaeger already showed 5 and 9 caller spans. Both cards were failed by this
+    # arm reporting "the target is silent" over a 30 s window.
+    #
+    # So a window shorter than one export interval cannot support this arm at all,
+    # and saying so is different from saying the target was quiet (决策 029).
+    if window_s is not None and window_s < SPANMETRICS_EXPORT_S:
+        return None, {"applicable": False, "window_s": window_s,
+                      "min_window_s": SPANMETRICS_EXPORT_S,
+                      "why": "window is shorter than one spanmetrics export "
+                             "interval; a flat counter here means 'not yet "
+                             "exported', not 'no traffic'"}
     ceiling = brate * TARGET_RATE_FRAC
     return (inject_rate <= ceiling), {
         "applicable": True,
@@ -506,15 +530,20 @@ def judge_symptom(cls, base, during, param, context_value=None,
         rate_src = "prometheus_300s"
         if brate is None:
             brate, rate_src = win_rate, "baseline_window_fallback"
-        tgt_ok, tgt_d = target_side_arm(svc, prom_base, inject_rate, inject_s)
+        tgt_ok, tgt_d = target_side_arm(svc, prom_base, inject_rate, inject_s,
+                                        window_s=inject_s)
         # 无 SDK 靶子的第三、第四条臂（决策 023）。对有 SDK 的靶子返回 None，
         # 不参与 or —— 判据在别的靶子上一个字没变。
         nosdk_ok, nosdk_d = no_sdk_arms(svc, bt, dt_, bsec, inject_s)
 
         if cls == "crash":
-            got = dt_.get("caller_error_spans") or 0
+            # None means the caller edge was not collected; 0 means it was
+            # collected and carried no errors. Folding the first into the second
+            # is what let a Jaeger blip read as "no symptom" (决策 029).
+            raw_got = dt_.get("caller_error_spans")
+            got = raw_got or 0
             n = max(CRASH_N_FLOOR, math.ceil(CRASH_N_FRAC * brate * inject_s))
-            caller_ok = got > n
+            caller_ok = None if raw_got is None else (got > n)
             detail = {
                 "snapshot": SYMPTOM_SNAPSHOT[cls],
                 "rule": f"EITHER caller_error_spans > N (N = max({CRASH_N_FLOOR}, "
@@ -525,34 +554,64 @@ def judge_symptom(cls, base, during, param, context_value=None,
                 "baseline_rate_source": rate_src,
                 "baseline_rate_from_window": round(win_rate, 6),
                 "inject_s": inject_s,
-                "during_error_spans": got,
+                "during_error_spans": raw_got,
                 "baseline_error_spans": bt.get("caller_error_spans"),
+                "caller_arm_applicable": raw_got is not None,
+                "caller_arm_why": (None if raw_got is not None else
+                                   "caller edge not collected; cannot tell zero "
+                                   "errors from an uncollected edge"),
                 "caller_arm_pass": caller_ok, "target_arm": tgt_d,
                 "target_arm_pass": tgt_ok,
                 "no_sdk_arms": nosdk_d, "no_sdk_arms_pass": nosdk_ok}
         else:
-            b = bt.get("caller_spans_total") or 0
-            d = dt_.get("caller_spans_total") or 0
+            raw_b, raw_d = bt.get("caller_spans_total"), dt_.get("caller_spans_total")
+            b, d = raw_b or 0, raw_d or 0
             thr = b * BLACKHOLE_SPAN_FRAC
-            caller_ok = (b > 0 and d < thr)
+            # b == 0 is ambiguous on its own -- an edge with no baseline traffic
+            # and an edge that was never matched look identical -- so the arm
+            # declines rather than reporting a failure it did not actually judge.
+            caller_ok = (None if (raw_b is None or raw_d is None or b == 0)
+                         else (d < thr))
             detail = {
                 "snapshot": SYMPTOM_SNAPSHOT[cls],
                 "rule": f"EITHER caller_spans_total < baseline x {BLACKHOLE_SPAN_FRAC} "
                         f"OR the target-side arm (§6 / 决策 022) "
                         f"OR the no-SDK step / edge-silence arms (§5 / 决策 023)",
-                "baseline_spans": b, "during_spans": d, "threshold": round(thr, 2),
+                "baseline_spans": raw_b, "during_spans": raw_d, "threshold": round(thr, 2),
+                "caller_arm_applicable": caller_ok is not None,
+                "caller_arm_why": (None if caller_ok is not None else
+                                   "no baseline caller edge; cannot tell a quiet "
+                                   "edge from an unmatched one"),
                 "baseline_rate_per_s": round(brate, 6),
                 "baseline_rate_source": rate_src,
                 "caller_arm_pass": caller_ok, "target_arm": tgt_d,
                 "target_arm_pass": tgt_ok,
                 "no_sdk_arms": nosdk_d, "no_sdk_arms_pass": nosdk_ok}
-        return (caller_ok or bool(tgt_ok) or bool(nosdk_ok)), detail
+        # An arm that could not be evaluated must not count as a failed arm. If
+        # none of the three could be evaluated, the whole judgement is undefined
+        # and returning None says so instead of inventing a verdict.
+        arms = [caller_ok, tgt_ok, nosdk_ok]
+        if any(a is True for a in arms):
+            return True, detail
+        if all(a is None for a in arms):
+            detail["undecidable"] = ("no arm could be evaluated: caller edge, "
+                                     "target series and no-SDK arms all unavailable")
+            return None, detail
+        return False, detail
     if cls == "misconfig":
         flag, variant, ratio = parse_ratio(param)
         if flag in FLAG_TARGETING_ID_KEY:
             return judge_targeting(flag, variant, base, during, context_value)
         method = FLAG_METHOD.get(flag)
         bse, dse = bt.get("self_edges") or {}, dt_.get("self_edges") or {}
+        # The target's own server spans are the whole basis of this arm. If they
+        # were not collected there is nothing to judge, and saying "no symptom"
+        # would be a verdict drawn from an absent measurement (决策 029).
+        if dt_.get("self_edges") is None:
+            return None, {"snapshot": SYMPTOM_SNAPSHOT[cls], "applicable": False,
+                          "why": "target self_edges not collected; cannot tell "
+                                 "zero self errors from an uncollected target",
+                          "collection_error": during["traces"].get("error")}
         dm = (dse.get("server_by_method") or {}).get(method) or {}
         calls = dm.get("spans") or 0
         got = dm.get("error_spans") or 0
@@ -632,11 +691,28 @@ def judge_recovered(cls, base, after, param, prom_base=None, after_rate=None, sv
     （实测 crash 18 vs 53、blackhole 32 vs 66，两次都是窗长差造成的假失败）。
     """
     if cls == "misconfig":
-        ase = after["traces"].get("self_edges") or {}
-        got = ase.get("server_error_spans") or 0
+        # THE false pass (决策 028 audit, 决策 029 fix). This read
+        # `server_error_spans or 0` and returned `got == 0`, so a failed trace
+        # collection became "zero errors in the recover window" and the card was
+        # ADMITTED. Every other None-vs-zero defect in this file costs a re-run;
+        # this one put a card into the library on evidence nobody had, and nothing
+        # downstream ever re-checks an admitted card.
+        raw = after["traces"].get("self_edges")
+        if raw is None:
+            return None, {"rule": "misconfig recovered: 恢复窗 self server 报错 == 0（决策 018）",
+                          "applicable": False,
+                          "why": "recover-window self_edges not collected; refusing "
+                                 "to certify recovery from an absent measurement",
+                          "collection_error": after["traces"].get("error")}
+        got = raw.get("server_error_spans")
+        if got is None:
+            return None, {"rule": "misconfig recovered: 恢复窗 self server 报错 == 0（决策 018）",
+                          "applicable": False,
+                          "why": "server_error_spans missing from the recover window",
+                          "collection_error": after["traces"].get("error")}
         return got == 0, {"rule": "misconfig recovered: 恢复窗 self server 报错 == 0（决策 018）",
                           "after_self_errors": got,
-                          "after_self_by_method": ase.get("server_by_method")}
+                          "after_self_by_method": raw.get("server_by_method")}
     if cls == "mem_leak":
         bm, am = base.get("memory") or {}, after.get("memory") or {}
         def rate(m, w):
@@ -656,21 +732,38 @@ def judge_recovered(cls, base, after, param, prom_base=None, after_rate=None, sv
     if sym_still is None:
         return None, {"rule": "待定：该类 symptom 规则未定，recovered 同样待定",
                       "symptom_detail": sd}
-    bs = (base["traces"].get("caller_spans_total") or 0)
-    as_ = (after["traces"].get("caller_spans_total") or 0)
+    raw_bs = base["traces"].get("caller_spans_total")
+    raw_as = after["traces"].get("caller_spans_total")
+    bs, as_ = raw_bs or 0, raw_as or 0
     bsec = base["window"]["seconds"] or 1
     asec = after["window"]["seconds"] or 1
     brate, arate = bs / bsec, as_ / asec
-    span_back = brate > 0 and arate >= brate * RECOVER_SPAN_FRAC
+    # None here means the recover-window edge was never collected. Treating that
+    # as a rate of zero reports a healthy service as not recovered (决策 029).
+    if raw_bs is None or raw_as is None:
+        span_back = None
+    else:
+        span_back = brate > 0 and arate >= brate * RECOVER_SPAN_FRAC
     arm = "caller_edge"
     # 「回到基线」和「变哑」是同一个零分母问题的两面：调用方边一条 span 都没有时，
     # span_back 恒为 false，卡就算完全恢复了也判不过（frontend 实测：symptom 靠靶子侧
     # 档通过，recovered 却因 brate=0 卡住）。决策 022 的分母换源同样适用于这一档。
     tgt_brate = (prom_base or {}).get("rate_per_s")
-    if not span_back and brate == 0 and tgt_brate:
+    if span_back is not True and brate == 0 and tgt_brate:
         arm = "target_side"
-        span_back = (after_rate is not None
-                     and after_rate >= tgt_brate * RECOVER_SPAN_FRAC)
+        # after_rate is None when the window was too short to measure a rate at
+        # all; that is not the same as the target still being silent.
+        span_back = (None if after_rate is None
+                     else after_rate >= tgt_brate * RECOVER_SPAN_FRAC)
+    if span_back is None:
+        return None, {"rule": "recovered undecidable: neither the caller edge nor "
+                              "the target series could be measured in the recover "
+                              "window（决策 029）",
+                      "arm": arm, "symptom_still_true": sym_still,
+                      "baseline_spans": raw_bs, "after_spans": raw_as,
+                      "target_baseline_rate_per_s": tgt_brate,
+                      "target_after_rate_per_s": after_rate,
+                      "collection_error": after["traces"].get("error")}
     return (not sym_still) and span_back, {
         "rule": f"symptom false in recover window AND (caller span RATE >= baseline rate x "
                 f"{RECOVER_SPAN_FRAC}, or -- when there is no caller edge -- the target's own "

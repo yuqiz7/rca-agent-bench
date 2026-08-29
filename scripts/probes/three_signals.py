@@ -176,6 +176,10 @@ def collect_traces(base, svc, t0, t1):
     query_list = callers + ([svc] if svc in all_svcs else [])
 
     spans, hit_limit = {}, []
+    # Provenance: which callers were actually reached, and by what means. Without
+    # this, "this edge has no spans" and "this edge was never matched" produce the
+    # identical summary -- the ambiguity behind both R3 and F-6 (决策 029).
+    edges_queried, match_methods = set(), set()
     down = {}                    # 下游边：svc 自己发出的 client span，按 peer 分组
     self_srv = {}                # svc 自己的 server span，按方法分组
     self_by_id = {}              # 同上，但按业务 id 标签分组：{tag_key: {value: {spanID: (sp, tags)}}}
@@ -232,8 +236,18 @@ def collect_traces(base, svc, t0, t1):
                 if st is None or not (us0 <= st <= us1):
                     continue
                 tags = {t["key"]: t.get("value") for t in sp.get("tags") or []}
-                if svc not in peer_names(tags):
+                names = peer_names(tags)
+                if svc not in names:
                     continue
+                # Record HOW this edge was recognised. An edge matched only after
+                # resolving an IP is one that the name comparison alone would have
+                # missed entirely -- which is the bug F-6 was, and the only way to
+                # notice the next variant of it is to see the mix change.
+                if any(str(tags.get(k)) == svc for k in PEER_KEYS):
+                    match_methods.add("name")
+                else:
+                    match_methods.add("ip_resolved")
+                edges_queried.add(owner)
                 spans[sp["spanID"]] = (sp, tags, owner)
 
     errs = []
@@ -312,6 +326,15 @@ def collect_traces(base, svc, t0, t1):
         "first_error_span_unix": first_err_ts / 1e6 if first_err_ts else None,
         "last_error_span_unix": last_err_ts / 1e6 if last_err_ts else None,
         "callers_queried": len(callers),
+        # The services actually asked about, so a later reader can tell a genuinely
+        # quiet edge from one that was never looked at.
+        "callers_queried_names": sorted(callers),
+        # The callers an edge to svc was actually found from, and how it was
+        # recognised: "name" (a peer tag equal to the service name), "ip_resolved"
+        # (only found after mapping a container IP back to a service). An edge set
+        # that is empty while callers_queried_names is not is the F-6 signature.
+        "caller_edges_queried": sorted(edges_queried),
+        "caller_match_method": sorted(match_methods) or None,
         "trace_limit_per_caller": TRACE_LIMIT_PER_CALLER,
         "callers_hitting_limit": hit_limit,
         # ── 以下为 2026-08-24 新增，供 runner 按 fault_schema §5 判三探针 ──
