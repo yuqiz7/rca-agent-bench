@@ -1,72 +1,69 @@
 #!/usr/bin/env python3
 """readme_check.py -- keep every number in README.md tied to a repo fact.
 
-README carries numbers that a reader will check against the repo, so none of them
-is typed by hand. Each one sits between markers:
+Two mechanisms, split by what GitHub's markdown parser tolerates.
 
-    <!-- GEN:key -->rendered text<!-- /GEN -->
+  BLOCK MARKERS. `<!-- GEN:key -->` and `<!-- /GEN -->` each alone on a line, one
+  blank line inside each of them, pure markdown between. Anything sharing a line
+  with an HTML comment starts an HTML block, and the markdown in that block --
+  images, bold, backticks -- renders as literal text. That is what the first
+  version of this file did to the badge row, so markers are now block-level only
+  and used for four things: the badge row, the hero table, the figure line and
+  the results table.
 
-`--check` recomputes every key and compares it with what README says, exit 1 on
-any mismatch. `--write` rewrites the marker bodies in place. This is the light
-version of the make_report.py --check precedent: same contract, no report.
+  INLINE VALUES. docs/readme_values.json maps a key to the exact phrase that must
+  appear somewhere in README ("45 in stock", "7 detector rules"). --check asserts
+  the phrase is there and that a superseded phrase is gone; --write rewrites the
+  old phrase into the new one. The prose carries no comments at all.
 
-Values are read from **HEAD, not the working tree** (`git show HEAD:<path>`).
-A batch runner writing scenarios/ or an eval writing artifacts/ moves those
-numbers minute by minute while it runs; README describes the committed repo, and
-CI checks out exactly that, so HEAD is the only source that makes --check mean
-the same thing on both sides. Untracked run directories are invisible here on
-purpose.
+Everything is read from HEAD, not the working tree (`git show HEAD:<path>`). A
+batch runner writing scenarios/ or an eval writing artifacts/ moves those numbers
+minute by minute; README describes the committed repo and CI checks out exactly
+that, so HEAD is the only source that makes --check mean the same thing on both
+sides.
 
-Two keys drift with every commit (`commits`, `code_loc`); they carry a tolerance
-and are rendered with a leading ~. `commits` is skipped in a shallow clone,
-where the count is an artifact of fetch depth.
+A few keys drift on every commit (repo scale, metered spend). They are rendered
+coarsely and carry a numeric tolerance, so an ordinary commit does not turn CI
+red; `commits` is skipped entirely in a shallow clone, where the count is an
+artifact of fetch depth.
 
-KEY SOURCES -- each line is the same locator docs/evidence_audit.md cites.
+KEY SOURCES -- each line is the locator docs/evidence_audit.md cites.
 
   containers            scripts/maintenance/wakeup.sh, the `[ "$RUNNING" = N ]` gate     (A1)
-  injectable_targets    docs/fault_schema.md, the `target_enum` code block               (A1)
-  primitive_scripts     count of scripts/primitives/*.sh                                 (A2)
-  fault_classes         distinct `class` in scripts/scenarios/recipe.csv                 (A2)
-  probe_gates           production.probe keys injected/symptom/recovered in scenarios/   (A4)
-  baseline_window_s     scripts/runner/run_batch.py BASELINE_LOOKBACK_S                  (A4)
-  recover_window_cards  recipe.csv rows whose cycle_override sets recover_s              (A4)
-  evidence_files        tracked files in evidence/<card>/ plus the gitignored generated ones (A5)
-  evidence_hashed       scripts/evidence/pack.py FIVE (the sha256-manifested subset)     (A5)
+  targets               docs/fault_schema.md, the `target_enum` code block               (A1)
+  primitives            count of scripts/primitives/*.sh                                 (A2)
+  classes               distinct `class` in scripts/scenarios/recipe.csv                 (A2)
+  baseline_window       scripts/runner/run_batch.py BASELINE_LOOKBACK_S                  (A4)
+  recover_cards         recipe.csv rows whose cycle_override sets recover_s              (A4)
+  evidence_files        tracked files in evidence/<card>/ plus the gitignored ones       (A5)
+  evidence_hashed       scripts/evidence/pack.py FIVE, the sha256-manifested subset      (A5)
   alert_rules           len(RULES) in scripts/evidence/detect.py                         (A6)
-  p95_floor_ms          scripts/evidence/detect.py METHOD_P95_MIN_DELTA_MS               (A6)
+  p95_floor             scripts/evidence/detect.py METHOD_P95_MIN_DELTA_MS               (A6)
   recipe_cards          rows in scripts/scenarios/recipe.csv                             (A3)
-  instock_cards         scenarios/*.yaml with production.probe.verdict == passed         (A3)
-  instock_by_class      same set, broken down by `class`                                 (A3)
-  valkey_blocked        recipe rows targeting valkey-cart that are not in stock          (O-P2-23)
-  eval_set_size         len(scripts/baselines/cardset_all43.json)                        (C4)
-  holdout_set_size      len(scripts/baselines/cardset_holdout16.json)                    (C3)
-  eval_card_points      100 / eval_set_size -- one card's weight in the table        (C3, C4)
-  holdout_card_points   100 / holdout_set_size                                       (C3, C4)
-  agent_model           scripts/agent/config.yaml models.primary                         (B1)
-  agent_tools           tool_schemas() names in scripts/agent/evidence_tools.py, minus submit (B1)
-  agent_guards          run_agent.py: 3 counters + 2 terminated breakers                 (B2)
-  max_steps             scripts/agent/config.yaml run.max_steps                          (B2)
-  cost_cap_usd          scripts/agent/config.yaml run.max_usd_per_card                   (B2)
-  devset_size           card count in artifacts/agent_runs/devset_20260828/summary.json  (B4)
-  devset_before/after   top-1 in devset_20260828 / devset_v2_20260828 report.md          (B4)
-  holdout16.<arm>.*     artifacts/agent_runs/merged_holdout16_20260906/report.md table   (C3, C5)
-  all43.<arm>.*         artifacts/agent_runs/merged_all43_20260906/report.md table       (C4, C5)
-  rules_overfit_*       baseline1.json of baselines_20260828 (class-aligned) vs
+  instock               scenarios/*.yaml with production.probe.verdict == passed         (A3)
+  instock_by_class      the same set, broken down by `class`                             (A3)
+  valkey_blocked        recipe rows targeting valkey-cart that are not in stock     (O-P2-23)
+  eval_set              len(scripts/baselines/cardset_all43.json)                        (C4)
+  holdout_set           len(scripts/baselines/cardset_holdout16.json)                    (C3)
+  card_points           100 / set size -- one card's weight in each table            (C3, C4)
+  model                 scripts/agent/config.yaml models.primary                         (B1)
+  tools                 tool_schemas() names in evidence_tools.py, minus submit          (B1)
+  guards                run_agent.py: 3 counters plus 2 `terminated` breakers            (B2)
+  max_steps, cost_cap   scripts/agent/config.yaml run.*                                  (B2)
+  devset, devset_move   artifacts/agent_runs/devset_20260828 and devset_v2_20260828      (B4)
+  badges, hero_*        merged_holdout16_20260906/report.md, the arm table           (C3, C5)
+  table_all43           merged_all43_20260906/report.md, the arm table               (C4, C5)
+  overfit_*             baseline1.json of baselines_20260828, class-aligned against
                         merged_holdout16_20260906, regraded with run_eval.grade's rule   (C6)
   ci_gates              `gate N:` steps in .github/workflows/ci.yml                      (D1)
-  audit_paths/fixes/replay  docs/probe_audit.md, the 结论 statistics line                (D2)
-  batch_hours/count     first-to-last timestamp of each artifacts/batches/*.log          (D4)
-  api_spend/api_runs    cost_usd of every per-card json under artifacts/agent_runs/,
+  audit_*               docs/probe_audit.md, the statistics line of the conclusion       (D2)
+  batches, machine      first-to-last timestamp of each artifacts/batches/*.log          (D4)
+  spend                 cost_usd of every per-card json under artifacts/agent_runs/,
                         plus each row of baseline1/baseline2.json, merged_* excluded     (E1)
-  badges                shields.io line built from cards / stock / holdout / gates / cost
-  figure_arms           markdown image line; the png itself is redrawn by make_figures.py
-  flowchart             the whole mermaid block, generated from the counts above
-  hero_*                holdout16 agent top-1, its gap over the single-shot arm, cost, p95 (C3, C5)
-  walkthrough_*         one frozen run json under artifacts/agent_runs/ plus the two
-                        baseline answers for the same card in merged_holdout16_20260906
-  commits               git rev-list --count HEAD (tolerance 5; skipped when shallow)    (E2)
-  code_loc              wc -l of scripts/*.py|sh, tests/*.py, tools/*.py at HEAD         (E2)
-  docs_loc              wc -l of docs/*.md at HEAD                                       (E2)
+  scale                 git rev-list --count HEAD, wc -l of the tracked code at HEAD     (E2)
+  f1_*                  the numbers in the F-1 heading of docs/open_items.md              (D3)
+  walkthrough_*         one frozen run json plus its card's ground truth
+  figure_arms           markdown image line; the png is redrawn by make_figures.py
 """
 import argparse
 import collections
@@ -82,15 +79,27 @@ import urllib.parse
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 README = os.path.join(REPO, "README.md")
+VALUES_JSON = os.path.join(REPO, "docs", "readme_values.json")
 
 MARKER = re.compile(r"<!-- GEN:([A-Za-z0-9_.]+) -->(.*?)<!-- /GEN -->", re.S)
+
+# The card the README walks through: on the holdout set, answered in 7 steps, and
+# wrong in both baselines. Chosen for the shape of the run, not for its score.
+WALKTHROUGH_CARD = "blackhole-shipping-01"
+WALKTHROUGH_RUN = "holdout11_agent_20260906"
+
+BADGE_GREY, BADGE_ACCENT = "555", "1f4e5f"
+
+# Keys whose value moves without anyone editing code. --check compares the first
+# number in them with slack instead of demanding the exact string.
+TOLERANCE = {"scale": 8.0, "spend": 2.0}
+SHALLOW_SKIP = {"scale"}
 
 
 # ---------------------------------------------------------------- git access
 
 def git(*args):
-    out = subprocess.run(["git", "-C", REPO] + list(args),
-                         capture_output=True, text=True)
+    out = subprocess.run(["git", "-C", REPO] + list(args), capture_output=True, text=True)
     if out.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)}: {out.stderr.strip()}")
     return out.stdout
@@ -117,7 +126,7 @@ def yaml_load(text):
     return yaml.safe_load(text)
 
 
-# ------------------------------------------------------------ small readers
+# ------------------------------------------------------------- small readers
 
 def _const(path, name, cast=float):
     m = re.search(rf"^{name}\s*=\s*([0-9.]+)", read(path), re.M)
@@ -134,13 +143,14 @@ _SCEN = None
 
 
 def scenarios():
-    """Every card at HEAD, parsed once."""
     global _SCEN
     if _SCEN is None:
         _SCEN = {}
         for p in ls("scenarios/"):
             if p.endswith(".yaml"):
-                _SCEN[os.path.basename(p)[:-5]] = yaml_load(read(p))
+                card = yaml_load(read(p))
+                if isinstance(card, dict) and "card_id" in card:
+                    _SCEN[card["card_id"]] = card
     return _SCEN
 
 
@@ -156,11 +166,12 @@ def config():
 # ------------------------------------------------------- eval report parsing
 
 ARM_KEYS = [("关键词", "rules"), ("单轮", "single_shot"), ("agent", "agent")]
+ARM_LABEL = {"rules": "rules, no model", "single_shot": "single-shot LLM", "agent": "agent"}
 
 
 def arm_key(name):
-    """Map a report's arm label to a stable key. A haiku arm gets a haiku_ prefix
-    so a cross-model report widens the key set instead of colliding with it."""
+    """Report label to stable key. A haiku arm gets a haiku_ prefix, so a
+    cross-configuration report widens the key set instead of colliding with it."""
     base = None
     for needle, key in ARM_KEYS:
         if needle in name:
@@ -171,10 +182,10 @@ def arm_key(name):
 
 
 def report_table(run_dir):
-    """The 六列 arm table of a comparison report: {arm_key: {metric: text}}."""
-    text = read(f"artifacts/agent_runs/{run_dir}/report.md")
-    body = text.split("## 四指标对照", 1)[1].split("\n## ", 1)[0]
-    out = {}
+    """The arm table of a comparison report: {arm_key: {metric: text}}."""
+    body = read(f"artifacts/agent_runs/{run_dir}/report.md")
+    body = body.split("## 四指标对照", 1)[1].split("\n## ", 1)[0]
+    out = collections.OrderedDict()
     for line in body.strip().split("\n"):
         if not line.startswith("|") or "---" in line or "top-1" in line:
             continue
@@ -189,10 +200,16 @@ def report_table(run_dir):
 
 
 def report_top1(run_dir):
-    """top-1 percentage from a single-arm agent report (the 四指标 block)."""
     text = read(f"artifacts/agent_runs/{run_dir}/report.md")
-    m = re.search(r"top-1[^|]*\|\s*([0-9.]+)%", text)
-    return float(m.group(1))
+    return float(re.search(r"top-1[^|]*\|\s*([0-9.]+)%", text).group(1))
+
+
+def pct_of(text):
+    return float(re.search(r"([0-9.]+)%", text).group(1))
+
+
+def usd_of(text):
+    return float(re.search(r"\$([0-9.]+)", text).group(1))
 
 
 # ------------------------------------------------------------ rules overfit
@@ -219,9 +236,9 @@ def baseline1(run_dir):
 
 
 def overfit():
-    """The rules arm on cards it was tuned on vs cards it has never seen, with the
-    27-card set restricted to the classes the holdout actually contains -- the
-    unaligned delta would count 'the holdout has no misconfig' as overfitting."""
+    """The rules arm on cards it was tuned on against cards it has never seen, the
+    27-card set restricted to the classes the holdout contains -- the unaligned
+    delta would count "the holdout has no misconfig" as overfitting."""
     held = grade_rows(baseline1("merged_holdout16_20260906"))
     classes = {c for _, c in held}
     seen = [g for g in grade_rows(baseline1("baselines_20260828")) if g[1] in classes]
@@ -234,7 +251,7 @@ def overfit():
             "bh_seen": (sum(bh_s), len(bh_s)), "bh_held": (sum(bh_h), len(bh_h))}
 
 
-# ----------------------------------------------------------------- spend, time
+# ---------------------------------------------------------------- spend, time
 
 def batch_logs():
     import datetime
@@ -254,7 +271,7 @@ def batch_logs():
 
 def api_spend():
     """Every metered single-card run: one json per agent card, one row per card in
-    each baseline arm. merged_* directories re-copy rows already counted."""
+    each baseline arm. merged_* re-copies rows already counted."""
     spend, runs = 0.0, 0
     for p in ls("artifacts/agent_runs/"):
         parts = p.split("/")
@@ -280,186 +297,176 @@ def loc(patterns):
     return total
 
 
-# ------------------------------------------------------------- hero, walkthrough
-
-# The card the README walks through. Chosen for being on the holdout set, answered
-# correctly in 7 steps, and wrong in both baselines -- not for being the best score.
-WALKTHROUGH_CARD = "blackhole-shipping-01"
-WALKTHROUGH_RUN = "holdout11_agent_20260906"
-
-BADGE_GREY, BADGE_ACCENT = "555", "1f4e5f"
-
-
-def pct_of(text):
-    return float(re.search(r"([0-9.]+)%", text).group(1))
-
+# ------------------------------------------------------------------- badges
 
 def shield(label, message, color):
-    """One shields.io static badge. `-` and `_` are escaped as shields requires."""
+    """One shields.io static badge. `-` and `_` escaped as shields requires."""
     def esc(t):
         return urllib.parse.quote(t.replace("-", "--").replace("_", "__"), safe="")
     return (f"![{label}](https://img.shields.io/badge/"
             f"{esc(label)}-{esc(message)}-{color}?style=flat-square)")
 
 
-def walkthrough(v):
-    """Summary numbers for the worked example, from the frozen run and the two
-    baseline answer files for the same card."""
-    run = json.loads(read(f"artifacts/agent_runs/{WALKTHROUGH_RUN}/{WALKTHROUGH_CARD}.json"))
-    gt = scenarios()[WALKTHROUGH_CARD]["ground_truth"]
-    out = {"walkthrough_card": WALKTHROUGH_CARD,
-           "walkthrough_steps": str(run["steps"]),
-           "walkthrough_tool_calls": str(sum(len(s["tool_calls"]) for s in run["transcript"])),
-           "walkthrough_wall": f"{run['wall_s']:.0f} s",
-           "walkthrough_cost": f"${run['cost_usd']:.3f}",
-           "walkthrough_truth": f"{gt['service']} / {gt['class']}",
-           "walkthrough_agent": "{service} / {fault_type}".format(**run["answer"])}
-    for name, key in (("baseline1", "walkthrough_rules"),
-                      ("baseline2", "walkthrough_single_shot")):
-        rows = json.loads(read(f"artifacts/agent_runs/merged_holdout16_20260906/{name}.json"))
-        row = next(r for r in rows if r["card_id"] == WALKTHROUGH_CARD)
-        out[key] = "{service} / {fault_type}".format(**row["answer"])
-    return out
-
-
 # --------------------------------------------------------------------- keys
 
 def compute():
-    v = {}
+    """Every value the README may quote: block bodies first, inline phrases after."""
     rows = recipe_rows()
-    cards = scenarios()
     stock = instock()
     cfg = config()
+    hold = report_table("merged_holdout16_20260906")
+    all43 = report_table("merged_all43_20260906")
+    o = overfit()
+    hours, batches = batch_logs()
+    spend, _runs = api_spend()
+    commits = int(git("rev-list", "--count", "HEAD").strip())
+    code_k = loc(["scripts/*.py", "scripts/*.sh", "tests/*.py", "tools/*.py"]) / 1000.0
 
-    # testbed and injection
-    v["containers"] = re.search(r'"\$RUNNING"\s*=\s*"(\d+)"',
-                                read("scripts/maintenance/wakeup.sh")).group(1)
-    enum = read("docs/fault_schema.md").split("### `target_enum`", 1)[1].split("```")[1]
-    v["injectable_targets"] = str(len([t for t in re.split(r"[,\s]+", enum) if t]))
-    v["primitive_scripts"] = str(len([p for p in ls("scripts/primitives/") if p.endswith(".sh")]))
-    v["fault_classes"] = str(len({r["class"] for r in rows}))
-    probe = (next(iter(stock.values()))["production"]["probe"])
-    v["probe_gates"] = str(len([k for k in ("injected", "symptom", "recovered") if k in probe]))
-    v["baseline_window_s"] = str(int(_const("scripts/runner/run_batch.py", "BASELINE_LOOKBACK_S")))
-    v["recover_window_cards"] = str(len([r for r in rows if "recover_s" in (r["cycle_override"] or "")]))
-    pack_files = [p for p in ls("evidence/crash-ad-01/")]
-    ignored = re.findall(r"^evidence/\*\*/(\S+)$", read(".gitignore"), re.M)
-    v["evidence_files"] = str(len(pack_files) + len(ignored))
-    v["evidence_hashed"] = str(len(re.search(r"^FIVE = \[(.*?)\]", read("scripts/evidence/pack.py"),
-                                             re.M | re.S).group(1).split(",")))
-    rules = read("scripts/evidence/detect.py").split("RULES = {", 1)[1].split("\n}", 1)[0]
-    v["alert_rules"] = str(len(re.findall(r'^\s*"[a-z0-9_]+":', rules, re.M)))
-    v["p95_floor_ms"] = str(int(_const("scripts/evidence/detect.py", "METHOD_P95_MIN_DELTA_MS")))
+    n_recipe = len(rows)
+    n_stock = len(stock)
+    n_hold = len(json.loads(read("scripts/baselines/cardset_holdout16.json")))
+    n_eval = len(json.loads(read("scripts/baselines/cardset_all43.json")))
+    top1 = f"{pct_of(hold['agent']['top1']):.1f}%"
+    cost = "${:.3f}".format(usd_of(hold["agent"]["cost"]))
+    p95 = "{:.0f} s".format(float(re.search(r"([0-9.]+)s", hold["agent"]["p95"]).group(1)))
+    gain = pct_of(hold["agent"]["top1"]) - pct_of(hold["single_shot"]["top1"])
 
-    # cards
-    v["recipe_cards"] = str(len(rows))
-    v["instock_cards"] = str(len(stock))
+    v = {}
+
+    # --- block bodies -------------------------------------------------------
+    v["badges"] = " ".join([
+        shield("holdout top-1", top1, BADGE_ACCENT),
+        shield("cards", f"{n_stock} in stock of {n_recipe}", BADGE_GREY),
+        shield("cost", f"{cost} per card", BADGE_GREY),
+    ])
+    v["hero_table"] = "\n".join([
+        f"| **{top1}** | **{gain:+.1f} pts** | **{cost} / {p95}** |",
+        "| :--- | :--- | :--- |",
+        f"| holdout top-1, agent on {n_hold} unseen cards "
+        f"| over the single-shot LLM on the same cards | per diagnosis, wall clock |",
+    ])
+    v["figure_arms"] = ("![Top-1 on the {} unseen holdout cards: rules {}, single-shot "
+                        "LLM {}, agent {}](docs/figures/arms_holdout16.png)").format(
+        n_hold, hold["rules"]["top1"].split(" ")[0],
+        hold["single_shot"]["top1"].split(" ")[0], top1)
+    v["figure_pipeline"] = ("![Pipeline: testbed, fault primitives, scenario cards, probe "
+                            "verdicts, evidence packs, three arms, harness, findings]"
+                            "(docs/figures/pipeline.png)")
+    header = ["| arm | top-1 | service-only | steps | cost/card | p95 |",
+              "| --- | ---: | ---: | ---: | ---: | ---: |"]
+    v["table_all43"] = "\n".join(header + [
+        "| {} | {} | {} | {} | {} | {} |".format(
+            ARM_LABEL.get(arm, arm), m["top1"], m["service"], m["steps"], m["cost"], m["p95"])
+        for arm, m in all43.items()])
+
+    # --- inline phrases -----------------------------------------------------
     by = collections.Counter(c["class"] for c in stock.values())
-    v["instock_by_class"] = " / ".join(f"{k} {by[k]}" for k in sorted(by))
-    v["valkey_blocked"] = str(len([r for r in rows
-                                   if r["target"] == "valkey-cart" and r["card_id"] not in stock]))
-    v["eval_set_size"] = str(len(json.loads(read("scripts/baselines/cardset_all43.json"))))
-    v["holdout_set_size"] = str(len(json.loads(read("scripts/baselines/cardset_holdout16.json"))))
-    # What one card is worth in each table -- the honest unit of both result sets.
-    v["eval_card_points"] = "%.2f" % (100.0 / int(v["eval_set_size"]))
-    v["holdout_card_points"] = "%.2f" % (100.0 / int(v["holdout_set_size"]))
-
-    # agent
-    v["agent_model"] = cfg["models"]["primary"]
-    names = re.findall(r'"name": "([a-z_]+)"', read("scripts/agent/evidence_tools.py"))
-    v["agent_tools"] = str(len([n for n in dict.fromkeys(names) if n != "submit"]))
+    enum = read("docs/fault_schema.md").split("### `target_enum`", 1)[1].split("```")[1]
+    rules_block = read("scripts/evidence/detect.py").split("RULES = {", 1)[1].split("\n}", 1)[0]
     agent_src = read("scripts/agent/run_agent.py")
-    # Three guards keep a counter, two circuit breakers land in `terminated`.
     guards = [k for k in ("validation_rejects", "tool_retries", "nudges") if k in agent_src]
     guards += [k for k in ("max_steps", "cost_cap")
                if re.search(rf'terminated"?\]?\s*[=:]\s*"{k}"', agent_src)]
-    v["agent_guards"] = str(len(guards))
-    v["max_steps"] = str(cfg["run"]["max_steps"])
-    v["cost_cap_usd"] = f"{cfg['run']['max_usd_per_card']:.2f}"
-    v["devset_size"] = str(len(json.loads(
-        read("artifacts/agent_runs/devset_20260828/summary.json"))["rows"]))
-    v["devset_before"] = f"{report_top1('devset_20260828'):.1f}%"
-    v["devset_after"] = f"{report_top1('devset_v2_20260828'):.1f}%"
-
-    # results
-    for prefix, run_dir in (("holdout16", "merged_holdout16_20260906"),
-                            ("all43", "merged_all43_20260906")):
-        for arm, metrics in report_table(run_dir).items():
-            for metric, text in metrics.items():
-                v[f"{prefix}.{arm}.{metric}"] = text
-
-    o = overfit()
-    v["rules_overfit_delta"] = f"{o['delta']:.1f}"
-    v["rules_overfit_seen"] = "{}/{}".format(*o["seen"])
-    v["rules_overfit_held"] = "{}/{}".format(*o["held"])
-    v["rules_overfit_blackhole"] = "{}/{} to {}/{}".format(*o["bh_seen"], *o["bh_held"])
-
-    # engineering
-    v["ci_gates"] = str(len(re.findall(r'name: "gate \d', read(".github/workflows/ci.yml"))))
+    names = re.findall(r'"name": "([a-z_]+)"', read("scripts/agent/evidence_tools.py"))
+    pack_files = ls("evidence/crash-ad-01/")
+    ignored = re.findall(r"^evidence/\*\*/(\S+)$", read(".gitignore"), re.M)
     stats = re.search(r"\*\*统计\*\*：\*\*(\d+) 条\*\*路径中 \*\*正确 (\d+)、可接受 (\d+)、错误 (\d+)",
                       read("docs/probe_audit.md"))
-    v["audit_paths"], v["audit_fixes"] = stats.group(1), stats.group(4)
-    v["audit_replay_cards"] = re.search(r"(\d+) 张在库卡的四个窗口快照",
-                                        read("docs/probe_audit.md")).group(1)
-    hours, batches = batch_logs()
-    v["batch_hours"] = f"{hours:.1f}"
-    v["batch_count"] = str(batches)
-    spend, runs = api_spend()
-    v["api_spend"] = f"${spend:.2f}"
-    v["api_runs"] = str(runs)
+    probe = next(iter(stock.values()))["production"]["probe"]
 
-    # hero numbers: the three the top of the README is allowed to show
-    v["hero_top1"] = f"{pct_of(v['holdout16.agent.top1']):.1f}%"
-    gain = pct_of(v["holdout16.agent.top1"]) - pct_of(v["holdout16.single_shot.top1"])
-    v["hero_gain"] = f"{gain:+.1f} pts"
-    v["hero_cost"] = "${:.3f}".format(float(re.search(r"\$([0-9.]+)",
-                                                     v["holdout16.agent.cost"]).group(1)))
-    v["hero_p95"] = "{:.0f} s".format(float(re.search(r"([0-9.]+)s",
-                                                     v["holdout16.agent.p95"]).group(1)))
-    v["badges"] = " ".join([
-        shield("cards", v["recipe_cards"], BADGE_GREY),
-        shield("in stock", v["instock_cards"], BADGE_GREY),
-        shield("holdout top-1", v["hero_top1"], BADGE_ACCENT),
-        shield("CI", f"{v['ci_gates']} gates", BADGE_GREY),
-        shield("cost/card", v["hero_cost"], BADGE_GREY),
-    ])
-    v["figure_arms"] = ("![Top-1 on the {} unseen holdout cards: rules {}, "
-                        "single-shot LLM {}, agent {}](docs/figures/arms_holdout16.png)").format(
-        v["holdout_set_size"], v["holdout16.rules.top1"].split(" ")[0],
-        v["holdout16.single_shot.top1"].split(" ")[0], v["hero_top1"])
-    v.update(walkthrough(v))
-    # The whole mermaid block is one marker: GEN comments inside a fenced block
-    # would render as text, so the diagram is generated wholesale instead.
-    v["flowchart"] = "\n".join([
-        "",           # the fence must begin a line, so the marker gets its own
-        "```mermaid",
-        "flowchart LR",
-        f'  T["Testbed<br/>{v["containers"]} containers"] --> P["Fault primitives<br/>'
-        f'{v["primitive_scripts"]} scripts / {v["fault_classes"]} classes"]',
-        f'  P --> C["Scenario cards<br/>{v["recipe_cards"]} recipe / '
-        f'{v["instock_cards"]} in stock"]',
-        f'  C --> V["Probe verdicts<br/>{v["probe_gates"]} probes"]',
-        f'  V --> E["Evidence packs<br/>{v["evidence_files"]} files"]',
-        "  E --> A[\"Agent\"]",
-        "  E --> B[\"Baselines\"]",
-        "  A --> H[\"Harness\"]",
-        "  B --> H",
-        "  H --> F[\"Findings\"]",
-        "```",
-        "",
-    ])
+    v["containers"] = "{} containers".format(
+        re.search(r'"\$RUNNING"\s*=\s*"(\d+)"', read("scripts/maintenance/wakeup.sh")).group(1))
+    v["targets"] = "{} injection targets".format(len([t for t in re.split(r"[,\s]+", enum) if t]))
+    v["primitives"] = "{} primitive scripts".format(
+        len([p for p in ls("scripts/primitives/") if p.endswith(".sh")]))
+    v["classes"] = "{} fault classes".format(len({r["class"] for r in rows}))
+    v["probes"] = "{} probes".format(
+        len([k for k in ("injected", "symptom", "recovered") if k in probe]))
+    v["baseline_window"] = "{:.0f}-second baseline window".format(
+        _const("scripts/runner/run_batch.py", "BASELINE_LOOKBACK_S"))
+    v["recover_cards"] = "{} cards carry a longer recovery window".format(
+        len([r for r in rows if "recover_s" in (r["cycle_override"] or "")]))
+    v["evidence_files"] = "{} files per card".format(len(pack_files) + len(ignored))
+    v["evidence_hashed"] = "{} of them carry a sha256".format(
+        len(re.search(r"^FIVE = \[(.*?)\]", read("scripts/evidence/pack.py"),
+                      re.M | re.S).group(1).split(",")))
+    v["alert_rules"] = "{} detector rules".format(
+        len(re.findall(r'^\s*"[a-z0-9_]+":', rules_block, re.M)))
+    v["p95_floor"] = "{:.0f} ms floor".format(
+        _const("scripts/evidence/detect.py", "METHOD_P95_MIN_DELTA_MS"))
 
-    v["commits"] = "~" + git("rev-list", "--count", "HEAD").strip()
-    v["code_loc"] = "~%.1fk" % (loc(["scripts/*.py", "scripts/*.sh",
-                                     "tests/*.py", "tools/*.py"]) / 1000.0)
-    v["docs_loc"] = "~%.1fk" % (loc(["docs/*.md"]) / 1000.0)
+    v["recipe_cards"] = f"{n_recipe} recipe rows"
+    v["instock"] = f"{n_stock} in stock"
+    v["instock_by_class"] = " / ".join(f"{k} {by[k]}" for k in sorted(by))
+    v["valkey_blocked"] = "{} cache cards".format(
+        len([r for r in rows if r["target"] == "valkey-cart" and r["card_id"] not in stock]))
+    v["eval_set"] = f"{n_eval} cards"
+    v["holdout_set"] = f"{n_hold} unseen cards"
+    v["card_points"] = "{:.2f} points".format(100.0 / n_hold)
+    v["eval_card_points"] = "{:.2f} points".format(100.0 / n_eval)
+
+    v["model"] = cfg["models"]["primary"]
+    v["tools"] = "{} read-only tools".format(len([n for n in dict.fromkeys(names) if n != "submit"]))
+    v["guards"] = f"{len(guards)} guards"
+    v["max_steps"] = "{} steps".format(cfg["run"]["max_steps"])
+    v["cost_cap"] = "${:.2f} per card".format(cfg["run"]["max_usd_per_card"])
+    v["devset"] = "{}-card dev set".format(
+        len(json.loads(read("artifacts/agent_runs/devset_20260828/summary.json"))["rows"]))
+    v["devset_move"] = "{:.1f}% to {:.1f}%".format(
+        report_top1("devset_20260828"), report_top1("devset_v2_20260828"))
+
+    # The sentence carries the direction ("falls"), the key carries the size.
+    v["overfit_seen"] = "{}/{}".format(*o["seen"])
+    v["overfit_held"] = "{}/{}".format(*o["held"])
+    v["overfit_delta"] = "{:.1f} points".format(abs(o["delta"]))
+    v["overfit_blackhole"] = "{}/{} to {}/{}".format(*o["bh_seen"], *o["bh_held"])
+
+    v["ci_gates"] = "{} offline gates".format(
+        len(re.findall(r'name: "gate \d', read(".github/workflows/ci.yml"))))
+    v["audit_paths"] = f"{stats.group(1)} verdict paths"
+    v["audit_fixes"] = f"{stats.group(4)} places"
+    v["audit_replay"] = "{} cards".format(
+        re.search(r"(\d+) 张在库卡的四个窗口快照", read("docs/probe_audit.md")).group(1))
+    v["batches"] = f"{batches} batches"
+    v["machine"] = f"{hours:.1f} hours"
+    v["spend"] = "${:.0f} in metered API calls".format(spend)
+    v["scale"] = "~{:.0f} commits and ~{:.0f}k lines of Python and shell".format(
+        round(commits / 10.0) * 10, code_k)
+
+    f1 = re.search(r"^## F-1.*?(\d+)%.*?(\d+) s ", read("docs/open_items.md"), re.M)
+    v["f1_rate"] = f"{f1.group(1)}% failure rate"
+    v["f1_window"] = f"{f1.group(2)}-second window"
+
+    run = json.loads(read(f"artifacts/agent_runs/{WALKTHROUGH_RUN}/{WALKTHROUGH_CARD}.json"))
+    gt = scenarios()[WALKTHROUGH_CARD]["ground_truth"]
+    v["walkthrough_card"] = WALKTHROUGH_CARD
+    v["walkthrough_stats"] = "{} steps, {} tool calls, {:.0f} s, ${:.3f}".format(
+        run["steps"], sum(len(s["tool_calls"]) for s in run["transcript"]),
+        run["wall_s"], run["cost_usd"])
+    v["walkthrough_verdict"] = "Submitted {service} / {fault_type}".format(**run["answer"]) + \
+        " -- truth {} / {}".format(gt["service"], gt["class"])
     return v
 
 
-# Keys whose value moves on every commit. --check compares the numbers inside
-# them with slack instead of exactly, so an ordinary commit does not turn CI red.
-TOLERANCE = {"commits": 5.0, "code_loc": 0.3, "docs_loc": 0.3}
-SHALLOW_SKIP = {"commits"}
+BLOCK_KEYS = ("badges", "hero_table", "figure_arms", "figure_pipeline", "table_all43")
+
+
+# ------------------------------------------------------------------ commands
+
+def load_stored():
+    if not os.path.exists(VALUES_JSON):
+        return {}
+    with open(VALUES_JSON, encoding="utf-8") as f:
+        return {k: val for k, val in json.load(f).items() if not k.startswith("_")}
+
+
+def save_stored(values):
+    doc = {"_note": "generated by scripts/tools/readme_check.py --write; "
+                    "each value is a phrase README must contain verbatim"}
+    doc.update({k: v for k, v in sorted(values.items()) if k not in BLOCK_KEYS})
+    with open(VALUES_JSON, "w", encoding="utf-8") as f:
+        json.dump(doc, f, ensure_ascii=False, indent=1)
+        f.write("\n")
 
 
 def _num(text):
@@ -469,25 +476,57 @@ def _num(text):
 
 def redraw_figures(values):
     """--write also redraws docs/figures/. matplotlib is not a CI dependency, so a
-    missing one is a warning here: the committed png stays, --check still runs."""
+    missing one is a warning: the committed png stays and --check still runs."""
     sys.path.insert(0, HERE)
     try:
         import make_figures
-    except ImportError as exc:                                    # noqa: BLE001
-        print(f"figures not redrawn: {exc}", file=sys.stderr)
-        return
-    try:
         for path in make_figures.regenerate(values):
             print(f"wrote {os.path.relpath(path, REPO)}")
-    except ImportError as exc:                                    # noqa: BLE001
-        print(f"figures not redrawn (matplotlib missing): {exc}", file=sys.stderr)
+    except ImportError as exc:                                     # noqa: BLE001
+        print(f"figures not redrawn: {exc}", file=sys.stderr)
+
+
+def check(text, values, stored, shallow):
+    bad = []
+    seen_markers = set()
+    for m in MARKER.finditer(text):
+        key, body = m.group(1), m.group(2)
+        seen_markers.add(key)
+        if key not in values:
+            bad.append(f"  {key}: no such key")
+        elif body.strip() != values[key].strip():
+            bad.append(f"  {key}: block body differs from the repo")
+        elif not (body.startswith("\n\n") and body.endswith("\n\n")):
+            bad.append(f"  {key}: marker must sit on its own line, blank line inside")
+    for key in BLOCK_KEYS:
+        if key not in seen_markers:
+            bad.append(f"  {key}: block marker missing from README")
+
+    for key, want in sorted(values.items()):
+        if key in BLOCK_KEYS:
+            continue
+        old = stored.get(key)
+        if key in SHALLOW_SKIP and shallow:
+            continue
+        if key in TOLERANCE and old is not None:
+            g, w = _num(old), _num(want)
+            if g is not None and w is not None and abs(g - w) <= TOLERANCE[key]:
+                want = old                      # inside tolerance: the page may lag
+            else:
+                bad.append(f"  {key}: README has {old!r}, repo says {want!r}")
+                continue
+        if want not in text:
+            bad.append(f"  {key}: {want!r} does not appear in README")
+        elif old and old != want and old in text:
+            bad.append(f"  {key}: superseded {old!r} is still in README")
+    return bad
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--check", action="store_true", help="compare, exit 1 on mismatch")
-    ap.add_argument("--write", action="store_true", help="rewrite marker bodies in place")
-    ap.add_argument("--list", action="store_true", help="print every computed key")
+    ap.add_argument("--write", action="store_true", help="rewrite blocks and phrases in place")
+    ap.add_argument("--list", action="store_true", help="print every computed value")
     a = ap.parse_args()
 
     values = compute()
@@ -497,9 +536,10 @@ def main():
         return 0
 
     text = open(README, encoding="utf-8").read()
-    shallow = is_shallow()
+    stored = load_stored()
 
     if a.write:
+        redraw_figures(values)
         missing = []
 
         def sub(m):
@@ -507,46 +547,35 @@ def main():
             if key not in values:
                 missing.append(key)
                 return m.group(0)
-            return f"<!-- GEN:{key} -->{values[key]}<!-- /GEN -->"
+            return f"<!-- GEN:{key} -->\n\n{values[key]}\n\n<!-- /GEN -->"
 
-        redraw_figures(values)
         out = MARKER.sub(sub, text)
+        for key, want in values.items():
+            old = stored.get(key)
+            if key in BLOCK_KEYS or want == old:
+                continue
+            if old and old in out:
+                out = out.replace(old, want)
+            elif want not in out:
+                missing.append(key)
         if missing:
-            print("unknown keys in README: " + ", ".join(sorted(set(missing))), file=sys.stderr)
+            print("no place in README for: " + ", ".join(sorted(set(missing))), file=sys.stderr)
             return 1
         if out != text:
             open(README, "w", encoding="utf-8").write(out)
             print("README.md updated")
         else:
             print("README.md already current")
+        save_stored(values)
         return 0
 
-    bad, seen = [], set()
-    for m in MARKER.finditer(text):
-        key, got = m.group(1), m.group(2)
-        seen.add(key)
-        if key not in values:
-            bad.append(f"  {key}: no such key")
-            continue
-        want = values[key]
-        if got == want:
-            continue
-        if key in SHALLOW_SKIP and shallow:
-            continue
-        tol = TOLERANCE.get(key)
-        if tol is not None:
-            g, w = _num(got), _num(want)
-            if g is not None and w is not None and abs(g - w) <= tol:
-                continue
-        bad.append(f"  {key}: README has {got!r}, repo says {want!r}")
-    if not seen:
-        bad.append("  no GEN markers found in README.md")
+    bad = check(text, values, stored, is_shallow())
     if bad:
         print("readme_check: README.md is out of date with the repo", file=sys.stderr)
         print("\n".join(bad), file=sys.stderr)
         print("run: python scripts/tools/readme_check.py --write", file=sys.stderr)
         return 1
-    print(f"readme_check: {len(seen)} markers match the repo")
+    print(f"readme_check: {len(values)} values match the repo")
     return 0
 
 

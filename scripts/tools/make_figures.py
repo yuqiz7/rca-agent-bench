@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """make_figures.py -- redraw the figures README embeds.
 
-One figure today: docs/figures/arms_holdout16.png, the three arms on the 16-card
-holdout set. Every value comes from readme_check.compute(), the same function the
-README markers are generated from, so a figure cannot disagree with the sentence
-next to it.
+Two figures: arms_holdout16.png, the three arms on the 16-card holdout set, and
+pipeline.png, the card production line. Every value comes from
+readme_check.compute(), the same function the README markers are generated from,
+so a figure cannot disagree with the sentence next to it.
+
+The pipeline is a drawing rather than a mermaid block because mermaid-cli cannot
+launch a browser on this host, and an unverifiable diagram that GitHub might fail
+to render is worse than a png.
 
 Run it directly, or let `readme_check.py --write` call it. matplotlib is not part
 of the CI dependency set: nothing in the gates draws, and --check only compares
@@ -13,13 +17,13 @@ text, so a missing matplotlib is a warning there and an error here.
     python scripts/tools/make_figures.py
 """
 import os
-import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 FIGURES = os.path.join(REPO, "docs", "figures")
 ARMS_PNG = os.path.join(FIGURES, "arms_holdout16.png")
+PIPELINE_PNG = os.path.join(FIGURES, "pipeline.png")
 
 # Two greys and one dark accent: the eye should land on the agent bar and nowhere
 # else. Text is near-black rather than black to sit calmly on white.
@@ -29,22 +33,20 @@ ARMS = [("rules, no model", "rules", GREY),
         ("agent", "agent", ACCENT)]
 
 
-def _pct(text):
-    return float(re.search(r"([0-9.]+)%", text).group(1))
-
-
-def _usd(text):
-    return float(re.search(r"\$([0-9.]+)", text).group(1))
-
-
 def arms_holdout16(values):
-    """Left: top-1 per arm. Right: the same three arms as cost against accuracy."""
+    """Left: top-1 per arm. Right: the same three arms as cost against accuracy.
+
+    Arm metrics come straight from readme_check.report_table, the same parse the
+    README's tables are built from."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    rows = [(label, _pct(values[f"holdout16.{key}.top1"]),
-             _usd(values[f"holdout16.{key}.cost"]), color)
+    sys.path.insert(0, HERE)
+    import readme_check
+    table = readme_check.report_table("merged_holdout16_20260906")
+    rows = [(label, readme_check.pct_of(table[key]["top1"]),
+             readme_check.usd_of(table[key]["cost"]), color)
             for label, key, color in ARMS]
 
     fig, (bar, scat) = plt.subplots(
@@ -90,8 +92,53 @@ def arms_holdout16(values):
     return ARMS_PNG
 
 
+def pipeline(values):
+    """The production line, one box per stage, left to right."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyArrow, FancyBboxPatch
+
+    stages = [
+        ("Testbed", values["containers"]),
+        ("Fault primitives", "{}\n{}".format(values["primitives"], values["classes"])),
+        ("Scenario cards", "{}\n{}".format(values["recipe_cards"], values["instock"])),
+        ("Probe verdicts", values["probes"]),
+        ("Evidence packs", values["evidence_files"]),
+        ("Three arms", "one pack, offline"),
+        ("Harness", "one grader"),
+        ("Findings", "docs/findings.md"),
+    ]
+    fig, ax = plt.subplots(figsize=(13, 1.5), dpi=200)
+    fig.patch.set_facecolor("white")
+    ax.set_xlim(0, len(stages))
+    ax.set_ylim(0, 1)
+    ax.axis("off")
+
+    for i, (title, sub) in enumerate(stages):
+        accent = title == "Three arms"
+        box = FancyBboxPatch((i + 0.06, 0.24), 0.80, 0.52,
+                             boxstyle="round,pad=0.01,rounding_size=0.04",
+                             linewidth=1.1, facecolor=ACCENT if accent else "#f4f6f7",
+                             edgecolor=ACCENT if accent else "#c3c9ce")
+        ax.add_patch(box)
+        ax.text(i + 0.46, 0.60, title, ha="center", va="center", fontsize=7.4,
+                color="white" if accent else INK, fontweight="bold")
+        ax.text(i + 0.46, 0.40, sub, ha="center", va="center", fontsize=6.5,
+                linespacing=1.5, color="#e8eef0" if accent else "#5b6770")
+        if i < len(stages) - 1:
+            ax.add_patch(FancyArrow(i + 0.88, 0.50, 0.09, 0, width=0.005,
+                                    head_width=0.06, head_length=0.05,
+                                    length_includes_head=True, color="#9aa3ab"))
+
+    os.makedirs(FIGURES, exist_ok=True)
+    fig.savefig(PIPELINE_PNG, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    return PIPELINE_PNG
+
+
 def regenerate(values):
-    return [arms_holdout16(values)]
+    return [arms_holdout16(values), pipeline(values)]
 
 
 def main():
