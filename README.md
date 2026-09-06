@@ -18,7 +18,7 @@ grader runs without network access.
 model turn with no tools, and a tool-calling agent answer the same
 <!-- GEN:eval_set_size -->43<!-- /GEN --> cards, which is what makes "the loop is
 worth its cost" a measurement. The rules arm is also the one place where tuning on
-the cards can be quantified: on cards it was never tuned on it loses
+the cards can be quantified: on cards it was never tuned on its top-1 moves by
 <!-- GEN:rules_overfit_delta -->-16.7<!-- /GEN --> points.
 
 ---
@@ -58,7 +58,7 @@ it cannot investigate. p95 is wall clock, including local reads of the pack.
 The rules arm was tuned on 27 cards. Restricted to the classes the holdout
 contains, it scores <!-- GEN:rules_overfit_seen -->12/18<!-- /GEN --> on cards it
 was tuned on and <!-- GEN:rules_overfit_held -->8/16<!-- /GEN --> on cards it has
-never seen, a drop of <!-- GEN:rules_overfit_delta -->-16.7<!-- /GEN --> points.
+never seen, a change of <!-- GEN:rules_overfit_delta -->-16.7<!-- /GEN --> points.
 Almost all of it is one class: blackhole goes
 <!-- GEN:rules_overfit_blackhole -->3/6 to 0/6<!-- /GEN -->.
 
