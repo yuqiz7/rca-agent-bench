@@ -1,0 +1,30 @@
+# Trace viewer for the AGENT, kept away from the testbed on purpose.
+#
+# This file is never merged into the demo's compose project. The demo's own
+# Jaeger (16686) is snapshotted into every evidence pack by scripts/evidence/
+# pack.py, so anything that reports to it becomes part of the data the agent is
+# later asked to diagnose. An evaluator inside the system under evaluation is a
+# broken experiment, not a convenience.
+#
+# Consequences of keeping it separate, all intended:
+#   - every port is shifted (16687 / 4327 / 4328) so nothing can collide;
+#   - wakeup.sh's 25/25 container gate does not know about this container and
+#     must not -- it is not part of the testbed;
+#   - it is optional. With it down, tracing still writes
+#     artifacts/agent_runs/<run-id>/traces.jsonl, which is the artefact that
+#     matters; this container is the thing you point at during a demo.
+#
+#   up:    docker compose -f docker-compose.agent-obs.yml up -d
+#   UI:    http://localhost:16687     (service: rca-agent)
+#   down:  docker compose -f docker-compose.agent-obs.yml down
+services:
+  jaeger-agent-obs:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: jaeger-agent-obs
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16687:16686"   # UI              (testbed Jaeger keeps 16686)
+      - "4327:4317"     # OTLP gRPC       (testbed collector keeps 4317)
+      - "4328:4318"     # OTLP HTTP       (testbed collector keeps 4318)

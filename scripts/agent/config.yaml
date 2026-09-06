@@ -33,6 +33,30 @@ run:
   # between a $0.05 card and a $0.30 one.
   prompt_caching: true
 
+# OpenTelemetry spans for the agent loop. OFF BY DEFAULT.
+#
+# The endpoint is deliberately NOT the testbed's collector (4317/4318) and the
+# spans are deliberately NOT visible in the testbed's Jaeger (16686): a batch
+# snapshots that Jaeger into every evidence pack, so a service named `rca-agent`
+# showing up there would enter topology.json and traces.json and become part of
+# the ground truth the agent is later asked to diagnose.
+#
+# `file` writes artifacts/agent_runs/<run-id>/traces.jsonl -- the evidence
+# artefact. `otlp_endpoint` points at the SEPARATE Jaeger from
+# docker-compose.agent-obs.yml (16687 UI / 4327 gRPC / 4328 HTTP) -- the demo
+# artefact, optional, and its absence is not an error. Set otlp_endpoint to null
+# to write only the file.
+#
+# Turn on per run with --trace rather than by flipping `enabled`: leaving it off
+# in the file is what guarantees a plain eval run imports no OpenTelemetry package
+# and costs exactly what it did before tracing existed.
+tracing:
+  enabled: false
+  service_name: rca-agent
+  service_version: v1.1
+  file: true
+  otlp_endpoint: http://localhost:4328/v1/traces
+
 # Per-model exceptions to `run` above. An unlisted model gets `run` unchanged.
 #
 # Measured 2026-09-06 against the live API, not inferred from docs:

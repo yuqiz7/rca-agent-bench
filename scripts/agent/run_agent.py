@@ -27,6 +27,7 @@ import anthropic                              # noqa: E402
 
 import leak_check                             # noqa: E402
 import prompts                                # noqa: E402
+import tracing                                # noqa: E402
 from evidence_tools import (                  # noqa: E402
     EvidencePack, ToolError, call_read_tool, tool_schemas, validate_submit)
 
@@ -74,6 +75,13 @@ def run_config_for(model, config):
     return rc
 
 
+def tracing_enabled(config, flag):
+    """--trace wins over config; config.yaml's tracing.enabled is the default."""
+    if flag:
+        return True
+    return bool((config.get("tracing") or {}).get("enabled"))
+
+
 def load_prices(path=PRICES_PATH):
     with open(path) as f:
         return yaml.safe_load(f)
@@ -118,7 +126,7 @@ def _summarise(obj):
 
 
 def run_card(card_id, model=None, config=None, prices=None, evidence_root=None,
-             client=None):
+             client=None, run_id=""):
     """Run one card. Returns the result dict; never raises on a model mistake."""
     config = config or load_config()
     prices = prices or load_prices()
@@ -147,6 +155,7 @@ def run_card(card_id, model=None, config=None, prices=None, evidence_root=None,
     transcript = []
     answer, terminated, error = None, None, None
     steps, nudges = 0, 0
+    prev_cost, cost = 0.0, 0.0
     t0 = time.time()
 
     create_kwargs = {
@@ -168,100 +177,130 @@ def run_card(card_id, model=None, config=None, prices=None, evidence_root=None,
         # prefix is a cache hit from step two onward.
         create_kwargs["cache_control"] = {"type": "ephemeral"}
 
-    while True:
+    # One span per card / step / model call / tool call. Every one of them is a
+    # no-op unless tracing.start() ran, so an untraced run costs what it always did.
+    with tracing.card(card_id, run_id or "", model,
+                      os.path.basename(CONFIG_PATH)) as _card:
+      while True:
         if steps >= rc["max_steps"]:
             terminated = "max_steps"
             break
-        try:
-            resp = client.messages.create(messages=messages, **create_kwargs)
-        except anthropic.APIError as exc:
-            terminated, error = "api_error", f"{type(exc).__name__}: {exc}"
-            break
-        counters["api_calls"] += 1
-        steps += 1
-        _add_usage(usage, resp.usage)
-        cost = price_usd(prices, model, usage)
-
-        entry = {
-            "step": steps,
-            "stop_reason": resp.stop_reason,
-            "usage": {"input": resp.usage.input_tokens,
-                      "output": resp.usage.output_tokens,
-                      "cache_write": getattr(resp.usage, "cache_creation_input_tokens", 0) or 0,
-                      "cache_read": getattr(resp.usage, "cache_read_input_tokens", 0) or 0},
-            "cumulative_cost_usd": round(cost, 6),
-            "text": "".join(b.text for b in resp.content if b.type == "text")[:1000],
-            "tool_calls": [],
-        }
-        messages.append({"role": "assistant", "content": resp.content})
-
-        tool_uses = [b for b in resp.content if b.type == "tool_use"]
-        results = []
-        for block in tool_uses:
-            counters["tool_calls"] += 1
-            call = {"name": block.name, "input": block.input}
-            if block.name == "submit":
+        with tracing.step(steps + 1):
+            with tracing.model_call(model) as _m:
                 try:
-                    svc, ft = validate_submit(block.input)
-                except ToolError as exc:
-                    counters["validation_rejects"] += 1
-                    call.update(ok=False, error=str(exc))
-                    results.append({"type": "tool_result", "tool_use_id": block.id,
-                                    "content": f"rejected: {exc}", "is_error": True})
+                    resp = client.messages.create(messages=messages, **create_kwargs)
+                except anthropic.APIError as exc:
+                    terminated, error = "api_error", f"{type(exc).__name__}: {exc}"
+                    break
+                counters["api_calls"] += 1
+                steps += 1
+                _add_usage(usage, resp.usage)
+                cost = price_usd(prices, model, usage)
+                tracing.record_model_result(
+                    _m,
+                    usage={"input": resp.usage.input_tokens,
+                           "output": resp.usage.output_tokens,
+                           "cache_write": getattr(resp.usage, "cache_creation_input_tokens", 0) or 0,
+                           "cache_read": getattr(resp.usage, "cache_read_input_tokens", 0) or 0},
+                    step_cost_usd=cost - prev_cost, stop_reason=resp.stop_reason)
+                prev_cost = cost
+
+            entry = {
+                "step": steps,
+                "stop_reason": resp.stop_reason,
+                "usage": {"input": resp.usage.input_tokens,
+                          "output": resp.usage.output_tokens,
+                          "cache_write": getattr(resp.usage, "cache_creation_input_tokens", 0) or 0,
+                          "cache_read": getattr(resp.usage, "cache_read_input_tokens", 0) or 0},
+                "cumulative_cost_usd": round(cost, 6),
+                "text": "".join(b.text for b in resp.content if b.type == "text")[:1000],
+                "tool_calls": [],
+            }
+            messages.append({"role": "assistant", "content": resp.content})
+
+            tool_uses = [b for b in resp.content if b.type == "tool_use"]
+            results = []
+            for block in tool_uses:
+                with tracing.tool_call(block.name, block.input) as _t:
+                    counters["tool_calls"] += 1
+                    call = {"name": block.name, "input": block.input}
+                    if block.name == "submit":
+                        try:
+                            svc, ft = validate_submit(block.input)
+                        except ToolError as exc:
+                            counters["validation_rejects"] += 1
+                            call.update(ok=False, error=str(exc))
+                            tracing.record_tool_result(_t, ok=False,
+                                                       validation_reject=True,
+                                                       error=str(exc))
+                            results.append({"type": "tool_result", "tool_use_id": block.id,
+                                            "content": f"rejected: {exc}", "is_error": True})
+                            entry["tool_calls"].append(call)
+                            continue
+                        answer = {"service": svc, "fault_type": ft}
+                        call.update(ok=True, result={"accepted": True})
+                        tracing.record_tool_result(_t, ok=True)
+                        entry["tool_calls"].append(call)
+                        terminated = "submit"
+                        break
+
+                    out, err = None, None
+                    rejected, retried = False, False
+                    for attempt in range(rc["tool_retries"] + 1):
+                        try:
+                            out = call_read_tool(pack, block.name, block.input)
+                            break
+                        except ToolError as exc:
+                            # A rejected parameter is the model's mistake, not a
+                            # flaky tool: retrying would fail identically.
+                            err = str(exc)
+                            counters["validation_rejects"] += 1
+                            rejected = True
+                            break
+                        except Exception as exc:                      # noqa: BLE001
+                            err = f"{type(exc).__name__}: {exc}"
+                            if attempt < rc["tool_retries"]:
+                                counters["tool_retries"] += 1
+                                retried = True
+                                continue
+                            break
+                    if out is None:
+                        call.update(ok=False, error=err)
+                        tracing.record_tool_result(_t, ok=False, validation_reject=rejected,
+                                                   retried=retried, error=err)
+                        results.append({"type": "tool_result", "tool_use_id": block.id,
+                                        "content": f"error: {err}", "is_error": True})
+                    else:
+                        payload_json = json.dumps(out, ensure_ascii=False, default=str)
+                        call.update(ok=True, result=_summarise(out))
+                        tracing.record_tool_result(_t, ok=True, retried=retried,
+                                                   result_bytes=len(payload_json))
+                        results.append({"type": "tool_result", "tool_use_id": block.id,
+                                        "content": payload_json})
                     entry["tool_calls"].append(call)
-                    continue
-                answer = {"service": svc, "fault_type": ft}
-                call.update(ok=True, result={"accepted": True})
-                entry["tool_calls"].append(call)
-                terminated = "submit"
+
+            transcript.append(entry)
+            if terminated:
                 break
 
-            out, err = None, None
-            for attempt in range(rc["tool_retries"] + 1):
-                try:
-                    out = call_read_tool(pack, block.name, block.input)
-                    break
-                except ToolError as exc:
-                    # A rejected parameter is the model's mistake, not a flaky tool:
-                    # retrying the same call would fail identically.
-                    err = str(exc)
-                    counters["validation_rejects"] += 1
-                    break
-                except Exception as exc:                      # noqa: BLE001
-                    err = f"{type(exc).__name__}: {exc}"
-                    if attempt < rc["tool_retries"]:
-                        counters["tool_retries"] += 1
-                        continue
-                    break
-            if out is None:
-                call.update(ok=False, error=err)
-                results.append({"type": "tool_result", "tool_use_id": block.id,
-                                "content": f"error: {err}", "is_error": True})
-            else:
-                call.update(ok=True, result=_summarise(out))
-                results.append({"type": "tool_result", "tool_use_id": block.id,
-                                "content": json.dumps(out, ensure_ascii=False, default=str)})
-            entry["tool_calls"].append(call)
+            if cost >= rc["max_usd_per_card"]:
+                terminated = "cost_cap"
+                break
 
-        transcript.append(entry)
-        if terminated:
-            break
+            if results:
+                messages.append({"role": "user", "content": results})
+                continue
 
-        if cost >= rc["max_usd_per_card"]:
-            terminated = "cost_cap"
-            break
+            # No tool call this step: the model answered in prose, not by submitting.
+            if nudges >= MAX_NUDGES:
+                terminated = "no_submit"
+                break
+            nudges += 1
+            counters["nudges"] += 1
+            messages.append({"role": "user", "content": NUDGE})
 
-        if results:
-            messages.append({"role": "user", "content": results})
-            continue
-
-        # No tool call this step: the model answered in prose instead of submitting.
-        if nudges >= MAX_NUDGES:
-            terminated = "no_submit"
-            break
-        nudges += 1
-        counters["nudges"] += 1
-        messages.append({"role": "user", "content": NUDGE})
+      tracing.finish_card(_card, terminated=terminated or "max_steps", steps=steps,
+                          cost_usd=cost, wall_s=time.time() - t0, counters=counters)
 
     wall = time.time() - t0
     return {
@@ -306,9 +345,18 @@ def main():
     ap.add_argument("--model")
     ap.add_argument("--run-id")
     ap.add_argument("--runs-root", default=RUNS_ROOT)
+    ap.add_argument("--trace", action="store_true",
+                    help="emit OpenTelemetry spans (see tracing.py); off by default")
     a = ap.parse_args()
     run_id = a.run_id or new_run_id()
-    result = run_card(a.card_id, model=a.model)
+    config = load_config()
+    tracing.start(run_id, tracing_enabled(config, a.trace),
+                  cfg=config.get("tracing"),
+                  out_dir=os.path.join(a.runs_root, run_id))
+    try:
+        result = run_card(a.card_id, model=a.model, config=config, run_id=run_id)
+    finally:
+        tracing.shutdown()
     path = write_result(result, run_id, a.runs_root)
     print(f"{result['card_id']}: {result['terminated']} "
           f"answer={result['answer']} steps={result['steps']} "

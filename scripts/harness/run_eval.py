@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.join(REPO, "scripts", "scenarios"))
 
 import cards                                   # noqa: E402
 import run_agent                               # noqa: E402
+import tracing                                 # noqa: E402
 
 CLASS_LABEL = {"crash": "崩溃", "latency": "延迟", "blackhole": "黑洞",
                "misconfig": "错配", "mem_leak": "内存泄漏"}
@@ -164,6 +165,8 @@ def main():
     ap.add_argument("--model")
     ap.add_argument("--run-id")
     ap.add_argument("--runs-root", default=run_agent.RUNS_ROOT)
+    ap.add_argument("--trace", action="store_true",
+                    help="emit OpenTelemetry spans (see scripts/agent/tracing.py)")
     a = ap.parse_args()
 
     config = run_agent.load_config()
@@ -174,6 +177,11 @@ def main():
     if a.limit:
         card_ids = card_ids[:a.limit]
     run_id = a.run_id or run_agent.new_run_id("eval")
+    # Spans land in <runs-root>/<run-id>/traces.jsonl and, if configured, in the
+    # SEPARATE agent-obs Jaeger -- never in the testbed's (see tracing.py).
+    tracing.start(run_id, run_agent.tracing_enabled(config, a.trace),
+                  cfg=config.get("tracing"),
+                  out_dir=os.path.join(a.runs_root, run_id))
     started_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     t0 = time.time()
 
@@ -182,7 +190,8 @@ def main():
         gt = ground_truth(cid)
         row = {"card_id": cid, "ground_truth": gt}
         try:
-            res = run_agent.run_card(cid, model=model, config=config, prices=prices)
+            res = run_agent.run_card(cid, model=model, config=config, prices=prices,
+                                     run_id=run_id)
         except Exception as exc:                              # noqa: BLE001
             row["error"] = f"{type(exc).__name__}: {exc}"
             print(f"[{i}/{len(card_ids)}] {cid}: FAILED {row['error']}", flush=True)
@@ -190,6 +199,10 @@ def main():
             run_agent.write_result(res, run_id, a.runs_root)
             row["result"] = res
             row["grade"] = grade(res["answer"], gt)
+            # The grade is a child of the card span, opened here rather than in
+            # run_agent: that module is structurally forbidden from seeing the
+            # answer, so it cannot be the one to record whether it was right.
+            tracing.grade_span(cid, row["grade"]["top1_ok"], row["grade"]["service_ok"])
             print(f"[{i}/{len(card_ids)}] {cid}: {res['terminated']} "
                   f"answer={res['answer']} gt={gt['service']}/{gt['fault_type']} "
                   f"top1={row['grade']['top1_ok']} steps={res['steps']} "
@@ -197,6 +210,7 @@ def main():
         rows.append(row)
 
     wall = time.time() - t0
+    tracing.shutdown()
     report = build_report(run_id, model, rows, prices, config, started_at, wall)
     d = os.path.join(a.runs_root, run_id)
     os.makedirs(d, exist_ok=True)

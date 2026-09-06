@@ -1,0 +1,36 @@
+{
+ "run_id": "traceverify_20260906",
+ "model": "claude-sonnet-5",
+ "cards": [
+  "crash-currency-01",
+  "latency-currency-800"
+ ],
+ "started_at": "2026-09-06T21:26:22Z",
+ "wall_s": 31.726,
+ "rows": [
+  {
+   "card_id": "crash-currency-01",
+   "ground_truth": {
+    "service": "currency",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "latency-currency-800",
+   "ground_truth": {
+    "service": "currency",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  }
+ ]
+}

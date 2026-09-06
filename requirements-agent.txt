@@ -1,0 +1,15 @@
+# Runtime dependencies of the agent and eval harness, pinned.
+#
+# Split from CI on purpose: .github/workflows/ci.yml installs only pytest and
+# PyYAML, because no gate may make a network call and none of them needs the
+# Anthropic client. Everything here is for running an evaluation on a machine
+# that has an API key.
+#
+# The opentelemetry packages are OPTIONAL at runtime: scripts/agent/tracing.py
+# catches ImportError and continues untraced, so a checkout without them still
+# evaluates -- it just does not emit spans.
+anthropic==1.2.0
+PyYAML==6.0.1
+pytest==7.4.4
+opentelemetry-sdk==1.44.0
+opentelemetry-exporter-otlp-proto-http==1.44.0

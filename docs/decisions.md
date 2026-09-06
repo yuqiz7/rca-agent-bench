@@ -1879,3 +1879,84 @@ sonnet  effort=high + thinking adaptive  200   ← 对照
 - **`model_api` 这个新机制会被下一个人用错。** 它长得像「随便覆盖 run 参数」，
   实际只该用来记**模型 API 不接受某参数**这一类事实。config.yaml 的注释里写了
   这条界线，但机制本身拦不住误用。
+
+---
+
+## 035 agent 侧 OpenTelemetry 追踪：两个落点、默认关闭（2026-09-06 ET）
+
+**选了什么**
+
+1. **span 落两处，都在测试床之外**：
+   - **文件**：`artifacts/agent_runs/<run-id>/traces.jsonl`，一行一个 span —— **证据件**；
+   - **独立 Jaeger**：`docker-compose.agent-obs.yml`（UI 16687 / OTLP 4327、4328）—— **演示件**。
+2. **默认关闭**，`--trace` 或 `config.yaml` 的 `tracing.enabled` 打开。
+3. **层级**：card（root）→ step N → model.call / tool.\<name\>，另有 grade 作 card 的子 span。
+4. **依赖 pin 进 `requirements-agent.txt`**（`opentelemetry-sdk==1.44.0`、
+   `opentelemetry-exporter-otlp-proto-http==1.44.0`），**CI 不装**。
+
+**为什么落点必须避开测试床**
+
+这是本条唯一的硬约束，也是它存在的理由。`scripts/evidence/pack.py` 在每张卡 harvest 时
+**把测试床 Jaeger 的 `/api/services` 与 traces 快照进证据包**。
+如果 agent 的 span 报到那套后端（collector 4317/4318、Jaeger 16686），
+`rca-agent` 就会作为一个服务出现在 `topology.json` 与 `traces.json` 里 ——
+**评测器变成被评测系统的一部分**，而且是以「一个新服务」的形态混进 agent 之后要去诊断的真值里。
+那不是不方便，是实验被污染。
+
+所以端口全部错开（16687 / 4327 / 4328），compose 文件**不并入测试床工程**，
+`wakeup.sh` 的 25/25 容器门也**不该**知道它 —— 那个门数的是 `dc ps`（测试床工程作用域），
+本容器在另一个 compose 工程里，天然不计入。**实测已验**：
+带 `--trace` 跑完两张卡后，独立 Jaeger 的 `/api/services` 返回 `["rca-agent"]`，
+测试床 Jaeger 的 `/api/services` 返回 17 个服务、**不含 `rca-agent`**。
+
+**为什么两个落点都要**
+
+文件是**可 diff、可复核、不依赖任何守护进程、容器没了也还在**的那一份；
+Jaeger 是**演示时能点开的层级视图**。二选一都会缺一块：
+只有 Jaeger 则结果不可归档、评测跑完就散；只有文件则没法在面试里点两下讲清楚。
+**独立 Jaeger 是可选的，它不在时 tracing 照常写文件**，这一点写进了 compose 的注释。
+
+**为什么默认关**
+
+关闭时 `tracing.py` **一个 OpenTelemetry 包都不 import**（已验证：
+`sys.modules` 里 `opentelemetry` 前缀模块为 0），所有 span 调用是 no-op 上下文管理器。
+一次普通评测的成本因此与追踪存在之前**完全一样**。
+反过来，**开启时若依赖缺失，只打一行 stderr 并继续untraced** ——
+一次评测绝不能因为可观测性依赖装没装而失败。CI 三道门也照旧只装 `pytest` + `PyYAML`。
+
+**判分为什么是单独的 span 而不是 card 的属性**
+
+`run_agent.py` **结构上不允许知道答案**（它从不 import `cards.py`，见 `leak_check`），
+所以 top-1 / service-only 不能由它写进 card span；而判分发生在 `run_eval` 里、
+card span 已经结束。做法是把 card span 的 context 存下来，
+由 `run_eval` 调 `tracing.grade_span()` **在已结束的父 span 下开一个子 span**。
+父子关系是真的，**答案仍然没有进到那个能拿它作弊的模块**。
+
+**放弃了什么**
+
+- **放弃 Langfuse（以及同类托管 LLM 观测平台）。** 它要再引一个外部服务、一个账号、
+  一份 SDK 和一条出网路径，**换来的只是一个 UI**。
+  本条要的那些东西 —— 每步的 token、单步成本、stop_reason、工具返回字节数、
+  五道保险的触发标记、card→step→call 的层级 —— **OpenTelemetry 已经全给了**，
+  而且 span 属性是我自己定义的，不受平台字段模型约束。
+  再加一个账号还会让「谁看得到评测数据」这个问题多一个答案，
+  而这个仓库的评测数据里有真值。
+- **放弃把 span 也发到测试床 collector 做“统一视图”。** 见上，这是本条的红线。
+- **放弃默认开启。** 默认开会让每次评测都背上一个可选依赖和一个导出器，
+  而追踪的用途是**排查与演示**，不是**每次评测**。
+
+**trade-off**
+
+- **`traces.jsonl` 会随评测目录一起入库**，两张卡 30 个 span 约 12 KB；
+  43 卡一轮约 600 span。目前不大，但**它是随卡数线性增长的第二份产物**，
+  哪天跟证据包的三件大文件一样超阈值，就该按同样的规则 gitignore 掉。
+- **span 属性里有 `rca.card_id`。** 它不构成泄漏 ——
+  span 只写到 `artifacts/agent_runs/` 与独立 Jaeger，
+  **两者都不在 agent 的证据面里**（`EvidencePack` 根在 `evidence/<card>/`），
+  已逐条验证：`evidence/` 下没有任何 `traces.jsonl`，
+  `leak_check.check_payload` 四项照旧通过，card_id 在 span 文件里、不在模型输入里。
+  但这条依赖「谁能读 `artifacts/`」这个边界，**如果将来把 artifacts 挂进工具面，这条就破了**。
+- **`jaeger-agent-obs` 用了 `restart: unless-stopped`**，所以它会跟着开机起来，
+  宿主上 `docker ps` 会数到 26 个容器。`wakeup.sh` 的门与 README 的
+  `containers` 数字都取自 wakeup.sh 里的常量、不数实时容器，因此都不受影响 ——
+  但**下一个人拿 `docker ps | wc -l` 去对 25 会对不上**，这里记一笔。

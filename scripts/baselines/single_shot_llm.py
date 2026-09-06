@@ -39,6 +39,7 @@ import anthropic  # noqa: E402
 
 import leak_check  # noqa: E402
 import run_agent  # noqa: E402
+import tracing  # noqa: E402
 from evidence_tools import FAULT_TYPES, TARGET_ENUM  # noqa: E402
 from summarise import summarise  # noqa: E402
 
@@ -117,7 +118,8 @@ def parse_answer(text):
     return None
 
 
-def run_card(card_id, model=None, config=None, prices=None, evidence_root=None, client=None):
+def run_card(card_id, model=None, config=None, prices=None, evidence_root=None,
+             client=None, run_id=""):
     config = config or run_agent.load_config()
     prices = prices or run_agent.load_prices()
     model = model or config["models"]["primary"]
@@ -136,19 +138,33 @@ def run_card(card_id, model=None, config=None, prices=None, evidence_root=None, 
     parse_failures, attempts = 0, 0
     texts = []
 
-    for attempt in range(2):
+    # One root span per card and one span per model call, the same shape the agent
+    # arm emits, so both arms read the same way in one trace viewer. No-op when off.
+    with tracing.card(card_id, run_id or "", model, "single_shot") as _card:
+      prev_cost = 0.0
+      for attempt in range(2):
         attempts += 1
-        try:
-            resp = client.messages.create(
-                model=model, max_tokens=rc["max_tokens"], system=SYSTEM_PROMPT,
-                messages=messages,
-                # Same per-model omission as the agent arm; see run_config_for.
-                **({"output_config": {"effort": rc["effort"]}} if rc.get("effort") else {}),
-                **({"thinking": {"type": "adaptive"}} if rc.get("thinking") == "adaptive" else {}))
-        except anthropic.APIError as exc:
-            terminated, error = "api_error", f"{type(exc).__name__}: {exc}"
-            break
-        run_agent._add_usage(usage, resp.usage)
+        with tracing.model_call(model) as _m:
+            try:
+                resp = client.messages.create(
+                    model=model, max_tokens=rc["max_tokens"], system=SYSTEM_PROMPT,
+                    messages=messages,
+                    # Same per-model omission as the agent arm; see run_config_for.
+                    **({"output_config": {"effort": rc["effort"]}} if rc.get("effort") else {}),
+                    **({"thinking": {"type": "adaptive"}} if rc.get("thinking") == "adaptive" else {}))
+            except anthropic.APIError as exc:
+                terminated, error = "api_error", f"{type(exc).__name__}: {exc}"
+                break
+            run_agent._add_usage(usage, resp.usage)
+            _cost = run_agent.price_usd(prices, model, usage)
+            tracing.record_model_result(
+                _m,
+                usage={"input": resp.usage.input_tokens,
+                       "output": resp.usage.output_tokens,
+                       "cache_write": getattr(resp.usage, "cache_creation_input_tokens", 0) or 0,
+                       "cache_read": getattr(resp.usage, "cache_read_input_tokens", 0) or 0},
+                step_cost_usd=_cost - prev_cost, stop_reason=resp.stop_reason)
+            prev_cost = _cost
         text = "".join(b.text for b in resp.content if b.type == "text")
         texts.append(text[:2000])
         answer = parse_answer(text)
@@ -188,17 +204,25 @@ def main():
     ap.add_argument("--model")
     ap.add_argument("--out")
     ap.add_argument("--evidence-root")
+    ap.add_argument("--run-id")
+    ap.add_argument("--trace", action="store_true",
+                    help="emit OpenTelemetry spans (see scripts/agent/tracing.py)")
+    ap.add_argument("--runs-root", default=run_agent.RUNS_ROOT)
     a = ap.parse_args()
     ids = [a.card_id] if a.card_id else (a.cards.split(",") if a.cards else [])
     if not ids:
         ap.error("--card-id or --cards required")
     config, prices = run_agent.load_config(), run_agent.load_prices()
+    run_id = a.run_id or run_agent.new_run_id("single_shot")
+    tracing.start(run_id, run_agent.tracing_enabled(config, a.trace),
+                  cfg=config.get("tracing"),
+                  out_dir=os.path.join(a.runs_root, run_id))
     client = anthropic.Anthropic(max_retries=config["run"]["api_max_retries"],
                                  timeout=config["run"]["request_timeout_s"])
     out = []
     for i, c in enumerate(ids, 1):
         r = run_card(c, model=a.model, config=config, prices=prices,
-                     evidence_root=a.evidence_root, client=client)
+                     evidence_root=a.evidence_root, client=client, run_id=run_id)
         out.append(r)
         ans = r["answer"] and f"{r['answer']['service']}/{r['answer']['fault_type']}"
         print(f"[{i}/{len(ids)}] {c}: {ans or r['terminated']} "
@@ -207,6 +231,7 @@ def main():
             os.makedirs(os.path.dirname(a.out), exist_ok=True)
             with open(a.out, "w") as f:
                 json.dump(out, f, indent=1, ensure_ascii=False)
+    tracing.shutdown()
     return 0
 
 

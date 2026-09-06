@@ -74,6 +74,7 @@ The agent never sees the card id, the primitive that ran, or the ground truth: i
 - 5 guards, each recorded per run: argument validation, in-tool retry, a nudge when a turn calls no tool, a breaker at 20 steps, a breaker at $0.20 per card.
 - The leak check asserts the system prompt and tool schemas are card-independent constants and the user turn is a projection of the task view; it raises instead of continuing.
 - The prompt was iterated once on a 19-card dev set, 52.6% to 57.9% top-1, then frozen before any holdout run. Service-only accuracy moved the other way in the same edit.
+- Optional OpenTelemetry tracing (`--trace`, off by default): one span per card, step, model call and tool call, carrying tokens, per-step cost, stop reason and the guard counters. Spans go to `artifacts/agent_runs/<run-id>/traces.jsonl` and to a **separate** Jaeger (`docker-compose.agent-obs.yml`, port 16687) — never to the testbed's, because a batch snapshots that one into every evidence pack.
 
 </details>
 

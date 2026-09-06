@@ -30,6 +30,7 @@
 | B2 | 四道保险，各自计数 | `run_agent.py`：参数校验 `validate_submit` / `ToolError` → `counters["validation_rejects"]`（:181,:202）；工具内异常重试 → `counters["tool_retries"]`（:207）；没出工具调用时的格式追问 → `counters["nudges"]`（:237）、超限 `terminated="no_submit"`；步数熔断 `terminated="max_steps"`（:146-147，`max_steps: 20`）；成本熔断 `terminated="cost_cap"`（:224，`max_usd_per_card: 0.20`） | **数字不符 → 保险是 5 道，计数只有 3 个**。`counters` 字典 5 键（`api_calls` / `tool_calls` / `validation_rejects` / `tool_retries` / `nudges`），**两道熔断不进计数器，落在 `terminated` 字段** | 可说「**五道保险：参数校验、工具重试、格式追问、步数熔断、成本熔断，每次运行都记录触发情况**」。**不能说「四道保险各自计数」**——熔断记在 `terminated` 不是计数器 |
 | B3 | card_id 泄漏断言 fail-closed；agent 只见 task_view | `scripts/agent/leak_check.py`：`FORBIDDEN_KEYS`（:33）、按值查 card_id（:55）、系统提示与工具 schema 必须是卡无关常量（:69,:71）、user turn 字段必须是 task.json 的投影（:78-83）；调用点 `run_agent.py:116`，**在 :150 第一次 `messages.create` 之前**，抛 `LeakError` 即中止 | **通过（fail-closed 位置正确）**，一处要改口径：agent 输入是 **trigger + `agent_visible_symptom`** 两项，**alerts 不是第三项**，它在 `agent_visible_symptom` 里面。`task_view.WHITELIST` 另含 `card_id` / `evidence_dir`，但那两项**不进模型输入**（进的是工具寻址） | 可说「**答案泄漏在花第一个 token 之前 fail-closed 拦截，是 CI 门之一**」「agent 看到的只有触发语和告警症状」。**不能说「agent 看不到 card_id」**——它看不到，但 harness 用 card_id 寻址证据目录，措辞要落在「模型输入」上 |
 | B4 | prompt 一次迭代冻结：19 卡 52.6%→57.9% | `artifacts/agent_runs/devset_20260828/report.md:13`（52.6%，10/19）、`artifacts/agent_runs/devset_v2_20260828/report.md:13`（57.9%，11/19）；决策 `docs/decisions.md:1111` 025 | **通过** | 可说「**prompt 只迭代一次即冻结，开发集 top-1 52.6%→57.9%**」「冻结是留出集测试的前提」。**不能把 +5.3 说成显著**——19 张卡单张值 5.3 个百分点，这一步正好是一张卡。同一次改动里 service-only 从 84.2% **掉到** 78.9%，引用时不要只报涨的那个 |
+| B5 | agent 可观测性（OpenTelemetry 追踪） | `scripts/agent/tracing.py`；开关 `--trace` / `config.yaml` 的 `tracing.enabled`（默认 **false**）；层级 card → step N → `model.call` / `tool.<name>`，判分是 card 的子 span `grade`（由 `run_eval` 开，因为 `run_agent` 结构上不能知道答案）；两个落点 `artifacts/agent_runs/<run-id>/traces.jsonl` 与 独立 Jaeger `docker-compose.agent-obs.yml`（16687/4327/4328）；依赖 pin 在 `requirements-agent.txt`。**实测验证**（`artifacts/agent_runs/traceverify_20260906/`，2 张卡）：30 个 span / 2 条 trace（13 + 17），独立 Jaeger `/api/services` 返回 `["rca-agent"]`，测试床 Jaeger `/api/services` 返回 17 个服务且 **不含 `rca-agent`**；关闭时 `sys.modules` 里 opentelemetry 模块数为 **0** | **通过** | 可说「**agent 的每一次模型调用与工具调用都以 OpenTelemetry span 记录（token、单步成本、stop_reason、返回字节数、五道保险的触发标记），可在独立 Jaeger 中按 card → step → call 逐层查看**」「**追踪落点与测试床后端物理隔离，以免评测器混进被评测系统的真值**」。**不能说「生产级可观测性」** —— 没有采样策略、没有告警、没有保留策略、没有多进程聚合，只有单进程 span 导出。**不要提 Langfuse 或任何托管观测平台** —— 本仓刻意没用（决策 035）。**不能说「默认开启」或「零成本」**：默认关闭，开启后每卡多一个导出器 |
 
 ---
 
@@ -77,6 +78,7 @@
 - **A6** 7 条检测规则 + 100 ms 地板 + 干净窗负对照
 - **B1** 手写工具循环、6 只读工具 + submit、claude-sonnet-5
 - **B3** 泄漏断言 fail-closed 且在第一个 token 之前（口径见边界栏）
+- **B5** OpenTelemetry 追踪与落点隔离（**不能写「生产级可观测性」**，见 B5 边界栏）
 - **B4** prompt 一次迭代冻结 52.6% → 57.9%
 - **C2 / C3 / C4 / C5 / C6** 两基线、16 卡留出集、43 卡全集、成本延迟步数、过拟合 −16.7 与 blackhole 0/6
 - **C7** 开箱 haiku vs 调优 sonnet 的五臂对照（**口径受限，措辞按 C7 那一栏，不能写成「模型对照」**）
