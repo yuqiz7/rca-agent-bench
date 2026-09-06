@@ -25,5 +25,34 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: null
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-09-06T21:54:08Z"
+  t_inject: "2026-09-06T21:55:09Z"
+  t_revert: "2026-09-06T22:00:10Z"
+  t_end: "2026-09-06T22:02:40Z"
+  settle_s: 150
+  t_harvest: "2026-09-06T22:05:10Z"
+  batch_dir: scripts/out/batch8_20260906T193745Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/misconfig-payment-25
+  packed: true
+  manifest_sha256:
+    logs.jsonl: dc71483a76a606bd3ef7be1b2c92325cf4c439bb86b11523fd69917e013e1a95
+    metrics.json: 2561b50b42258864cfb280d630e33ebe4083f2674740a89a470bc3aa3d036eba
+    traces.json: f90ab5e50184547c8a7d0d1d6495e2f34f19c5bb14fc2ec9b80e8f91d2f4bae3
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 0
+agent_visible_symptom:
+  window:
+    start: "2026-09-06T21:55:09Z"
+    end: "2026-09-06T22:00:10Z"
+  detected_at: "2026-09-06T22:06:01Z"
+  no_alert: true
+  alerts: []

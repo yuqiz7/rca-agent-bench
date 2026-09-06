@@ -1,0 +1,69 @@
+{
+ "card_id": "latency-payment-3000",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-09-06T20:30:02Z",
+   "end": "2026-09-06T20:35:02Z"
+  },
+  "detected_at": "2026-09-06T20:40:54Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on checkout",
+    "service": "checkout",
+    "baseline": {
+     "p95_ms": 92.5,
+     "window": {
+      "start": "2026-09-06T20:29:02Z",
+      "end": "2026-09-06T20:30:02Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 4757.5,
+     "ratio": 52.432,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T20:30:02Z",
+      "end": "2026-09-06T20:35:02Z"
+     }
+    },
+    "deviation": 52.432
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/POST /api/checkout",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 96.25,
+     "call_count": 6.0,
+     "window": {
+      "start": "2026-09-06T20:29:02Z",
+      "end": "2026-09-06T20:30:02Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 4753.75,
+     "ratio": 50.39,
+     "call_count": 34.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T20:30:02Z",
+      "end": "2026-09-06T20:35:02Z"
+     }
+    },
+    "deviation": 50.39
+   }
+  ]
+ },
+ "evidence_dir": "evidence/latency-payment-3000",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

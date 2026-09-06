@@ -4,7 +4,7 @@
 
 <!-- GEN:badges -->
 
-![holdout top-1](https://img.shields.io/badge/holdout%20top--1-75.0%25-1f4e5f?style=flat-square) ![cards](https://img.shields.io/badge/cards-45%20in%20stock%20of%2068-555?style=flat-square) ![cost](https://img.shields.io/badge/cost-%240.069%20per%20card-555?style=flat-square)
+![holdout top-1](https://img.shields.io/badge/holdout%20top--1-75.0%25-1f4e5f?style=flat-square) ![cards](https://img.shields.io/badge/cards-63%20in%20stock%20of%2068-555?style=flat-square) ![cost](https://img.shields.io/badge/cost-%240.069%20per%20card-555?style=flat-square)
 
 <!-- /GEN -->
 
@@ -98,8 +98,8 @@ The agent never sees the card id, the primitive that ran, or the ground truth: i
 <!-- /GEN -->
 
 - No arm is clean here: the set holds the 19-card dev set and the 27 cards the rules arm was tuned on, and one card is worth 2.33 points.
-- 43 cards are evaluated while 45 in stock — the list was frozen before the last batch landed, which is what keeps two runs comparable.
-- Coverage is uneven: blackhole 12 / crash 12 / latency 12 / mem_leak 2 / misconfig 7, so the harder latency tier and most misconfiguration variants are thin or absent.
+- 43 cards are evaluated while 63 in stock — the list was frozen before the last batch landed, which is what keeps two runs comparable.
+- Coverage is uneven: blackhole 12 / crash 12 / latency 24 / mem_leak 3 / misconfig 12, so the harder latency tier and most misconfiguration variants are thin or absent.
 - 2 cache cards cannot be run at all: breaking that target's connection removes the instrumentation the verdict needs (O-P2-23 in [`docs/open_items.md`](docs/open_items.md)).
 
 </details>
@@ -109,8 +109,8 @@ The agent never sees the card id, the primitive that ran, or the ground truth: i
 - CI is 3 offline gates on every push: pytest including the leak assertions, card generation being idempotent, the detector staying silent on two fault-free windows. No gate touches the VM or the API.
 - A `None`-versus-zero audit walked 27 verdict paths, fixed 7 places that read a missing measurement as a zero, and replayed 41 cards to confirm none had ever passed on one.
 - Cards come from an unattended batch runner: one global lock so a single fault is live at a time, `nohup` wrapping, and abort on consecutive failures rather than on the first one.
-- 7 batches account for 8.9 hours of machine time; every model call is priced per card, $9 in metered API calls so far.
-- Repository scale: ~70 commits and ~9k lines of Python and shell.
+- 8 batches account for 11.9 hours of machine time; every model call is priced per card, $9 in metered API calls so far.
+- Repository scale: ~80 commits and ~9k lines of Python and shell.
 
 </details>
 

@@ -1,0 +1,86 @@
+{
+ "card_id": "latency-shipping-3000",
+ "packed_at": "2026-09-06T21:35:10Z",
+ "window": {
+  "start": "2026-09-06T21:27:01Z",
+  "end": "2026-09-06T21:34:41Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T21:27:01Z",
+   "end": "2026-09-06T21:34:41Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T21:28:01Z",
+   "end": "2026-09-06T21:29:01Z"
+  },
+  "inject": {
+   "start": "2026-09-06T21:29:01Z",
+   "end": "2026-09-06T21:31:01Z"
+  },
+  "recover": {
+   "start": "2026-09-06T21:31:01Z",
+   "end": "2026-09-06T21:32:11Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/latency-shipping-3000/logs.jsonl",
+   "bytes": 3377983,
+   "sha256": "299a3d3ec410647b15a64b2b405de7210d8f9689534e84b5118a65546a4f244b"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/latency-shipping-3000/metrics.json",
+   "bytes": 350394,
+   "sha256": "accc5353dc43a77cfb3df7eead4bec415c597b2c6b20a3c98b6d3fcd330596fb"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/latency-shipping-3000/traces.json",
+   "bytes": 8748129,
+   "sha256": "272c50fcbd3f9c0dff4653d45a6fe98710265aa916d354aab2f26d77c243ec4e"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/latency-shipping-3000/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/latency-shipping-3000/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 10184,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 212
+  },
+  "traces.json": {
+   "spans": 30734,
+   "limit_hit": false,
+   "services_hitting_limit": []
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}

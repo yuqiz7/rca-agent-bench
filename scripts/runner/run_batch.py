@@ -123,6 +123,9 @@ NO_SDK_STEP_MULT = 100.0
 # 单张失败不停 —— 首批 16 张里 8 张 param_validated=false，个别失败是预期可能。
 # 连续 3 张则说明是系统性问题（testbed 挂了、flagd 不应答、后端查不动），
 # 再跑下去只是把机器时间喂给废数据。
+# Default only. Exposed as --abort-after-gate-failures so a batch whose point is
+# coverage rather than yield can raise or disable it; batch 8 wanted that and could
+# not have it, because this was a module constant with no flag (决策 033 / 037).
 BATCH_ABORT_AFTER_FAILURES = 3
 
 # ── misconfig / mem_leak 判据（决策 018 第二部分）────────────────────────
@@ -1257,6 +1260,10 @@ def main():
     ap.add_argument("--cycles")
     ap.add_argument("--batch-id", default=None)
     ap.add_argument("--abort-after-recovered-failures", type=int, default=2)
+    ap.add_argument("--abort-after-gate-failures", type=int,
+                    default=BATCH_ABORT_AFTER_FAILURES,
+                    help="stop after this many CONSECUTIVE cards failing any gate; "
+                         "set to the batch length to disable (default: %(default)s)")
     ap.add_argument("--out-root", default=os.path.join(ROOT, "out"))
     ap.add_argument("--observe-only", action="store_true",
                     help="跑完整周期与双快照并落盘，但不做通过/失败判定、不因判定停批；"
@@ -1347,11 +1354,11 @@ def main():
                     gate_fail_streak += 1
                     why = r.get("failed") or "probe gate failed"
                     log(f"card {card['card_id']}: FAILED ({why}); "
-                        f"streak {gate_fail_streak}/{BATCH_ABORT_AFTER_FAILURES}, "
+                        f"streak {gate_fail_streak}/{a.abort_after_gate_failures}, "
                         f"continuing with the next card")
-                    if gate_fail_streak >= BATCH_ABORT_AFTER_FAILURES:
+                    if gate_fail_streak >= a.abort_after_gate_failures:
                         aborted = (f"{gate_fail_streak} consecutive card failures "
-                                   f"(limit {BATCH_ABORT_AFTER_FAILURES}); "
+                                   f"(limit {a.abort_after_gate_failures}); "
                                    f"last: cycle {i} {card['card_id']}: {why}")
                         log(f"ABORT {aborted}")
                         break

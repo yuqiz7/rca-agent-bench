@@ -1,0 +1,98 @@
+{
+ "card_id": "latency-frontend-3000",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-09-06T21:10:34Z",
+   "end": "2026-09-06T21:12:34Z"
+  },
+  "detected_at": "2026-09-06T21:16:26Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend-proxy/GET",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 36.93,
+     "call_count": 523.0,
+     "window": {
+      "start": "2026-09-06T21:09:34Z",
+      "end": "2026-09-06T21:10:34Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 9464.29,
+     "delta_ms": 9427.36,
+     "ratio": 256.305,
+     "call_count": 234.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T21:10:34Z",
+      "end": "2026-09-06T21:12:34Z"
+     }
+    },
+    "deviation": 256.305
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on frontend-proxy",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 42.0,
+     "window": {
+      "start": "2026-09-06T21:09:34Z",
+      "end": "2026-09-06T21:10:34Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 9410.71,
+     "delta_ms": 9368.71,
+     "ratio": 224.065,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T21:10:34Z",
+      "end": "2026-09-06T21:12:34Z"
+     }
+    },
+    "deviation": 224.065
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend-proxy/POST",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 4225.0,
+     "call_count": 43.0,
+     "window": {
+      "start": "2026-09-06T21:09:34Z",
+      "end": "2026-09-06T21:10:34Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 625.0,
+     "ratio": 1.148,
+     "call_count": 19.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "absolute",
+     "window": {
+      "start": "2026-09-06T21:10:34Z",
+      "end": "2026-09-06T21:12:34Z"
+     }
+    },
+    "deviation": 1.25
+   }
+  ]
+ },
+ "evidence_dir": "evidence/latency-frontend-3000",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

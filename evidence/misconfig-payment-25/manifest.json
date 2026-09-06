@@ -1,0 +1,88 @@
+{
+ "card_id": "misconfig-payment-25",
+ "packed_at": "2026-09-06T22:06:00Z",
+ "window": {
+  "start": "2026-09-06T21:53:08Z",
+  "end": "2026-09-06T22:05:10Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T21:53:08Z",
+   "end": "2026-09-06T22:05:10Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T21:54:08Z",
+   "end": "2026-09-06T21:55:09Z"
+  },
+  "inject": {
+   "start": "2026-09-06T21:55:09Z",
+   "end": "2026-09-06T22:00:10Z"
+  },
+  "recover": {
+   "start": "2026-09-06T22:00:10Z",
+   "end": "2026-09-06T22:02:40Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/misconfig-payment-25/logs.jsonl",
+   "bytes": 5039934,
+   "sha256": "dc71483a76a606bd3ef7be1b2c92325cf4c439bb86b11523fd69917e013e1a95"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/misconfig-payment-25/metrics.json",
+   "bytes": 557894,
+   "sha256": "2561b50b42258864cfb280d630e33ebe4083f2674740a89a470bc3aa3d036eba"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/misconfig-payment-25/traces.json",
+   "bytes": 13155753,
+   "sha256": "f90ab5e50184547c8a7d0d1d6495e2f34f19c5bb14fc2ec9b80e8f91d2f4bae3"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/misconfig-payment-25/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/misconfig-payment-25/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 15405,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 216
+  },
+  "traces.json": {
+   "spans": 46208,
+   "limit_hit": true,
+   "services_hitting_limit": [
+    "frontend-proxy"
+   ]
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}

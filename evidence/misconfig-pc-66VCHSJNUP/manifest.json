@@ -1,0 +1,86 @@
+{
+ "card_id": "misconfig-pc-66VCHSJNUP",
+ "packed_at": "2026-09-06T22:13:01Z",
+ "window": {
+  "start": "2026-09-06T22:05:01Z",
+  "end": "2026-09-06T22:12:33Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T22:05:01Z",
+   "end": "2026-09-06T22:12:33Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T22:06:01Z",
+   "end": "2026-09-06T22:07:02Z"
+  },
+  "inject": {
+   "start": "2026-09-06T22:07:02Z",
+   "end": "2026-09-06T22:09:03Z"
+  },
+  "recover": {
+   "start": "2026-09-06T22:09:03Z",
+   "end": "2026-09-06T22:10:03Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/misconfig-pc-66VCHSJNUP/logs.jsonl",
+   "bytes": 3292282,
+   "sha256": "99b20b4d708df544d3b6f30c289564a6bbe8e4bc88827f210aebcecb28706752"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/misconfig-pc-66VCHSJNUP/metrics.json",
+   "bytes": 356670,
+   "sha256": "6e3ed70d8fc7d10f1f48ee8ed8b89c3e90e6922aeb3a48121b5377e9cf15079a"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/misconfig-pc-66VCHSJNUP/traces.json",
+   "bytes": 8676439,
+   "sha256": "2e0aa0d1fe40a0e598e5f748be8a80570da0bcb37953decd037262340f4570c3"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/misconfig-pc-66VCHSJNUP/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/misconfig-pc-66VCHSJNUP/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 10007,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 216
+  },
+  "traces.json": {
+   "spans": 30416,
+   "limit_hit": false,
+   "services_hitting_limit": []
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}

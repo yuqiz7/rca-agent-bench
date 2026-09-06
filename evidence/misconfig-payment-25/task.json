@@ -1,0 +1,14 @@
+{
+ "card_id": "misconfig-payment-25",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-09-06T21:55:09Z",
+   "end": "2026-09-06T22:00:10Z"
+  },
+  "detected_at": "2026-09-06T22:06:01Z",
+  "no_alert": true,
+  "alerts": []
+ },
+ "evidence_dir": "evidence/misconfig-payment-25",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

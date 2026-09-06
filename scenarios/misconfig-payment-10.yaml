@@ -25,5 +25,22 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: null
-production: null
+production:
+  t_start: "2026-09-06T21:16:26Z"
+  t_inject: "2026-09-06T21:17:27Z"
+  t_revert: "2026-09-06T21:22:28Z"
+  t_end: "2026-09-06T21:24:58Z"
+  settle_s: 150
+  t_harvest: "2026-09-06T21:27:28Z"
+  batch_dir: scripts/out/batch8_20260906T193745Z
+  probe:
+    injected: true
+    symptom: false
+    recovered: true
+    residue_clean: true
+    verdict: failed
+    observe_only: false
+  evidence_dir: null
+  packed: false
+  note: probe gate failed; evidence not packed (decision 021)
 agent_visible_symptom: null

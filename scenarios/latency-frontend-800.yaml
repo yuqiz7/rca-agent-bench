@@ -25,21 +25,125 @@ cycle:
 param_validated: false
 batch: 2
 production:
-  t_start: "2026-08-28T19:39:25Z"
-  t_inject: "2026-08-28T19:40:25Z"
-  t_revert: "2026-08-28T19:42:26Z"
-  t_end: "2026-08-28T19:43:26Z"
+  t_start: "2026-09-06T20:22:09Z"
+  t_inject: "2026-09-06T20:23:09Z"
+  t_revert: "2026-09-06T20:25:09Z"
+  t_end: "2026-09-06T20:26:09Z"
   settle_s: 150
-  t_harvest: "2026-08-28T19:45:56Z"
-  batch_dir: scripts/out/rerun1_20260828T185549Z
+  t_harvest: "2026-09-06T20:28:39Z"
+  batch_dir: scripts/out/batch8_20260906T193745Z
   probe:
     injected: true
-    symptom: false
+    symptom: true
     recovered: true
     residue_clean: true
-    verdict: failed
+    verdict: passed
     observe_only: false
-  evidence_dir: null
-  packed: false
-  note: probe gate failed; evidence not packed (decision 021)
-agent_visible_symptom: null
+  evidence_dir: evidence/latency-frontend-800
+  packed: true
+  manifest_sha256:
+    logs.jsonl: d5a1c084474ed0d32f2873d64bf4c005092b99c526f81e6c967dde0b361ac467
+    metrics.json: a47277b7b7b522c57a9878aab46e2bac0740381307ef9f0ef183f8b7de26ada4
+    traces.json: 0fc74a9d396666fd949cb8cea6c525ae9ecacb584d3689c199eb07cd5f6d3613
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 4
+agent_visible_symptom:
+  window:
+    start: "2026-09-06T20:23:09Z"
+    end: "2026-09-06T20:25:09Z"
+  detected_at: "2026-09-06T20:29:02Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/GET
+      service: frontend-proxy
+      baseline:
+        p95_ms: 37.82
+        call_count: 411.0
+        window:
+          start: "2026-09-06T20:22:09Z"
+          end: "2026-09-06T20:23:09Z"
+      observed:
+        p95_ms: 2833.33
+        delta_ms: 2795.51
+        ratio: 74.909
+        call_count: 340.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T20:23:09Z"
+          end: "2026-09-06T20:25:09Z"
+      deviation: 74.909
+    -
+      rule: p95_jump
+      message: elevated p95 latency on frontend-proxy
+      service: frontend-proxy
+      baseline:
+        p95_ms: 42.36
+        window:
+          start: "2026-09-06T20:22:09Z"
+          end: "2026-09-06T20:23:09Z"
+      observed:
+        p95_ms: 3110.0
+        delta_ms: 3067.64
+        ratio: 73.417
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T20:23:09Z"
+          end: "2026-09-06T20:25:09Z"
+      deviation: 73.417
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on flagd/flagd.evaluation.v1.Service/EventStream
+      service: flagd
+      baseline:
+        p95_ms: 4850.0
+        call_count: 7.0
+        window:
+          start: "2026-09-06T20:22:09Z"
+          end: "2026-09-06T20:23:09Z"
+      observed:
+        p95_ms: 9250.0
+        delta_ms: 4400.0
+        ratio: 1.907
+        call_count: 6.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: absolute
+        window:
+          start: "2026-09-06T20:23:09Z"
+          end: "2026-09-06T20:25:09Z"
+      deviation: 8.8
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/POST
+      service: frontend-proxy
+      baseline:
+        p95_ms: 4520.0
+        call_count: 23.0
+        window:
+          start: "2026-09-06T20:22:09Z"
+          end: "2026-09-06T20:23:09Z"
+      observed:
+        p95_ms: 6000.0
+        delta_ms: 1480.0
+        ratio: 1.327
+        call_count: 37.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: absolute
+        window:
+          start: "2026-09-06T20:23:09Z"
+          end: "2026-09-06T20:25:09Z"
+      deviation: 2.96

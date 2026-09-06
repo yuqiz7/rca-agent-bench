@@ -1,0 +1,170 @@
+{
+ "detected_at": "2026-09-06T20:29:02Z",
+ "window": {
+  "start": "2026-09-06T20:23:09Z",
+  "end": "2026-09-06T20:25:09Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T20:21:09Z",
+   "end": "2026-09-06T20:28:39Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T20:22:09Z",
+   "end": "2026-09-06T20:23:09Z"
+  },
+  "inject": {
+   "start": "2026-09-06T20:23:09Z",
+   "end": "2026-09-06T20:25:09Z"
+  },
+  "recover": {
+   "start": "2026-09-06T20:25:09Z",
+   "end": "2026-09-06T20:26:09Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/GET",
+   "service": "frontend-proxy",
+   "operation": "GET",
+   "baseline": {
+    "p95_ms": 37.82,
+    "call_count": 411.0,
+    "window": {
+     "start": "2026-09-06T20:22:09Z",
+     "end": "2026-09-06T20:23:09Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 2833.33,
+    "delta_ms": 2795.51,
+    "ratio": 74.909,
+    "call_count": 340.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-09-06T20:23:09Z",
+     "end": "2026-09-06T20:25:09Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T20:23:09Z",
+    "end": "2026-09-06T20:25:09Z"
+   },
+   "deviation": 74.909
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on frontend-proxy",
+   "service": "frontend-proxy",
+   "baseline": {
+    "p95_ms": 42.36,
+    "window": {
+     "start": "2026-09-06T20:22:09Z",
+     "end": "2026-09-06T20:23:09Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 3110.0,
+    "delta_ms": 3067.64,
+    "ratio": 73.417,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-09-06T20:23:09Z",
+     "end": "2026-09-06T20:25:09Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T20:23:09Z",
+    "end": "2026-09-06T20:25:09Z"
+   },
+   "deviation": 73.417
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on flagd/flagd.evaluation.v1.Service/EventStream",
+   "service": "flagd",
+   "operation": "flagd.evaluation.v1.Service/EventStream",
+   "baseline": {
+    "p95_ms": 4850.0,
+    "call_count": 7.0,
+    "window": {
+     "start": "2026-09-06T20:22:09Z",
+     "end": "2026-09-06T20:23:09Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9250.0,
+    "delta_ms": 4400.0,
+    "ratio": 1.907,
+    "call_count": 6.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "absolute",
+    "window": {
+     "start": "2026-09-06T20:23:09Z",
+     "end": "2026-09-06T20:25:09Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T20:23:09Z",
+    "end": "2026-09-06T20:25:09Z"
+   },
+   "deviation": 8.8
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/POST",
+   "service": "frontend-proxy",
+   "operation": "POST",
+   "baseline": {
+    "p95_ms": 4520.0,
+    "call_count": 23.0,
+    "window": {
+     "start": "2026-09-06T20:22:09Z",
+     "end": "2026-09-06T20:23:09Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 6000.0,
+    "delta_ms": 1480.0,
+    "ratio": 1.327,
+    "call_count": 37.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "absolute",
+    "window": {
+     "start": "2026-09-06T20:23:09Z",
+     "end": "2026-09-06T20:25:09Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T20:23:09Z",
+    "end": "2026-09-06T20:25:09Z"
+   },
+   "deviation": 2.96
+  }
+ ],
+ "no_alert": false,
+ "card_id": "latency-frontend-800"
+}

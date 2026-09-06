@@ -1,0 +1,96 @@
+{
+ "card_id": "misconfig-cart-90",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-09-06T22:21:00Z",
+   "end": "2026-09-06T22:23:02Z"
+  },
+  "detected_at": "2026-09-06T22:29:31Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend-proxy/POST",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 4400.0,
+     "call_count": 33.0,
+     "window": {
+      "start": "2026-09-06T22:19:59Z",
+      "end": "2026-09-06T22:21:00Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 10000.0,
+     "delta_ms": 5600.0,
+     "ratio": 2.273,
+     "call_count": 48.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T22:21:00Z",
+      "end": "2026-09-06T22:23:02Z"
+     }
+    },
+    "deviation": 11.2
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on email",
+    "service": "email",
+    "baseline": {
+     "request_rate_per_s": 0.0656,
+     "window": {
+      "start": "2026-09-06T22:19:59Z",
+      "end": "2026-09-06T22:21:00Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.0066,
+     "consecutive_zero_samples": 7,
+     "zero_span_s": 105,
+     "expected_calls_in_zero_span": 6.89,
+     "min_expected_calls": 5,
+     "samples_in_window": 8,
+     "window": {
+      "start": "2026-09-06T22:21:00Z",
+      "end": "2026-09-06T22:23:02Z"
+     }
+    },
+    "deviation": 6.89
+   },
+   {
+    "rule": "traffic_zero",
+    "message": "traffic dropped to zero on checkout",
+    "service": "checkout",
+    "baseline": {
+     "request_rate_per_s": 0.0492,
+     "window": {
+      "start": "2026-09-06T22:19:59Z",
+      "end": "2026-09-06T22:21:00Z"
+     }
+    },
+    "observed": {
+     "request_rate_per_s": 0.0,
+     "rate_ceiling_per_s": 0.0049,
+     "consecutive_zero_samples": 7,
+     "zero_span_s": 105,
+     "expected_calls_in_zero_span": 5.16,
+     "min_expected_calls": 5,
+     "samples_in_window": 8,
+     "window": {
+      "start": "2026-09-06T22:21:00Z",
+      "end": "2026-09-06T22:23:02Z"
+     }
+    },
+    "deviation": 5.16
+   }
+  ]
+ },
+ "evidence_dir": "evidence/misconfig-cart-90",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

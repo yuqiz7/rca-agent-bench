@@ -1,0 +1,44 @@
+{
+ "card_id": "latency-ad-3000",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-09-06T19:38:45Z",
+   "end": "2026-09-06T19:40:45Z"
+  },
+  "detected_at": "2026-09-06T19:44:42Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/GET /api/data",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 5.99,
+     "call_count": 37.0,
+     "window": {
+      "start": "2026-09-06T19:37:45Z",
+      "end": "2026-09-06T19:38:45Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4775.0,
+     "delta_ms": 4769.01,
+     "ratio": 797.041,
+     "call_count": 25.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T19:38:45Z",
+      "end": "2026-09-06T19:40:45Z"
+     }
+    },
+    "deviation": 797.041
+   }
+  ]
+ },
+ "evidence_dir": "evidence/latency-ad-3000",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

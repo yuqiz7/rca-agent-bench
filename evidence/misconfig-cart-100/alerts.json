@@ -1,0 +1,169 @@
+{
+ "detected_at": "2026-09-06T22:39:03Z",
+ "window": {
+  "start": "2026-09-06T22:30:33Z",
+  "end": "2026-09-06T22:32:34Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T22:28:31Z",
+   "end": "2026-09-06T22:36:04Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T22:29:31Z",
+   "end": "2026-09-06T22:30:33Z"
+  },
+  "inject": {
+   "start": "2026-09-06T22:30:33Z",
+   "end": "2026-09-06T22:32:34Z"
+  },
+  "recover": {
+   "start": "2026-09-06T22:32:34Z",
+   "end": "2026-09-06T22:33:34Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/POST /api/checkout",
+   "service": "frontend",
+   "operation": "POST /api/checkout",
+   "baseline": {
+    "p95_ms": 95.83,
+    "call_count": 19.0,
+    "window": {
+     "start": "2026-09-06T22:29:31Z",
+     "end": "2026-09-06T22:30:33Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 14904.17,
+    "ratio": 156.522,
+    "call_count": 5.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-09-06T22:30:33Z",
+     "end": "2026-09-06T22:32:34Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T22:30:33Z",
+    "end": "2026-09-06T22:32:34Z"
+   },
+   "deviation": 156.522
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend-proxy/POST",
+   "service": "frontend-proxy",
+   "operation": "POST",
+   "baseline": {
+    "p95_ms": 4040.0,
+    "call_count": 45.0,
+    "window": {
+     "start": "2026-09-06T22:29:31Z",
+     "end": "2026-09-06T22:30:33Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 10960.0,
+    "ratio": 3.713,
+    "call_count": 54.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-09-06T22:30:33Z",
+     "end": "2026-09-06T22:32:34Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T22:30:33Z",
+    "end": "2026-09-06T22:32:34Z"
+   },
+   "deviation": 21.92
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on checkout",
+   "service": "checkout",
+   "baseline": {
+    "request_rate_per_s": 0.1613,
+    "window": {
+     "start": "2026-09-06T22:29:31Z",
+     "end": "2026-09-06T22:30:33Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0161,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 16.94,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-09-06T22:30:33Z",
+     "end": "2026-09-06T22:32:34Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T22:30:33Z",
+    "end": "2026-09-06T22:32:34Z"
+   },
+   "deviation": 16.94,
+   "deviation_unit": "expected calls missed"
+  },
+  {
+   "rule": "traffic_zero",
+   "message": "traffic dropped to zero on email",
+   "service": "email",
+   "baseline": {
+    "request_rate_per_s": 0.1613,
+    "window": {
+     "start": "2026-09-06T22:29:31Z",
+     "end": "2026-09-06T22:30:33Z"
+    }
+   },
+   "observed": {
+    "request_rate_per_s": 0.0,
+    "rate_ceiling_per_s": 0.0161,
+    "consecutive_zero_samples": 7,
+    "zero_span_s": 105,
+    "expected_calls_in_zero_span": 16.94,
+    "min_expected_calls": 5,
+    "samples_in_window": 8,
+    "window": {
+     "start": "2026-09-06T22:30:33Z",
+     "end": "2026-09-06T22:32:34Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T22:30:33Z",
+    "end": "2026-09-06T22:32:34Z"
+   },
+   "deviation": 16.94,
+   "deviation_unit": "expected calls missed"
+  }
+ ],
+ "no_alert": false,
+ "card_id": "misconfig-cart-100"
+}

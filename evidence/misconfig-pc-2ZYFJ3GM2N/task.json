@@ -1,0 +1,62 @@
+{
+ "card_id": "misconfig-pc-2ZYFJ3GM2N",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-09-06T21:36:11Z",
+   "end": "2026-09-06T21:38:12Z"
+  },
+  "detected_at": "2026-09-06T21:42:11Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "entity_error_concentration",
+    "message": "errors concentrated on demo.product.id=2ZYFJ3GM2N (product-catalog)",
+    "service": "product-catalog",
+    "baseline": {
+     "note": "entity grouping is computed on the inject window only; the baseline arm is the other entities, reported as total/errors below",
+     "window": {
+      "start": "2026-09-06T21:35:10Z",
+      "end": "2026-09-06T21:36:11Z"
+     }
+    },
+    "observed": {
+     "spans": 40,
+     "error_spans": 40,
+     "error_frac": 1.0,
+     "threshold_frac": 0.5,
+     "threshold_abs": 5,
+     "window": {
+      "start": "2026-09-06T21:36:11Z",
+      "end": "2026-09-06T21:38:12Z"
+     }
+    },
+    "deviation": 40.0
+   },
+   {
+    "rule": "method_error_rate_jump",
+    "message": "elevated error rate on frontend/GET /api/recommendations",
+    "service": "frontend",
+    "baseline": {
+     "error_count": 0.0,
+     "error_count_scaled_to_inject": 0.0,
+     "request_rate_per_s": 0.7541,
+     "window": {
+      "start": "2026-09-06T21:35:10Z",
+      "end": "2026-09-06T21:36:11Z"
+     }
+    },
+    "observed": {
+     "error_count": 24.0,
+     "threshold_N": 23,
+     "window": {
+      "start": "2026-09-06T21:36:11Z",
+      "end": "2026-09-06T21:38:12Z"
+     }
+    },
+    "deviation": 24.0
+   }
+  ]
+ },
+ "evidence_dir": "evidence/misconfig-pc-2ZYFJ3GM2N",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

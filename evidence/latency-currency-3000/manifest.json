@@ -1,0 +1,86 @@
+{
+ "card_id": "latency-currency-3000",
+ "packed_at": "2026-09-06T20:10:34Z",
+ "window": {
+  "start": "2026-09-06T20:02:33Z",
+  "end": "2026-09-06T20:10:04Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T20:02:33Z",
+   "end": "2026-09-06T20:10:04Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T20:03:33Z",
+   "end": "2026-09-06T20:04:33Z"
+  },
+  "inject": {
+   "start": "2026-09-06T20:04:33Z",
+   "end": "2026-09-06T20:06:34Z"
+  },
+  "recover": {
+   "start": "2026-09-06T20:06:34Z",
+   "end": "2026-09-06T20:07:34Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/latency-currency-3000/logs.jsonl",
+   "bytes": 3217761,
+   "sha256": "7741f8216f6b1f4d605caee12fe069d4736df7a6aafacfa4614d5dfbcec96f9d"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/latency-currency-3000/metrics.json",
+   "bytes": 333773,
+   "sha256": "add0153f6c90e22141a5c9d6e50b412606947eb269df35e33c6a80face1c9da8"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/latency-currency-3000/traces.json",
+   "bytes": 8324990,
+   "sha256": "4cd7763edd00ca039c431bb29b5911cc307427f4ffba6ccc067a6cd893860a5f"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/latency-currency-3000/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/latency-currency-3000/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 9767,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 201
+  },
+  "traces.json": {
+   "spans": 29256,
+   "limit_hit": false,
+   "services_hitting_limit": []
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}

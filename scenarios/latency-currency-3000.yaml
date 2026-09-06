@@ -24,5 +24,174 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: null
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-09-06T20:03:33Z"
+  t_inject: "2026-09-06T20:04:33Z"
+  t_revert: "2026-09-06T20:06:34Z"
+  t_end: "2026-09-06T20:07:34Z"
+  settle_s: 150
+  t_harvest: "2026-09-06T20:10:04Z"
+  batch_dir: scripts/out/batch8_20260906T193745Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/latency-currency-3000
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 7741f8216f6b1f4d605caee12fe069d4736df7a6aafacfa4614d5dfbcec96f9d
+    metrics.json: add0153f6c90e22141a5c9d6e50b412606947eb269df35e33c6a80face1c9da8
+    traces.json: 4cd7763edd00ca039c431bb29b5911cc307427f4ffba6ccc067a6cd893860a5f
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 6
+agent_visible_symptom:
+  window:
+    start: "2026-09-06T20:04:33Z"
+    end: "2026-09-06T20:06:34Z"
+  detected_at: "2026-09-06T20:10:34Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/currency
+      service: frontend
+      baseline:
+        p95_ms: 7.4
+        call_count: 14.0
+        window:
+          start: "2026-09-06T20:03:33Z"
+          end: "2026-09-06T20:04:33Z"
+      observed:
+        p95_ms: 4850.0
+        delta_ms: 4842.6
+        ratio: 655.405
+        call_count: 16.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T20:04:33Z"
+          end: "2026-09-06T20:06:34Z"
+      deviation: 655.405
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on checkout/oteldemo.CheckoutService/PlaceOrder
+      service: checkout
+      baseline:
+        p95_ms: 87.5
+        call_count: 6.0
+        window:
+          start: "2026-09-06T20:03:33Z"
+          end: "2026-09-06T20:04:33Z"
+      observed:
+        p95_ms: 9625.0
+        delta_ms: 9537.5
+        ratio: 110.0
+        call_count: 7.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T20:04:33Z"
+          end: "2026-09-06T20:06:34Z"
+      deviation: 110.0
+    -
+      rule: p95_jump
+      message: elevated p95 latency on checkout
+      service: checkout
+      baseline:
+        p95_ms: 87.5
+        window:
+          start: "2026-09-06T20:03:33Z"
+          end: "2026-09-06T20:04:33Z"
+      observed:
+        p95_ms: 9625.0
+        delta_ms: 9537.5
+        ratio: 110.0
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T20:04:33Z"
+          end: "2026-09-06T20:06:34Z"
+      deviation: 110.0
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/shipping
+      service: frontend
+      baseline:
+        p95_ms: 48.0
+        call_count: 6.0
+        window:
+          start: "2026-09-06T20:03:33Z"
+          end: "2026-09-06T20:04:33Z"
+      observed:
+        p95_ms: 4850.0
+        delta_ms: 4802.0
+        ratio: 101.042
+        call_count: 8.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T20:04:33Z"
+          end: "2026-09-06T20:06:34Z"
+      deviation: 101.042
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        p95_ms: 96.88
+        call_count: 12.0
+        window:
+          start: "2026-09-06T20:03:33Z"
+          end: "2026-09-06T20:04:33Z"
+      observed:
+        p95_ms: 9625.0
+        delta_ms: 9528.12
+        ratio: 99.355
+        call_count: 16.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T20:04:33Z"
+          end: "2026-09-06T20:06:34Z"
+      deviation: 99.355
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/POST
+      service: frontend-proxy
+      baseline:
+        p95_ms: 4370.0
+        call_count: 41.0
+        window:
+          start: "2026-09-06T20:03:33Z"
+          end: "2026-09-06T20:04:33Z"
+      observed:
+        p95_ms: 6500.0
+        delta_ms: 2130.0
+        ratio: 1.487
+        call_count: 65.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: absolute
+        window:
+          start: "2026-09-06T20:04:33Z"
+          end: "2026-09-06T20:06:34Z"
+      deviation: 4.26

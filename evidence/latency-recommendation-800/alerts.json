@@ -1,0 +1,131 @@
+{
+ "detected_at": "2026-09-06T21:02:26Z",
+ "window": {
+  "start": "2026-09-06T20:56:13Z",
+  "end": "2026-09-06T20:58:13Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T20:54:13Z",
+   "end": "2026-09-06T21:01:43Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T20:55:13Z",
+   "end": "2026-09-06T20:56:13Z"
+  },
+  "inject": {
+   "start": "2026-09-06T20:56:13Z",
+   "end": "2026-09-06T20:58:13Z"
+  },
+  "recover": {
+   "start": "2026-09-06T20:58:13Z",
+   "end": "2026-09-06T20:59:13Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on frontend",
+   "service": "frontend",
+   "baseline": {
+    "p95_ms": 39.88,
+    "window": {
+     "start": "2026-09-06T20:55:13Z",
+     "end": "2026-09-06T20:56:13Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 845.77,
+    "delta_ms": 805.89,
+    "ratio": 21.209,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-09-06T20:56:13Z",
+     "end": "2026-09-06T20:58:13Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T20:56:13Z",
+    "end": "2026-09-06T20:58:13Z"
+   },
+   "deviation": 21.209
+  },
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/recommendations",
+   "service": "frontend",
+   "operation": "GET /api/recommendations",
+   "baseline": {
+    "p95_ms": 48.0,
+    "call_count": 44.0,
+    "window": {
+     "start": "2026-09-06T20:55:13Z",
+     "end": "2026-09-06T20:56:13Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 990.0,
+    "delta_ms": 942.0,
+    "ratio": 20.625,
+    "call_count": 90.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-09-06T20:56:13Z",
+     "end": "2026-09-06T20:58:13Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T20:56:13Z",
+    "end": "2026-09-06T20:58:13Z"
+   },
+   "deviation": 20.625
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on frontend-proxy",
+   "service": "frontend-proxy",
+   "baseline": {
+    "p95_ms": 41.37,
+    "window": {
+     "start": "2026-09-06T20:55:13Z",
+     "end": "2026-09-06T20:56:13Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 811.33,
+    "delta_ms": 769.96,
+    "ratio": 19.61,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-09-06T20:56:13Z",
+     "end": "2026-09-06T20:58:13Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T20:56:13Z",
+    "end": "2026-09-06T20:58:13Z"
+   },
+   "deviation": 19.61
+  }
+ ],
+ "no_alert": false,
+ "card_id": "latency-recommendation-800"
+}

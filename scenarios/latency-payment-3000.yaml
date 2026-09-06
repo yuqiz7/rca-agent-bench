@@ -24,5 +24,78 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: null
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-09-06T20:29:02Z"
+  t_inject: "2026-09-06T20:30:02Z"
+  t_revert: "2026-09-06T20:35:02Z"
+  t_end: "2026-09-06T20:37:32Z"
+  settle_s: 150
+  t_harvest: "2026-09-06T20:40:02Z"
+  batch_dir: scripts/out/batch8_20260906T193745Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/latency-payment-3000
+  packed: true
+  manifest_sha256:
+    logs.jsonl: bd1be2dcb7d789c817c4ca8a5b1695a801e7957474e6d932231da55adae22298
+    metrics.json: 5400e23e6cac464ae269de9f3ee935460370a74dc2280e117ef8e96de2a211a7
+    traces.json: 8e6984f44a4268f89e7384044d7b26e380791de7b70dc21dc7c84ebb2c3b2e52
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 2
+agent_visible_symptom:
+  window:
+    start: "2026-09-06T20:30:02Z"
+    end: "2026-09-06T20:35:02Z"
+  detected_at: "2026-09-06T20:40:54Z"
+  no_alert: false
+  alerts:
+    -
+      rule: p95_jump
+      message: elevated p95 latency on checkout
+      service: checkout
+      baseline:
+        p95_ms: 92.5
+        window:
+          start: "2026-09-06T20:29:02Z"
+          end: "2026-09-06T20:30:02Z"
+      observed:
+        p95_ms: 4850.0
+        delta_ms: 4757.5
+        ratio: 52.432
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T20:30:02Z"
+          end: "2026-09-06T20:35:02Z"
+      deviation: 52.432
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        p95_ms: 96.25
+        call_count: 6.0
+        window:
+          start: "2026-09-06T20:29:02Z"
+          end: "2026-09-06T20:30:02Z"
+      observed:
+        p95_ms: 4850.0
+        delta_ms: 4753.75
+        ratio: 50.39
+        call_count: 34.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T20:30:02Z"
+          end: "2026-09-06T20:35:02Z"
+      deviation: 50.39

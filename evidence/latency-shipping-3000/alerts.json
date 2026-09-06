@@ -1,0 +1,102 @@
+{
+ "detected_at": "2026-09-06T21:35:10Z",
+ "window": {
+  "start": "2026-09-06T21:29:01Z",
+  "end": "2026-09-06T21:31:01Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T21:27:01Z",
+   "end": "2026-09-06T21:34:41Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T21:28:01Z",
+   "end": "2026-09-06T21:29:01Z"
+  },
+  "inject": {
+   "start": "2026-09-06T21:29:01Z",
+   "end": "2026-09-06T21:31:01Z"
+  },
+  "recover": {
+   "start": "2026-09-06T21:31:01Z",
+   "end": "2026-09-06T21:32:11Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/shipping",
+   "service": "frontend",
+   "operation": "GET /api/shipping",
+   "baseline": {
+    "p95_ms": 48.0,
+    "call_count": 8.0,
+    "window": {
+     "start": "2026-09-06T21:28:01Z",
+     "end": "2026-09-06T21:29:01Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9523.03,
+    "delta_ms": 9475.03,
+    "ratio": 198.396,
+    "call_count": 6.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-09-06T21:29:01Z",
+     "end": "2026-09-06T21:31:01Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T21:29:01Z",
+    "end": "2026-09-06T21:31:01Z"
+   },
+   "deviation": 198.396
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on checkout",
+   "service": "checkout",
+   "baseline": {
+    "p95_ms": 48.0,
+    "window": {
+     "start": "2026-09-06T21:28:01Z",
+     "end": "2026-09-06T21:29:01Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 9000.0,
+    "delta_ms": 8952.0,
+    "ratio": 187.5,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-09-06T21:29:01Z",
+     "end": "2026-09-06T21:31:01Z"
+    }
+   },
+   "window": {
+    "start": "2026-09-06T21:29:01Z",
+    "end": "2026-09-06T21:31:01Z"
+   },
+   "deviation": 187.5
+  }
+ ],
+ "no_alert": false,
+ "card_id": "latency-shipping-3000"
+}

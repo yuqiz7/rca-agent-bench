@@ -25,5 +25,124 @@ cycle:
   settle_s: 300
 param_validated: false
 batch: null
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-09-06T22:29:31Z"
+  t_inject: "2026-09-06T22:30:33Z"
+  t_revert: "2026-09-06T22:32:34Z"
+  t_end: "2026-09-06T22:33:34Z"
+  settle_s: 300
+  t_harvest: "2026-09-06T22:38:34Z"
+  batch_dir: scripts/out/batch8_20260906T193745Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/misconfig-cart-100
+  packed: true
+  manifest_sha256:
+    logs.jsonl: b0fcb377befd62fd32e8cd533d530158d9ef685ff6c56d528fed74bf8bd25852
+    metrics.json: fddba135882201df6bf98b8b1e554cc28b8bfe62c689521dd1a349a2241edc8c
+    traces.json: 4c6ccb6f9c8b49222b22771fa9b33fd699c124881fe3c4b39fb78d2aacfab05d
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 4
+agent_visible_symptom:
+  window:
+    start: "2026-09-06T22:30:33Z"
+    end: "2026-09-06T22:32:34Z"
+  detected_at: "2026-09-06T22:39:03Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/POST /api/checkout
+      service: frontend
+      baseline:
+        p95_ms: 95.83
+        call_count: 19.0
+        window:
+          start: "2026-09-06T22:29:31Z"
+          end: "2026-09-06T22:30:33Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 14904.17
+        ratio: 156.522
+        call_count: 5.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T22:30:33Z"
+          end: "2026-09-06T22:32:34Z"
+      deviation: 156.522
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend-proxy/POST
+      service: frontend-proxy
+      baseline:
+        p95_ms: 4040.0
+        call_count: 45.0
+        window:
+          start: "2026-09-06T22:29:31Z"
+          end: "2026-09-06T22:30:33Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 10960.0
+        ratio: 3.713
+        call_count: 54.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T22:30:33Z"
+          end: "2026-09-06T22:32:34Z"
+      deviation: 21.92
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on checkout
+      service: checkout
+      baseline:
+        request_rate_per_s: 0.1613
+        window:
+          start: "2026-09-06T22:29:31Z"
+          end: "2026-09-06T22:30:33Z"
+      observed:
+        request_rate_per_s: 0.0
+        rate_ceiling_per_s: 0.0161
+        consecutive_zero_samples: 7
+        zero_span_s: 105
+        expected_calls_in_zero_span: 16.94
+        min_expected_calls: 5
+        samples_in_window: 8
+        window:
+          start: "2026-09-06T22:30:33Z"
+          end: "2026-09-06T22:32:34Z"
+      deviation: 16.94
+    -
+      rule: traffic_zero
+      message: traffic dropped to zero on email
+      service: email
+      baseline:
+        request_rate_per_s: 0.1613
+        window:
+          start: "2026-09-06T22:29:31Z"
+          end: "2026-09-06T22:30:33Z"
+      observed:
+        request_rate_per_s: 0.0
+        rate_ceiling_per_s: 0.0161
+        consecutive_zero_samples: 7
+        zero_span_s: 105
+        expected_calls_in_zero_span: 16.94
+        min_expected_calls: 5
+        samples_in_window: 8
+        window:
+          start: "2026-09-06T22:30:33Z"
+          end: "2026-09-06T22:32:34Z"
+      deviation: 16.94

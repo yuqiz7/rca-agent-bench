@@ -24,5 +24,58 @@ cycle:
   settle_s: 150
 param_validated: false
 batch: null
-production: null
-agent_visible_symptom: null
+production:
+  t_start: "2026-09-06T19:37:45Z"
+  t_inject: "2026-09-06T19:38:45Z"
+  t_revert: "2026-09-06T19:40:45Z"
+  t_end: "2026-09-06T19:41:45Z"
+  settle_s: 150
+  t_harvest: "2026-09-06T19:44:15Z"
+  batch_dir: scripts/out/batch8_20260906T193745Z
+  probe:
+    injected: true
+    symptom: true
+    recovered: true
+    residue_clean: true
+    verdict: passed
+    observe_only: false
+  evidence_dir: evidence/latency-ad-3000
+  packed: true
+  manifest_sha256:
+    logs.jsonl: b99fcd8b663d7fc6d08a7fb36f8fd5bad643d02f343e3fb15bc5f36474196236
+    metrics.json: 2095120393a9c485843cb2ebe3103b4d05af28fbe711d2d95649eb9dad67985e
+    traces.json: b3b885f21128a2f075dfa46df8e93279d0b2cc22d39f25e80eab4fb3aa11f59d
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 1
+agent_visible_symptom:
+  window:
+    start: "2026-09-06T19:38:45Z"
+    end: "2026-09-06T19:40:45Z"
+  detected_at: "2026-09-06T19:44:42Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/data
+      service: frontend
+      baseline:
+        p95_ms: 5.99
+        call_count: 37.0
+        window:
+          start: "2026-09-06T19:37:45Z"
+          end: "2026-09-06T19:38:45Z"
+      observed:
+        p95_ms: 4775.0
+        delta_ms: 4769.01
+        ratio: 797.041
+        call_count: 25.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-09-06T19:38:45Z"
+          end: "2026-09-06T19:40:45Z"
+      deviation: 797.041
