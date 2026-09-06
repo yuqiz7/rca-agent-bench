@@ -1,0 +1,73 @@
+{
+ "detected_at": "2026-08-29T01:04:30Z",
+ "window": {
+  "start": "2026-08-29T00:58:23Z",
+  "end": "2026-08-29T01:00:24Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-29T00:56:23Z",
+   "end": "2026-08-29T01:03:54Z"
+  },
+  "baseline": {
+   "start": "2026-08-29T00:57:23Z",
+   "end": "2026-08-29T00:58:23Z"
+  },
+  "inject": {
+   "start": "2026-08-29T00:58:23Z",
+   "end": "2026-08-29T01:00:24Z"
+  },
+  "recover": {
+   "start": "2026-08-29T01:00:24Z",
+   "end": "2026-08-29T01:01:24Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/data",
+   "service": "frontend",
+   "operation": "GET /api/data",
+   "baseline": {
+    "p95_ms": 7.47,
+    "call_count": 20.0,
+    "window": {
+     "start": "2026-08-29T00:57:23Z",
+     "end": "2026-08-29T00:58:23Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 14992.52,
+    "ratio": 2006.689,
+    "call_count": 31.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-29T00:58:23Z",
+     "end": "2026-08-29T01:00:24Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T00:58:23Z",
+    "end": "2026-08-29T01:00:24Z"
+   },
+   "deviation": 2006.689
+  }
+ ],
+ "no_alert": false,
+ "card_id": "blackhole-ad-01"
+}

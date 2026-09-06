@@ -24,21 +24,57 @@ cycle:
 param_validated: false
 batch: 3
 production:
-  t_start: "2026-08-28T23:46:08Z"
-  t_inject: "2026-08-28T23:47:08Z"
-  t_revert: "2026-08-28T23:49:08Z"
-  t_end: "2026-08-28T23:50:08Z"
+  t_start: "2026-08-29T00:57:23Z"
+  t_inject: "2026-08-29T00:58:23Z"
+  t_revert: "2026-08-29T01:00:24Z"
+  t_end: "2026-08-29T01:01:24Z"
   settle_s: 150
-  t_harvest: "2026-08-28T23:52:38Z"
-  batch_dir: scripts/out/batch4_20260828T225020Z
+  t_harvest: "2026-08-29T01:03:54Z"
+  batch_dir: scripts/out/batch5_20260829T005723Z
   probe:
     injected: true
     symptom: true
-    recovered: false
+    recovered: true
     residue_clean: true
-    verdict: failed
+    verdict: passed
     observe_only: false
-  evidence_dir: null
-  packed: false
-  note: probe gate failed; evidence not packed (decision 021)
-agent_visible_symptom: null
+  evidence_dir: evidence/blackhole-ad-01
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 0701eb42fa120a7fe4a089a020ee166e847c79b5e56ab3dc98b81d4f73397a2c
+    metrics.json: 02497db4ac0448a6957491d5bbd164c4e21ff9f3a6f8376877eb65c9ccc50da0
+    traces.json: c5c9974e0146bdf1fdef3d0c4459564f8f1f8664f8897dd224e6cbe6ae8305d0
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 1
+agent_visible_symptom:
+  window:
+    start: "2026-08-29T00:58:23Z"
+    end: "2026-08-29T01:00:24Z"
+  detected_at: "2026-08-29T01:04:30Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/data
+      service: frontend
+      baseline:
+        p95_ms: 7.47
+        call_count: 20.0
+        window:
+          start: "2026-08-29T00:57:23Z"
+          end: "2026-08-29T00:58:23Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 14992.52
+        ratio: 2006.689
+        call_count: 31.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-29T00:58:23Z"
+          end: "2026-08-29T01:00:24Z"
+      deviation: 2006.689

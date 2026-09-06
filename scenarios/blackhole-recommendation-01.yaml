@@ -24,21 +24,97 @@ cycle:
 param_validated: false
 batch: 3
 production:
-  t_start: "2026-08-29T00:04:45Z"
-  t_inject: "2026-08-29T00:05:45Z"
-  t_revert: "2026-08-29T00:07:45Z"
-  t_end: "2026-08-29T00:08:45Z"
+  t_start: "2026-08-29T01:04:30Z"
+  t_inject: "2026-08-29T01:05:30Z"
+  t_revert: "2026-08-29T01:07:31Z"
+  t_end: "2026-08-29T01:08:31Z"
   settle_s: 150
-  t_harvest: "2026-08-29T00:11:15Z"
-  batch_dir: scripts/out/batch4_20260828T225020Z
+  t_harvest: "2026-08-29T01:11:01Z"
+  batch_dir: scripts/out/batch5_20260829T005723Z
   probe:
     injected: true
     symptom: true
-    recovered: false
+    recovered: true
     residue_clean: true
-    verdict: failed
+    verdict: passed
     observe_only: false
-  evidence_dir: null
-  packed: false
-  note: probe gate failed; evidence not packed (decision 021)
-agent_visible_symptom: null
+  evidence_dir: evidence/blackhole-recommendation-01
+  packed: true
+  manifest_sha256:
+    logs.jsonl: 7dc059c0e652db27ef5996530fef79a09f0f40c0bc510f7abfcb294eff0c8f06
+    metrics.json: aecb1e8c08f03b21b881a5f89e3f520d202a51de7ec7b2ca8b0e035e983f8a9e
+    traces.json: 82e8ebe358c002882f5431123448dfb8adcc1016fadfb20c0474e7b9cafc1ea1
+    config_diff.txt: 7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba
+    topology.json: 02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1
+  alerts: 3
+agent_visible_symptom:
+  window:
+    start: "2026-08-29T01:05:30Z"
+    end: "2026-08-29T01:07:31Z"
+  detected_at: "2026-08-29T01:11:23Z"
+  no_alert: false
+  alerts:
+    -
+      rule: method_latency_jump
+      message: elevated p95 latency on frontend/GET /api/recommendations
+      service: frontend
+      baseline:
+        p95_ms: 49.9
+        call_count: 60.0
+        window:
+          start: "2026-08-29T01:04:30Z"
+          end: "2026-08-29T01:05:30Z"
+      observed:
+        p95_ms: 15000.0
+        delta_ms: 14950.1
+        ratio: 300.601
+        call_count: 46.0
+        min_calls: 5
+        threshold_ratio: 2.0
+        threshold_min_delta_ms: 100.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-29T01:05:30Z"
+          end: "2026-08-29T01:07:31Z"
+      deviation: 300.601
+    -
+      rule: p95_jump
+      message: elevated p95 latency on frontend-proxy
+      service: frontend-proxy
+      baseline:
+        p95_ms: 46.73
+        window:
+          start: "2026-08-29T01:04:30Z"
+          end: "2026-08-29T01:05:30Z"
+      observed:
+        p95_ms: 2096.43
+        delta_ms: 2049.7
+        ratio: 44.865
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-29T01:05:30Z"
+          end: "2026-08-29T01:07:31Z"
+      deviation: 44.865
+    -
+      rule: p95_jump
+      message: elevated p95 latency on recommendation
+      service: recommendation
+      baseline:
+        p95_ms: 8.9
+        window:
+          start: "2026-08-29T01:04:30Z"
+          end: "2026-08-29T01:05:30Z"
+      observed:
+        p95_ms: 27.0
+        delta_ms: 18.1
+        ratio: 3.034
+        threshold_ratio: 2.0
+        threshold_delta_ms: 500.0
+        arm: ratio
+        window:
+          start: "2026-08-29T01:05:30Z"
+          end: "2026-08-29T01:07:31Z"
+      deviation: 3.034

@@ -1,0 +1,131 @@
+{
+ "detected_at": "2026-08-29T01:11:23Z",
+ "window": {
+  "start": "2026-08-29T01:05:30Z",
+  "end": "2026-08-29T01:07:31Z"
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-29T01:03:30Z",
+   "end": "2026-08-29T01:11:01Z"
+  },
+  "baseline": {
+   "start": "2026-08-29T01:04:30Z",
+   "end": "2026-08-29T01:05:30Z"
+  },
+  "inject": {
+   "start": "2026-08-29T01:05:30Z",
+   "end": "2026-08-29T01:07:31Z"
+  },
+  "recover": {
+   "start": "2026-08-29T01:07:31Z",
+   "end": "2026-08-29T01:08:31Z"
+  }
+ },
+ "rules": {
+  "error_rate_jump": "elevated error rate on <service>",
+  "traffic_zero": "traffic dropped to zero on <service>",
+  "p95_jump": "elevated p95 latency on <service>",
+  "memory_over_line": "memory rising on <service>",
+  "method_error_rate_jump": "elevated error rate on <service>",
+  "entity_error_concentration": "errors concentrated on <service>",
+  "method_latency_jump": "elevated p95 latency on <service>"
+ },
+ "rules_version": "2026-08-28 (\u51b3\u7b56 023: rule 7 method-level p95)",
+ "alerts": [
+  {
+   "rule": "method_latency_jump",
+   "message": "elevated p95 latency on frontend/GET /api/recommendations",
+   "service": "frontend",
+   "operation": "GET /api/recommendations",
+   "baseline": {
+    "p95_ms": 49.9,
+    "call_count": 60.0,
+    "window": {
+     "start": "2026-08-29T01:04:30Z",
+     "end": "2026-08-29T01:05:30Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 15000.0,
+    "delta_ms": 14950.1,
+    "ratio": 300.601,
+    "call_count": 46.0,
+    "min_calls": 5,
+    "threshold_ratio": 2.0,
+    "threshold_min_delta_ms": 100.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-29T01:05:30Z",
+     "end": "2026-08-29T01:07:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T01:05:30Z",
+    "end": "2026-08-29T01:07:31Z"
+   },
+   "deviation": 300.601
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on frontend-proxy",
+   "service": "frontend-proxy",
+   "baseline": {
+    "p95_ms": 46.73,
+    "window": {
+     "start": "2026-08-29T01:04:30Z",
+     "end": "2026-08-29T01:05:30Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 2096.43,
+    "delta_ms": 2049.7,
+    "ratio": 44.865,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-29T01:05:30Z",
+     "end": "2026-08-29T01:07:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T01:05:30Z",
+    "end": "2026-08-29T01:07:31Z"
+   },
+   "deviation": 44.865
+  },
+  {
+   "rule": "p95_jump",
+   "message": "elevated p95 latency on recommendation",
+   "service": "recommendation",
+   "baseline": {
+    "p95_ms": 8.9,
+    "window": {
+     "start": "2026-08-29T01:04:30Z",
+     "end": "2026-08-29T01:05:30Z"
+    }
+   },
+   "observed": {
+    "p95_ms": 27.0,
+    "delta_ms": 18.1,
+    "ratio": 3.034,
+    "threshold_ratio": 2.0,
+    "threshold_delta_ms": 500.0,
+    "arm": "ratio",
+    "window": {
+     "start": "2026-08-29T01:05:30Z",
+     "end": "2026-08-29T01:07:31Z"
+    }
+   },
+   "window": {
+    "start": "2026-08-29T01:05:30Z",
+    "end": "2026-08-29T01:07:31Z"
+   },
+   "deviation": 3.034
+  }
+ ],
+ "no_alert": false,
+ "card_id": "blackhole-recommendation-01"
+}

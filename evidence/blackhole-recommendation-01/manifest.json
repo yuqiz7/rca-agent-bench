@@ -1,0 +1,86 @@
+{
+ "card_id": "blackhole-recommendation-01",
+ "packed_at": "2026-08-29T01:11:23Z",
+ "window": {
+  "start": "2026-08-29T01:03:30Z",
+  "end": "2026-08-29T01:11:01Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-08-29T01:03:30Z",
+   "end": "2026-08-29T01:11:01Z"
+  },
+  "baseline": {
+   "start": "2026-08-29T01:04:30Z",
+   "end": "2026-08-29T01:05:30Z"
+  },
+  "inject": {
+   "start": "2026-08-29T01:05:30Z",
+   "end": "2026-08-29T01:07:31Z"
+  },
+  "recover": {
+   "start": "2026-08-29T01:07:31Z",
+   "end": "2026-08-29T01:08:31Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/blackhole-recommendation-01/logs.jsonl",
+   "bytes": 2792508,
+   "sha256": "7dc059c0e652db27ef5996530fef79a09f0f40c0bc510f7abfcb294eff0c8f06"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/blackhole-recommendation-01/metrics.json",
+   "bytes": 359090,
+   "sha256": "aecb1e8c08f03b21b881a5f89e3f520d202a51de7ec7b2ca8b0e035e983f8a9e"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/blackhole-recommendation-01/traces.json",
+   "bytes": 6726797,
+   "sha256": "82e8ebe358c002882f5431123448dfb8adcc1016fadfb20c0474e7b9cafc1ea1"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/blackhole-recommendation-01/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/blackhole-recommendation-01/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 8440,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 218
+  },
+  "traces.json": {
+   "spans": 23617,
+   "limit_hit": false,
+   "services_hitting_limit": []
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}

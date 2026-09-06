@@ -1,0 +1,12 @@
+[2026-08-29T00:57:23Z] batch batch5_20260829T005723Z start; 2 cycles -> scripts/out/batch5_20260829T005723Z
+[2026-08-29T00:57:23Z] cycle 1 drop_inbound/ad tier=card param=None t0=2026-08-29T00:57:23Z
+[2026-08-29T01:01:24Z] cycle 1 settle 150s -> harvest at 2026-08-29T01:03:54Z
+[2026-08-29T01:03:54Z] cycle 1 baseline(300s)=0.183333/s inject=0.033333/s after=0.0/s
+[2026-08-29T01:04:12Z] cycle 1 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-29T01:04:30Z] card blackhole-ad-01: packed 5 files, 1 alerts
+[2026-08-29T01:04:30Z] cycle 2 drop_inbound/recommendation tier=card param=None t0=2026-08-29T01:04:30Z
+[2026-08-29T01:08:31Z] cycle 2 settle 150s -> harvest at 2026-08-29T01:11:01Z
+[2026-08-29T01:11:01Z] cycle 2 baseline(300s)=0.473333/s inject=0.058333/s after=0.0/s
+[2026-08-29T01:11:14Z] cycle 2 done injected=True symptom=True recovered=True residue_clean=True
+[2026-08-29T01:11:23Z] card blackhole-recommendation-01: packed 5 files, 3 alerts
+[2026-08-29T01:11:23Z] batch batch5_20260829T005723Z finished; summary at scripts/out/batch5_20260829T005723Z/summary.md

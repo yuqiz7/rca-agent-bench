@@ -1,0 +1,44 @@
+{
+ "card_id": "blackhole-ad-01",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-08-29T00:58:23Z",
+   "end": "2026-08-29T01:00:24Z"
+  },
+  "detected_at": "2026-08-29T01:04:30Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/GET /api/data",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 7.47,
+     "call_count": 20.0,
+     "window": {
+      "start": "2026-08-29T00:57:23Z",
+      "end": "2026-08-29T00:58:23Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 15000.0,
+     "delta_ms": 14992.52,
+     "ratio": 2006.689,
+     "call_count": 31.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-08-29T00:58:23Z",
+      "end": "2026-08-29T01:00:24Z"
+     }
+    },
+    "deviation": 2006.689
+   }
+  ]
+ },
+ "evidence_dir": "evidence/blackhole-ad-01",
+ "trigger": "Monitoring detected an anomaly in the system."
+}
