@@ -1,0 +1,310 @@
+[
+ {
+  "card_id": "blackhole-payment-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "payment",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7386,
+   "output": 860,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.023372,
+  "wall_s": 11.216,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"payment\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-shipping-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 8252,
+   "output": 2712,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.043624,
+  "wall_s": 31.732,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"checkout\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "crash-payment-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "payment",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7179,
+   "output": 449,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.018848,
+  "wall_s": 6.012,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"payment\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "crash-shipping-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "shipping",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7399,
+   "output": 758,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.022378,
+  "wall_s": 9.146,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"shipping\", \"fault_type\": \"crash\"}"
+  ]
+ },
+ {
+  "card_id": "latency-ad-800",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "ad",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6089,
+   "output": 21,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.012388,
+  "wall_s": 1.505,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"ad\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "latency-astronomy-db-3000",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 9724,
+   "output": 24,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.019688,
+  "wall_s": 1.302,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"product-catalog\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "latency-payment-800",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "payment",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6383,
+   "output": 1297,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.025736,
+  "wall_s": 15.198,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"payment\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "latency-quote-800",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "quote",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7361,
+   "output": 21,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.014932,
+  "wall_s": 1.396,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"quote\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "latency-recommendation-3000",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 7028,
+   "output": 715,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.021206,
+  "wall_s": 9.093,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"recommendation\", \"fault_type\": \"latency\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-ad-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "ad",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6067,
+   "output": 1002,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.022154,
+  "wall_s": 12.84,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"ad\", \"fault_type\": \"blackhole\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-recommendation-01",
+  "model": "claude-sonnet-5",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6636,
+   "output": 607,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.019342,
+  "wall_s": 7.825,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "{\"service\": \"recommendation\", \"fault_type\": \"blackhole\"}"
+  ]
+ }
+]

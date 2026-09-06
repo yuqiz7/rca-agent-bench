@@ -1,0 +1,153 @@
+{
+ "run_id": "holdout11_agent_20260906",
+ "model": "claude-sonnet-5",
+ "cards": [
+  "blackhole-payment-01",
+  "blackhole-shipping-01",
+  "crash-payment-01",
+  "crash-shipping-01",
+  "latency-ad-800",
+  "latency-astronomy-db-3000",
+  "latency-payment-800",
+  "latency-quote-800",
+  "latency-recommendation-3000",
+  "blackhole-ad-01",
+  "blackhole-recommendation-01"
+ ],
+ "started_at": "2026-09-06T16:42:48Z",
+ "wall_s": 330.678,
+ "rows": [
+  {
+   "card_id": "blackhole-payment-01",
+   "ground_truth": {
+    "service": "payment",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "blackhole-shipping-01",
+   "ground_truth": {
+    "service": "shipping",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "crash-payment-01",
+   "ground_truth": {
+    "service": "payment",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "crash-shipping-01",
+   "ground_truth": {
+    "service": "shipping",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "latency-ad-800",
+   "ground_truth": {
+    "service": "ad",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": false,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "latency-astronomy-db-3000",
+   "ground_truth": {
+    "service": "astronomy-db",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "latency-payment-800",
+   "ground_truth": {
+    "service": "payment",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "latency-quote-800",
+   "ground_truth": {
+    "service": "quote",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "latency-recommendation-3000",
+   "ground_truth": {
+    "service": "recommendation",
+    "fault_type": "latency",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "blackhole-ad-01",
+   "ground_truth": {
+    "service": "ad",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": false,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "blackhole-recommendation-01",
+   "ground_truth": {
+    "service": "recommendation",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  }
+ ]
+}

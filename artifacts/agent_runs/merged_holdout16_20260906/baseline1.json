@@ -1,0 +1,535 @@
+[
+ {
+  "card_id": "crash-ad-01",
+  "answer": {
+   "service": "ad",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.249,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.15999990126748967 -> 0.04197486969425371 /s (ratio 0.26234309747528933), upstream errors 0 -> 68",
+   "max caller p50 during fault 5.136 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 6.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 0.0,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 3.75,
+   "frontend-proxy": 2.0,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 0.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "blackhole-astronomy-db-01",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.232,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 3.6266493831001285 -> 1.0666502061710024 /s (ratio 0.2941145099775842), upstream errors 0 -> 76",
+   "max caller p50 during fault 133546.097 ms (wait gate 1000.0 ms)",
+   "recover-window rebound x1.13 >= 1: backlog replay",
+   "callers sat blocked on it: packets dropped"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 8.5,
+   "currency": 3.0,
+   "email": 6.0,
+   "flagd": 1.0,
+   "frontend": 2.75,
+   "frontend-proxy": 5.25,
+   "image-provider": 0.0,
+   "payment": 6.0,
+   "product-catalog": 10.5,
+   "quote": 1.0,
+   "recommendation": 7.5,
+   "shipping": 6.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "crash-quote-01",
+  "answer": {
+   "service": "quote",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.259,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.07555565434513037 -> 0.02716049382716049 /s (ratio 0.3594766541640177), upstream errors 0 -> 62",
+   "max caller p50 during fault 15.921 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 5.5,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 5.0,
+   "frontend-proxy": 2.0,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 3.0,
+   "recommendation": 0.0,
+   "shipping": 6.5,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "blackhole-email-01",
+  "answer": {
+   "service": "frontend-proxy",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.332,
+  "terminated": "submit",
+  "rationale": [
+   "own server error spans 0 -> 16 while traffic held (7.382222223710288 -> 8.378828102787637 /s)"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 5.5,
+   "currency": 0.0,
+   "email": 3.0,
+   "flagd": 0.0,
+   "frontend": 0.25,
+   "frontend-proxy": 2.25,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 0.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "crash-recommendation-01",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.225,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.4044446420499315 -> 0.12499895064060304 /s (ratio 0.30906318849236), upstream errors 0 -> 210",
+   "max caller p50 during fault 4.05 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 0.0,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 3.75,
+   "frontend-proxy": 2.0,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 6.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "blackhole-payment-01",
+  "answer": {
+   "service": "email",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.458,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.1066676543648839 -> 0.008465679016003693 /s (ratio 0.07936500588120819), upstream errors 0 -> 0",
+   "max caller p50 during fault 4.911 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 5.5,
+   "currency": 0.0,
+   "email": 6.0,
+   "flagd": 0.0,
+   "frontend": 0.25,
+   "frontend-proxy": 2.25,
+   "image-provider": 0.0,
+   "payment": 6.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 0.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "blackhole-shipping-01",
+  "answer": {
+   "service": "payment",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.271,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.11999930865733846 -> 0.022222331964029923 /s (ratio 0.18518716659848802), upstream errors 0 -> 6",
+   "max caller p50 during fault 5.943 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 5.5,
+   "currency": 0.0,
+   "email": 3.0,
+   "flagd": 0.0,
+   "frontend": 4.0,
+   "frontend-proxy": 2.25,
+   "image-provider": 0.0,
+   "payment": 6.0,
+   "product-catalog": 0.0,
+   "quote": 1.0,
+   "recommendation": 0.0,
+   "shipping": 6.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "crash-payment-01",
+  "answer": {
+   "service": "email",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.44,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.0711111111111111 -> 0.00888896296460909 /s (ratio 0.12500104168981535), upstream errors 0 -> 46",
+   "max caller p50 during fault 3.598 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 5.5,
+   "currency": 0.0,
+   "email": 6.0,
+   "flagd": 0.0,
+   "frontend": 3.5,
+   "frontend-proxy": 2.0,
+   "image-provider": 0.0,
+   "payment": 6.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 0.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "crash-shipping-01",
+  "answer": {
+   "service": "shipping",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.262,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.06666666666666665 -> 0.005555555555555555 /s (ratio 0.08333333333333334), upstream errors 0 -> 150",
+   "max caller p50 during fault 5.615 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 5.5,
+   "currency": 0.0,
+   "email": 3.0,
+   "flagd": 0.0,
+   "frontend": 5.0,
+   "frontend-proxy": 2.0,
+   "image-provider": 0.0,
+   "payment": 3.0,
+   "product-catalog": 0.0,
+   "quote": 1.0,
+   "recommendation": 0.0,
+   "shipping": 6.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "latency-ad-800",
+  "answer": {
+   "service": "ad",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.233,
+  "terminated": "submit",
+  "rationale": [
+   "caller-edge p50 3.08 -> 803.69 ms with errors flat"
+  ],
+  "scores": {
+   "ad": 2.5,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 0.0,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 0.25,
+   "frontend-proxy": 0.0,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 0.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "latency-astronomy-db-3000",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.208,
+  "terminated": "submit",
+  "rationale": [
+   "caller-edge p50 6.51 -> 15015.16 ms with errors flat"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 2.5,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 1.0,
+   "frontend-proxy": 2.5,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 5.5,
+   "quote": 0.0,
+   "recommendation": 4.5,
+   "shipping": 3.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "latency-payment-800",
+  "answer": {
+   "service": "payment",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.441,
+  "terminated": "submit",
+  "rationale": [
+   "caller-edge p50 3.15 -> 803.30 ms with errors flat"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 3.5,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 0.25,
+   "frontend-proxy": 0.0,
+   "image-provider": 0.0,
+   "payment": 2.5,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 0.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "latency-quote-800",
+  "answer": {
+   "service": "quote",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.263,
+  "terminated": "submit",
+  "rationale": [
+   "caller-edge p50 2.46 -> 1602.56 ms with errors flat"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 3.5,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 0.5,
+   "frontend-proxy": 0.0,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 2.5,
+   "recommendation": 0.0,
+   "shipping": 4.5,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "latency-recommendation-3000",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.224,
+  "terminated": "submit",
+  "rationale": [
+   "caller-edge p50 8.65 -> 3009.01 ms with errors flat"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 0.0,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 0.5,
+   "frontend-proxy": 0.5,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 2.5,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "blackhole-ad-01",
+  "answer": {
+   "service": "ad",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.259,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.18666795067654385 -> 0.059259094666056916 /s (ratio 0.3174572520418377), upstream errors 0 -> 0",
+   "max caller p50 during fault 6.075 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 3.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 0.0,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 0.25,
+   "frontend-proxy": 2.0,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 0.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ },
+ {
+  "card_id": "blackhole-recommendation-01",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "cost_usd": 0.0,
+  "wall_s": 0.194,
+  "terminated": "submit",
+  "rationale": [
+   "own traffic 0.5066689383220861 -> 0.15802584369821615 /s (ratio 0.3118917141862763), upstream errors 0 -> 120",
+   "max caller p50 during fault 5.546 ms (wait gate 1000.0 ms)",
+   "callers were refused immediately: process gone"
+  ],
+  "scores": {
+   "ad": 0.0,
+   "astronomy-db": 0.0,
+   "cart": 0.0,
+   "checkout": 0.0,
+   "currency": 0.0,
+   "email": 0.0,
+   "flagd": 0.0,
+   "frontend": 2.25,
+   "frontend-proxy": 2.25,
+   "image-provider": 0.0,
+   "payment": 0.0,
+   "product-catalog": 0.0,
+   "quote": 0.0,
+   "recommendation": 4.0,
+   "shipping": 0.0,
+   "valkey-cart": 0.0
+  }
+ }
+]
