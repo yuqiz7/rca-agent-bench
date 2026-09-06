@@ -1,0 +1,12 @@
+[2026-09-06T18:15:14Z] batch batch7_20260906T181514Z start; 2 cycles -> scripts/out/batch7_20260906T181514Z
+[2026-09-06T18:15:14Z] cycle 1 delay_outbound/valkey-cart tier=card param=800 t0=2026-09-06T18:15:14Z
+[2026-09-06T18:20:45Z] cycle 1 settle 150s -> harvest at 2026-09-06T18:23:15Z
+[2026-09-06T18:23:15Z] cycle 1 baseline(300s)=None/s inject=None/s after=None/s
+[2026-09-06T18:23:39Z] cycle 1 done injected=True symptom=True recovered=True residue_clean=True
+[2026-09-06T18:23:53Z] card latency-valkey-cart-800: packed 5 files, 12 alerts
+[2026-09-06T18:23:53Z] cycle 2 delay_outbound/valkey-cart tier=card param=3000 t0=2026-09-06T18:23:53Z
+[2026-09-06T18:29:24Z] cycle 2 settle 150s -> harvest at 2026-09-06T18:31:54Z
+[2026-09-06T18:31:54Z] cycle 2 baseline(300s)=None/s inject=None/s after=None/s
+[2026-09-06T18:32:13Z] cycle 2 done injected=True symptom=True recovered=True residue_clean=True
+[2026-09-06T18:32:26Z] card latency-valkey-cart-3000: packed 5 files, 10 alerts
+[2026-09-06T18:32:26Z] batch batch7_20260906T181514Z finished; summary at scripts/out/batch7_20260906T181514Z/summary.md

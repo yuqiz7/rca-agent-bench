@@ -1,0 +1,86 @@
+{
+ "card_id": "latency-valkey-cart-3000",
+ "packed_at": "2026-09-06T18:32:26Z",
+ "window": {
+  "start": "2026-09-06T18:22:53Z",
+  "end": "2026-09-06T18:31:54Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T18:22:53Z",
+   "end": "2026-09-06T18:31:54Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T18:23:53Z",
+   "end": "2026-09-06T18:24:53Z"
+  },
+  "inject": {
+   "start": "2026-09-06T18:24:53Z",
+   "end": "2026-09-06T18:26:54Z"
+  },
+  "recover": {
+   "start": "2026-09-06T18:26:54Z",
+   "end": "2026-09-06T18:29:24Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/latency-valkey-cart-3000/logs.jsonl",
+   "bytes": 3524538,
+   "sha256": "ecf641bf39691f54daf28d7d65f2bdd0e40c2a3d3a7c9e1fc1f3a1ae4db0c23f"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/latency-valkey-cart-3000/metrics.json",
+   "bytes": 395044,
+   "sha256": "d7f884690e2e7da6d3995e9706477bc730de34cbd19ee49c5741a81ff3898eab"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/latency-valkey-cart-3000/traces.json",
+   "bytes": 9009385,
+   "sha256": "b3d02a69c7084aa0b6c0c0eab72cf8e16e38e8264899473ddc8122a497a95081"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/latency-valkey-cart-3000/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/latency-valkey-cart-3000/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 10791,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 201
+  },
+  "traces.json": {
+   "spans": 31660,
+   "limit_hit": false,
+   "services_hitting_limit": []
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}

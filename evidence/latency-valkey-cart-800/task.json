@@ -1,0 +1,347 @@
+{
+ "card_id": "latency-valkey-cart-800",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-09-06T18:16:15Z",
+   "end": "2026-09-06T18:18:15Z"
+  },
+  "detected_at": "2026-09-06T18:23:53Z",
+  "no_alert": false,
+  "alerts": [
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on cart/POST /oteldemo.CartService/AddItem",
+    "service": "cart",
+    "baseline": {
+     "p95_ms": 3.89,
+     "call_count": 14.0,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 4846.11,
+     "ratio": 1247.143,
+     "call_count": 27.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 1247.143
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on cart",
+    "service": "cart",
+    "baseline": {
+     "p95_ms": 3.78,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4346.25,
+     "delta_ms": 4342.47,
+     "ratio": 1149.249,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 1149.249
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on cart/POST /oteldemo.CartService/GetCart",
+    "service": "cart",
+    "baseline": {
+     "p95_ms": 1.96,
+     "call_count": 44.0,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 990.0,
+     "delta_ms": 988.04,
+     "ratio": 504.244,
+     "call_count": 75.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 504.244
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on cart/POST /oteldemo.CartService/EmptyCart",
+    "service": "cart",
+    "baseline": {
+     "p95_ms": 5.7,
+     "call_count": 6.0,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 1970.0,
+     "delta_ms": 1964.3,
+     "ratio": 345.614,
+     "call_count": 8.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 345.614
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/POST /api/cart",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 30.0,
+     "call_count": 26.0,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 4820.0,
+     "ratio": 161.667,
+     "call_count": 54.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 161.667
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on frontend",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 40.77,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 3238.18,
+     "delta_ms": 3197.41,
+     "ratio": 79.427,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 79.427
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on frontend-proxy",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 42.0,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 2515.93,
+     "delta_ms": 2473.93,
+     "ratio": 59.903,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 59.903
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on checkout/oteldemo.CheckoutService/PlaceOrder",
+    "service": "checkout",
+    "baseline": {
+     "p95_ms": 92.5,
+     "call_count": 5.0,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 4757.5,
+     "ratio": 52.432,
+     "call_count": 7.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 52.432
+   },
+   {
+    "rule": "p95_jump",
+    "message": "elevated p95 latency on checkout",
+    "service": "checkout",
+    "baseline": {
+     "p95_ms": 92.5,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 4757.5,
+     "ratio": 52.432,
+     "threshold_ratio": 2.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 52.432
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/POST /api/checkout",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 96.25,
+     "call_count": 10.0,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 4850.0,
+     "delta_ms": 4753.75,
+     "ratio": 50.39,
+     "call_count": 14.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 50.39
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend/GET /api/cart",
+    "service": "frontend",
+    "baseline": {
+     "p95_ms": 35.0,
+     "call_count": 46.0,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 990.0,
+     "delta_ms": 955.0,
+     "ratio": 28.286,
+     "call_count": 76.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 28.286
+   },
+   {
+    "rule": "method_latency_jump",
+    "message": "elevated p95 latency on frontend-proxy/GET",
+    "service": "frontend-proxy",
+    "baseline": {
+     "p95_ms": 37.74,
+     "call_count": 437.0,
+     "window": {
+      "start": "2026-09-06T18:15:14Z",
+      "end": "2026-09-06T18:16:15Z"
+     }
+    },
+    "observed": {
+     "p95_ms": 818.08,
+     "delta_ms": 780.34,
+     "ratio": 21.678,
+     "call_count": 613.0,
+     "min_calls": 5,
+     "threshold_ratio": 2.0,
+     "threshold_min_delta_ms": 100.0,
+     "threshold_delta_ms": 500.0,
+     "arm": "ratio",
+     "window": {
+      "start": "2026-09-06T18:16:15Z",
+      "end": "2026-09-06T18:18:15Z"
+     }
+    },
+    "deviation": 21.678
+   }
+  ]
+ },
+ "evidence_dir": "evidence/latency-valkey-cart-800",
+ "trigger": "Monitoring detected an anomaly in the system."
+}

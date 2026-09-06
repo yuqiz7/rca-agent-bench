@@ -1,0 +1,86 @@
+{
+ "card_id": "latency-valkey-cart-800",
+ "packed_at": "2026-09-06T18:23:53Z",
+ "window": {
+  "start": "2026-09-06T18:14:14Z",
+  "end": "2026-09-06T18:23:15Z",
+  "pre_pad_s": 60,
+  "post_pad_s": 150
+ },
+ "windows": {
+  "pack": {
+   "start": "2026-09-06T18:14:14Z",
+   "end": "2026-09-06T18:23:15Z"
+  },
+  "baseline": {
+   "start": "2026-09-06T18:15:14Z",
+   "end": "2026-09-06T18:16:15Z"
+  },
+  "inject": {
+   "start": "2026-09-06T18:16:15Z",
+   "end": "2026-09-06T18:18:15Z"
+  },
+  "recover": {
+   "start": "2026-09-06T18:18:15Z",
+   "end": "2026-09-06T18:20:45Z"
+  }
+ },
+ "baseline_snapshot_created_at": "2026-08-27T17:51:26Z",
+ "files": [
+  {
+   "name": "logs.jsonl",
+   "path": "evidence/latency-valkey-cart-800/logs.jsonl",
+   "bytes": 3827067,
+   "sha256": "5950209ff3551667789f6f30e075496f1909fb05d6f345fb1a81e0eee2f33b6e"
+  },
+  {
+   "name": "metrics.json",
+   "path": "evidence/latency-valkey-cart-800/metrics.json",
+   "bytes": 395832,
+   "sha256": "4bd6e6cd2191cb597a19e0cf9920850f6134db75f553cb4beb5b2ee475617a7f"
+  },
+  {
+   "name": "traces.json",
+   "path": "evidence/latency-valkey-cart-800/traces.json",
+   "bytes": 10018041,
+   "sha256": "0ab933acc9f67fea4fc2b2d637cd840bc5bfe262a973f6bc7b4c406901874f69"
+  },
+  {
+   "name": "config_diff.txt",
+   "path": "evidence/latency-valkey-cart-800/config_diff.txt",
+   "bytes": 135,
+   "sha256": "7c9dd6ffccd7f168dff4ea6164bcb86a3986a6911beaec629ba368710546baba"
+  },
+  {
+   "name": "topology.json",
+   "path": "evidence/latency-valkey-cart-800/topology.json",
+   "bytes": 378,
+   "sha256": "02dfde1bcd3a1aacee76fd39d60cc5cf79b74cf6968004803d1734e9f34bbcb1"
+  }
+ ],
+ "stats": {
+  "logs.jsonl": {
+   "lines": 11700,
+   "index_pattern": "otel-logs-*",
+   "truncated": false,
+   "page_size": 2000
+  },
+  "metrics.json": {
+   "queries": 10,
+   "series": 201
+  },
+  "traces.json": {
+   "spans": 35188,
+   "limit_hit": false,
+   "services_hitting_limit": []
+  },
+  "config_diff.txt": {
+   "changed": false,
+   "baseline_created_at": "2026-08-27T17:51:26Z"
+  },
+  "topology.json": {
+   "edge_count": 33,
+   "sha256": "168a595bdbdf33ab7f11f5c168b14104841c27a6f62de9db1fb96def1c1a4315"
+  }
+ }
+}
