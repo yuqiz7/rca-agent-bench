@@ -52,6 +52,28 @@ def load_config(path=CONFIG_PATH):
         return yaml.safe_load(f)
 
 
+def run_config_for(model, config):
+    """config["run"], with any per-model exception from config["model_api"] applied.
+
+    Not every model accepts every request parameter, and the ones that do not
+    reject the whole request with a 400 rather than ignoring the field. Measured
+    on 2026-09-06: claude-haiku-4-5 returns "adaptive thinking is not supported on
+    this model" for thinking={"type": "adaptive"} and "This model does not support
+    the effort parameter." for output_config.effort; claude-sonnet-5 accepts both.
+
+    The exceptions live in config.yaml rather than in an `if model ==` here so
+    that adding an arm is a config edit, and so the primary model's settings are
+    never reached by this code path at all -- an unlisted model gets config["run"]
+    back unchanged, byte for byte.
+    """
+    over = (config.get("model_api") or {}).get(model)
+    if not over:
+        return config["run"]
+    rc = dict(config["run"])
+    rc.update(over)
+    return rc
+
+
 def load_prices(path=PRICES_PATH):
     with open(path) as f:
         return yaml.safe_load(f)
@@ -100,8 +122,8 @@ def run_card(card_id, model=None, config=None, prices=None, evidence_root=None,
     """Run one card. Returns the result dict; never raises on a model mistake."""
     config = config or load_config()
     prices = prices or load_prices()
-    rc = config["run"]
     model = model or config["models"]["primary"]
+    rc = run_config_for(model, config)
 
     pack = EvidencePack(card_id,
                         evidence_root=evidence_root or os.path.join(REPO, "evidence"),
@@ -132,8 +154,12 @@ def run_card(card_id, model=None, config=None, prices=None, evidence_root=None,
         "max_tokens": rc["max_tokens"],
         "system": payload["system"],
         "tools": tools,
-        "output_config": {"effort": rc["effort"]},
     }
+    # effort / thinking are omitted entirely when the model does not take them:
+    # sending either to a model that rejects it fails the whole request, and
+    # there is no equivalent to substitute that would keep the arms comparable.
+    if rc.get("effort"):
+        create_kwargs["output_config"] = {"effort": rc["effort"]}
     if rc.get("thinking") == "adaptive":
         create_kwargs["thinking"] = {"type": "adaptive"}
     if rc.get("prompt_caching"):

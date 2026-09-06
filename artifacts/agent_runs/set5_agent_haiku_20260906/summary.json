@@ -1,0 +1,75 @@
+{
+ "run_id": "set5_agent_haiku_20260906",
+ "model": "claude-haiku-4-5",
+ "cards": [
+  "crash-ad-01",
+  "blackhole-astronomy-db-01",
+  "crash-quote-01",
+  "blackhole-email-01",
+  "crash-recommendation-01"
+ ],
+ "started_at": "2026-09-06T20:21:12Z",
+ "wall_s": 258.779,
+ "rows": [
+  {
+   "card_id": "crash-ad-01",
+   "ground_truth": {
+    "service": "ad",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "blackhole-astronomy-db-01",
+   "ground_truth": {
+    "service": "astronomy-db",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": false,
+    "top1_ok": false
+   }
+  },
+  {
+   "card_id": "crash-quote-01",
+   "ground_truth": {
+    "service": "quote",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "blackhole-email-01",
+   "ground_truth": {
+    "service": "email",
+    "fault_type": "blackhole",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": true
+   }
+  },
+  {
+   "card_id": "crash-recommendation-01",
+   "ground_truth": {
+    "service": "recommendation",
+    "fault_type": "crash",
+    "aliases": []
+   },
+   "grade": {
+    "service_ok": true,
+    "top1_ok": false
+   }
+  }
+ ]
+}

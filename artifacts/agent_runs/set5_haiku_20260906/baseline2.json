@@ -1,0 +1,142 @@
+[
+ {
+  "card_id": "crash-ad-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "ad",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5563,
+   "output": 575,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.008438,
+  "wall_s": 8.042,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at this incident, I need to trace through the evidence systematically:\n\n**Key Observations:**\n\n1. **Alerts fired:**\n   - Frontend latency spike: p95 went from 5.4ms to 15000ms (2777x increase)\n   - Frontend error rate spike: 21 errors in inject window (baseline had 0)\n   - Ad traffic dropped to zero\n\n2. **Trace data shows the critical clue:**\n   - `ad | inject | 0 | 0 | - | - | -` — The ad service has **zero spans** during the inject window\n   - `ad | baseline | 17 | 0 | 0.234` — Ad had 17 spans in baseline\n   - `ad | recover | 21 | 0 | 4.678` — Ad recovered with 21 spans\n   - This indicates ad is completely unreachable during inject\n\n3. **Request rate metrics:**\n   - Ad: 0.16 → 0.042 req/s (73% drop, near zero)\n   - Frontend: 7.333 → 7.775 req/s (slight increase, trying to call ad)\n   - Ad error rate jumped with zero traffic alerts\n\n4. **Frontend cascade:**\n   - Frontend calls ad (per topology)\n   - When ad becomes unreachable, frontend's GET /api/data calls timeout/fail\n   - This explains the 15-second p95 latency (likely timeouts)\n   - This explains the 21 errors in frontend\n   - This explains ad's traffic dropping to zero\n\n5. **Latency pattern:**\n   - Ad's own p95 latency in recovery is 169.884ms (high), suggesting it was down and restarting\n   - The timeout behavior (15000ms = 15s) suggests connection failures rather than slow responses\n\n6. **No configuration diff provided** — so not a misconfig\n7. **Memory stable** across windows — not a mem_leak\n8. **No error logs from ad service itself** (only otelcol scraping errors)\n\n**Root Cause Analysis:**\nThe ad service became unreachable (no spans, zero traffic received). Frontend's calls to ad timed out at 15 seconds, causing the observed latency spike and errors. This is a **crash** — the service container is not running, causing callers to see address-unreachable errors manifesting as timeouts.\n\n```json\n{\"service\": \"ad\", \"fault_type\": \"crash\"}\n```"
+  ]
+ },
+ {
+  "card_id": "blackhole-astronomy-db-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "product-catalog",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 9225,
+   "output": 656,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.012505,
+  "wall_s": 8.82,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at this incident, I need to identify the root cause fault from the cascade of symptoms.\n\n## Key Observations:\n\n1. **Primary Symptoms (Latency Spike)**:\n   - Frontend and frontend-proxy show massive p95 latency jumps (~11500ms and 15000ms respectively)\n   - These are the entry points to the system\n\n2. **Traffic Zero Alerts** (downstream effects):\n   - product-catalog: traffic dropped to ~0.15 req/s (baseline 3.75)\n   - recommendation: traffic dropped to ~0.025 req/s (baseline 0.467)\n   - shipping, quote, checkout, email, payment, currency all show traffic collapse\n   - These are all downstream services being starved by frontend bottleneck\n\n3. **Trace Analysis** (critical clue):\n   - product-catalog: 436 spans → 43 spans during injection (90% drop)\n   - product-catalog shows 20 errors and massive latency (132,899ms p50)\n   - recommendation: 81 spans → 30 spans, 14 errors, 133,546ms p50 latency\n   - The traces show these services are responding extremely slowly (~130+ seconds)\n\n4. **Pattern Recognition**:\n   - The latency spike originates at frontend/frontend-proxy\n   - Only a subset of downstream services show extreme latency in traces (product-catalog, recommendation, checkout)\n   - These are the services that actually process requests and call external resources\n   - product-catalog calls astronomy-db\n   - recommendation calls product-catalog\n\n5. **Root Cause Analysis**:\n   - Frontend's p95 latency: 37ms → 10013ms (268x increase)\n   - Frontend-proxy's p95 latency: 36ms → 10014ms (271x increase)\n   - The symmetry suggests a shared dependency or configuration issue\n   - All traffic downstream collapses because frontend is blocked\n   - Product-catalog trace shows it IS responding but with 132+ second latency - this is the bottleneck\n\n6. **Most Telling Evidence**:\n   - product-catalog went from 38ms to 41ms p95 in baseline/normal, but traces show 132 seconds\n   - This massive discrepancy between metrics and trace latency suggests the service itself is slow\n   - "
+  ]
+ },
+ {
+  "card_id": "crash-quote-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "shipping",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6392,
+   "output": 599,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.009387,
+  "wall_s": 8.191,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at the evidence systematically:\n\n**Error Pattern Analysis:**\n- shipping: 26 errors, p95 latency jumps from 3.85ms to 48ms\n- checkout: 10 errors (downstream of shipping calls)\n- frontend: 32 errors (calls shipping and checkout)\n- quote: 0 spans in inject window (was receiving calls from shipping)\n- email & payment: 0 spans in inject window (downstream of checkout)\n\n**Trace Evidence:**\nThe shipping service traces are particularly revealing:\n- baseline: 11 spans, 0 errors, p50=2.619ms\n- inject: 62 spans, **62 errors** (100% error rate), p50=15.921ms\n- recover: 7 spans, 0 errors, p50=2.959ms\n\nEvery single shipping span in the inject window has an error. This indicates the service itself is failing, not latency alone.\n\n**Dependency Analysis:**\n- shipping calls: quote and frontend-proxy\n- quote had 0 spans during inject (not reached)\n- frontend-proxy had errors but continued functioning\n- shipping's own span errors (62) exceed what would be expected from downstream failures\n\n**Request Rate Pattern:**\n- shipping req_rate doubled from 0.107 to 0.206 (2x increase)\n- quote req_rate dropped from 0.076 to 0.027 (dropped 65%)\n- This suggests shipping is failing to reach quote\n\n**Latency Evidence:**\n- shipping p95 jumped 12.5x (3.85ms → 33.183ms in traces)\n- This magnitude of jump with 100% error rate across all spans indicates the service is returning errors immediately or timing out\n\n**Cascade Pattern:**\n- Errors start in shipping (root)\n- Propagate to checkout (calls shipping)\n- Propagate to frontend (calls both)\n- Quote stopped receiving requests (shipping can't call it)\n- Payment/email stopped being called (checkout failures)\n\nThe root cause is **shipping** experiencing a fault that causes it to error on all requests. The configuration diff shows no changes, memory is stable, so this points to either a crash (but it's still receiving requests), or more likely a **misconfig** where the service configuration changed causing systematic failures, or an internal error con"
+  ]
+ },
+ {
+  "card_id": "blackhole-email-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "misconfig"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5909,
+   "output": 515,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.008484,
+  "wall_s": 7.597,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Let me analyze this incident systematically.\n\n## Key Observations:\n\n1. **Primary Alert**: `p95_jump` on checkout showing 171x latency increase (87.5ms → 15000ms)\n2. **Secondary Alerts**: \n   - Frontend shows 157x latency increase on POST /api/checkout\n   - Frontend-proxy shows 3.5x latency increase\n   - Email traffic dropped to near-zero\n\n3. **Trace Analysis**:\n   - **Checkout spans**: 16 errors in inject window (vs 0 baseline/recover)\n   - **Email**: Dramatically reduced from 16 baseline spans to 4 inject spans\n   - **Checkout caller latency**: Frontend's caller_p50_ms for checkout went from 41ms to 30038ms (730x increase!)\n   - Frontend-proxy has 16 errors in inject window\n\n4. **Dependency Chain**:\n   - Frontend → Checkout → [cart, currency, email, payment, product-catalog, shipping, etc.]\n   - The latency spike is in checkout\n   - Email request rate dropped from 0.058 to 0.015 req/s\n\n5. **Error Pattern**:\n   - Checkout itself has 16 errors during injection\n   - Frontend-proxy has 16 errors during injection\n   - These errors correlate with the massive latency spike\n\n6. **Critical Finding**: \n   - Checkout is showing both errors (16) AND extreme latency (12009.6ms p95)\n   - This is a **misconfig** pattern: the service returns errors on its own spans\n   - The errors from checkout cause downstream timeouts/delays in callers\n   - Email traffic dropped because checkout stopped calling it (likely due to early timeout/error)\n\n7. **Logs**: Only otelcol-contrib shows errors (Kafka scraping), not application errors\n\nThe pattern is clear: **Checkout service was misconfigured**, causing it to:\n- Return errors on requests\n- Respond with extreme latency\n- This cascades to callers (frontend experiencing 30s timeouts)\n- Email traffic drops because checkout isn't making calls to it\n\n```json\n{\"service\": \"checkout\", \"fault_type\": \"misconfig\"}\n```"
+  ]
+ },
+ {
+  "card_id": "crash-recommendation-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5578,
+   "output": 500,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.008078,
+  "wall_s": 7.764,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at the evidence systematically:\n\n**Alert Analysis:**\n1. `frontend/GET /api/recommendations` shows massive latency jump (p95: 48ms → 4329ms) and error rate spike (0 → 71 errors)\n2. `recommendation` service shows traffic dropped to zero (0.459 → 0.0 req/s)\n3. `frontend` shows elevated error rate\n\n**Trace Evidence:**\n- `recommendation` service went from 87 spans in baseline to **0 spans in inject window** - this is the smoking gun\n- During inject window, no spans are recorded for recommendation at all\n- Frontend still shows spans (1556) but with 210 errors in inject window\n- Product-catalog also shows reduced spans/traffic during inject (192 vs 448 baseline)\n\n**Traffic Pattern:**\n- Recommendation traffic dropped from 0.404 to 0.125 req/s (inject), recovering to 0.113\n- This is consistent with the service being down or unreachable\n- Product-catalog also shows traffic drop (2.747 → 1.714 req/s) since recommendation calls it\n\n**Dependency Chain:**\n- Frontend calls recommendation (direct dependency)\n- Frontend shows errors when recommendation is unavailable\n- The errors on frontend are a *cascade* from recommendation being unavailable\n- Recommendation calls product-catalog (also shows traffic reduction)\n\n**Key Indicators:**\n- Zero spans in recommendation during inject window indicates the service either crashed or became unreachable\n- No increase in recommendation's own error rate (it has 0 errors because it's not processing requests)\n- Callers (frontend) see errors trying to reach it\n- This matches a **crash** pattern - the service container is not running, callers can't reach it\n\n**Why not other fault types:**\n- Not latency: recommendation has zero traffic, not slow traffic\n- Not blackhole: we see explicit errors from frontend, not silent timeouts\n- Not misconfig: recommendation itself shows no errors in logs/spans; the service isn't running at all\n- Not mem_leak: sudden drop, not gradual degradation\n\n```json\n{\"service\": \"recommendation\", \"fault_type\": \"crash\"}\n`"
+  ]
+ }
+]

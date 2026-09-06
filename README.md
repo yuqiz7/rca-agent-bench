@@ -199,12 +199,12 @@ Cards are produced by an unattended batch runner: a global serial lock so only o
 fault is ever live, `nohup` wrapping, and abort on consecutive failures rather than
 on the first one. <!-- GEN:batch_count -->7<!-- /GEN --> recorded batches account
 for <!-- GEN:batch_hours -->8.9<!-- /GEN --> hours of machine time. Every model call
-is priced per card: <!-- GEN:api_spend -->$5.38<!-- /GEN --> over
-<!-- GEN:api_runs -->151<!-- /GEN --> metered single-card runs.
+is priced per card: <!-- GEN:api_spend -->$9.07<!-- /GEN --> over
+<!-- GEN:api_runs -->237<!-- /GEN --> metered single-card runs.
 
-Repository scale: <!-- GEN:commits -->~66<!-- /GEN --> commits,
-<!-- GEN:code_loc -->~8.2k<!-- /GEN --> lines of Python and shell,
-<!-- GEN:docs_loc -->~6.5k<!-- /GEN --> lines of design docs.
+Repository scale: <!-- GEN:commits -->~68<!-- /GEN --> commits,
+<!-- GEN:code_loc -->~8.3k<!-- /GEN --> lines of Python and shell,
+<!-- GEN:docs_loc -->~6.8k<!-- /GEN --> lines of design docs.
 
 ---
 

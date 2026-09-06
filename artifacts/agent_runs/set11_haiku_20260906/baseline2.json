@@ -1,0 +1,310 @@
+[
+ {
+  "card_id": "blackhole-payment-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6198,
+   "output": 575,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.009073,
+  "wall_s": 8.07,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at the evidence systematically:\n\n**Key Observations:**\n\n1. **Alert Pattern**: Frontend reports massive latency spike (p95 from 96ms to 15000ms) on POST /api/checkout, while downstream services (payment, checkout, email) show traffic dropped to zero.\n\n2. **Trace Analysis**:\n   - `checkout` inject window: 170 spans with caller_p50_ms of **219,997ms** (extreme latency from frontend's perspective)\n   - `payment` inject window: 0 spans (no traffic at all)\n   - `email` inject window: 0 spans (no traffic at all)\n   - `frontend-proxy` inject window: 4980 spans with 17 errors (increased traffic, some errors)\n\n3. **Traffic Pattern**:\n   - Checkout: 0.102 → 0.007 req/s (93% drop)\n   - Payment: 0.107 → 0.008 req/s (93% drop)\n   - Email: 0.107 → 0.008 req/s (93% drop)\n   - Frontend-proxy: 8.782 → 8.124 req/s (only 7% drop, much less affected)\n\n4. **Dependency Graph**: Frontend calls checkout, which calls payment and email. The checkout service is the convergence point where all three zero-traffic services meet as callees.\n\n5. **Root Cause Indicator**: Checkout has extremely high caller-side latency (219,997ms) while maintaining some spans (170). This suggests checkout is:\n   - Still responding (not crashed - we have spans)\n   - Responding extremely slowly (not blackhole - callers see responses)\n   - Not dropping traffic silently (not blackhole - frontend waits and gets responses)\n   - The slowness causes timeout/retry behavior that cascades to downstream services\n\n6. **Config Diff**: No configuration changes detected, ruling out misconfig.\n\n7. **Memory**: Payment shows increase from 99.3 to 111.6 MiB (mem_leak candidate), but the symptom is latency not crashes.\n\nThe evidence points to **checkout** having introduced **latency** fault. The service is responding but extremely slowly (causing frontend's caller-side p50 to jump to 219,997ms), which triggers cascading failures in its downstream services (payment, email) as they back up or timeout.\n\n```json\n{\"service\": \"checkou"
+  ]
+ },
+ {
+  "card_id": "blackhole-shipping-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "shipping",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6966,
+   "output": 433,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.009131,
+  "wall_s": 6.93,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at this incident systematically:\n\n## Key Observations\n\n1. **Latency spike on checkout**: p95 latency jumped from 87.5ms to 7546.25ms (86x increase) - this is the primary signal\n2. **Traffic drops to zero**: shipping, quote, payment, and email all show zero traffic during inject window\n3. **Trace analysis**: \n   - checkout had 6 errors during inject (none in baseline/recover)\n   - quote and email show 0 spans during inject (complete silence)\n   - payment shows 0 spans during inject (complete silence)\n   - shipping shows 0 spans during inject (complete silence)\n4. **Frontend errors**: 33 errors on frontend during inject, tied to the shipping API calls\n5. **Error pattern**: Frontend's GET /api/shipping shows 5 errors specifically\n\n## Root Cause Analysis\n\nThe evidence points to a **blackhole** fault on **shipping**:\n\n- Shipping completely stops producing traces (0 spans during inject)\n- Traffic drops to near-zero (0.049 req/s vs baseline 0.276)\n- Callers (checkout, frontend) experience massive latency increases as they wait for responses that never come/never complete\n- The downstream services (quote, payment, email) that shipping depends on also show zero traffic because shipping isn't calling them\n- This is NOT a crash (frontend still receives errors, not address-unreachable bulk failures)\n- This is NOT latency alone (the traces are completely missing, not slow)\n- This matches blackhole: \"the service is up but its port silently drops packets. Callers see neither success nor error -- the edge simply goes quiet\"\n\nThe frontend/checkout latency spikes cascade from waiting on shipping's silent port drops, and downstream traffic stops because shipping never reaches them.\n\n```json\n{\"service\": \"shipping\", \"fault_type\": \"blackhole\"}\n```"
+  ]
+ },
+ {
+  "card_id": "crash-payment-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "payment",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6030,
+   "output": 897,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.010515,
+  "wall_s": 11.903,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "I need to analyze the evidence to identify which service introduced a fault and what type it is.\n\n## Key Observations:\n\n1. **Alerts fired:**\n   - `frontend/POST /api/checkout`: error rate jumped from 0 to 43 errors\n   - `checkout`: error rate jumped from 0 to 22 errors\n   - `email`: traffic dropped to zero (from 0.071 to 0.009 req/s)\n   - `payment`: traffic dropped to zero (from 0.071 to 0.002 req/s)\n\n2. **Trace evidence:**\n   - `email` inject window: 0 spans (was 16 in baseline)\n   - `payment` inject window: 0 spans (was 4 in baseline)\n   - `checkout` inject window: 46 errors out of 226 spans (was 0 errors out of 52)\n   - `frontend` inject window: 91 errors out of 4658 spans (was 0 errors)\n\n3. **Request rate changes:**\n   - `email`: 0.071 → 0.009 req/s (87% drop)\n   - `payment`: 0.071 → 0.002 req/s (97% drop)\n   - `checkout`: error rate surges but traffic increases\n\n4. **Dependency analysis:**\n   - `checkout` calls both `email` and `payment`\n   - When `checkout` tries to call `payment` or `email`, those services show zero traffic during inject window\n   - `checkout` itself starts returning errors\n\n5. **Latency patterns:**\n   - `checkout` p95 latency: 95.667ms → 2290.8ms (24x increase) — suggests timeouts waiting for downstream calls\n   - `payment` p95 latency in recover: 19.104ms (elevated, recovering)\n\n6. **Critical clue - blackhole pattern:**\n   - `email` and `payment` show zero traffic/zero spans but no errors in their own logs\n   - The calling service (`checkout`) sees errors and increased latency\n   - This is characteristic of a **blackhole** fault: the service accepts connections but drops packets, so callers timeout without getting errors back\n\n7. **Why checkout?**\n   - `checkout` makes calls to both `email` and `payment`\n   - Both services simultaneously show zero traffic (not crashes with address-unreachable)\n   - `checkout` errors increase because calls hang/timeout\n   - If `checkout` itself had the fault, we'd see `email` and `payment` still working norm"
+  ]
+ },
+ {
+  "card_id": "crash-shipping-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "shipping",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6225,
+   "output": 572,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.009085,
+  "wall_s": 7.582,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at the evidence systematically:\n\n**Key observations:**\n\n1. **Traffic pattern during inject window:**\n   - `shipping`: dropped from 0.067 req/s to 0.006 req/s (90% reduction)\n   - `quote`: dropped from 0.053 req/s to 0.006 req/s (89% reduction)\n   - Both went to near-zero with 7 consecutive zero samples over 105 seconds\n\n2. **Trace data during inject:**\n   - `shipping`: 7 spans in baseline → 0 spans in inject\n   - `quote`: 9 spans in baseline → 0 spans in inject\n   - `email`: 4 spans in baseline → 0 spans in inject\n   - `payment`: 2 spans in baseline → 0 spans in inject\n\n3. **Error propagation:**\n   - Frontend shows 132 errors (GET /api/shipping and POST /api/checkout)\n   - Checkout shows 18 errors\n   - These are downstream cascades from callers attempting to reach unavailable services\n\n4. **Dependency analysis:**\n   - `checkout` calls `shipping`\n   - `shipping` calls `quote`\n   - `frontend` calls both `checkout` and `shipping`\n   - The errors appear when these paths are blocked\n\n5. **Critical indicator:**\n   - The alerts show `traffic_zero` on both `shipping` and `quote`\n   - `shipping` has 0 spans in inject window but still shows 0.006 req/s (trace data is the source of truth)\n   - `shipping` memory dropped from 8.809 MiB to 8.539 MiB (container still present)\n   - `shipping` latency decreased (3.9ms vs 4.94ms baseline)\n\n**Diagnosis:**\nThe trace data shows that `shipping` went from receiving requests to having zero spans recorded. The service appears reachable (no memory spike, no restart) but is silently dropping packets - requests arrive but get no response. This is the **blackhole** fault pattern. The downstream errors in checkout and frontend are cascades from their attempts to call this non-responsive service.\n\nWhy `shipping` and not `quote`? Looking deeper, `shipping` is the point where the user-facing flows (frontend → checkout → shipping) terminate. The `quote` zero traffic is a secondary effect of shipping not calling it.\n\n```json\n{\"service\": \"ship"
+  ]
+ },
+ {
+  "card_id": "latency-ad-800",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "ad",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5058,
+   "output": 476,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.007438,
+  "wall_s": 7.034,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at this incident systematically:\n\n## Key Observations\n\n1. **Alert**: `frontend/GET /api/data` shows p95 latency spike from 8.55ms to 986.88ms (115x increase)\n\n2. **Trace Analysis - Critical Finding**:\n   - `ad` service shows dramatic caller latency spike: `caller_p50_ms` jumps from 3.079ms (baseline) to **803.69ms** (inject window)\n   - This is when frontend calls `ad`\n   - `ad` service's own p50 latency only goes from 0.19ms to 1.246ms - the service itself is not slow\n   - This pattern indicates a **blackhole**: the caller (frontend) waits for a response that never arrives, timing out\n\n3. **Supporting Evidence**:\n   - `ad` error_rate stays at 0 (no errors logged by the service)\n   - `ad` p95_latency minimal increase (0.19 → 1.246 ms) - the service isn't actually slow\n   - `ad` req_rate drops slightly (0.218 → 0.198) - fewer requests getting through\n   - No container crash (memory stable)\n   - No configuration changes (config diff shows nothing changed)\n   - The massive caller-side latency with no service-side latency or errors is the hallmark of blackhole\n\n4. **Cascade Effect**:\n   - Frontend calls `ad` and hangs waiting for response\n   - Frontend becomes slow (p95: 41.932 → 45.821ms)\n   - This manifests as the detected alert on `frontend/GET /api/data`\n   - Request rates drop across dependent services (cart, checkout, currency, email, payment, shipping all show decreased req_rate)\n\n5. **Config diff**: Empty - rules out `misconfig`\n\nThe root cause is `ad` silently dropping packets (blackhole), causing frontend's calls to hang indefinitely.\n\n```json\n{\"service\": \"ad\", \"fault_type\": \"blackhole\"}\n```"
+  ]
+ },
+ {
+  "card_id": "latency-astronomy-db-3000",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "astronomy-db",
+   "fault_type": "mem_leak"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 8245,
+   "output": 545,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.01097,
+  "wall_s": 7.78,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at this evidence systematically:\n\n## Key Observations\n\n1. **Latency Pattern**: Multiple services show extreme p95 latency jumps (15+ seconds) during inject window:\n   - product-catalog: 38.9ms → 11675ms\n   - recommendation: 7.1ms → 12097ms\n   - frontend: 39.5ms → 8848ms\n   - All pointing to a common dependency issue\n\n2. **Trace Analysis**: \n   - product-catalog p50 latency: 2.2ms → 6003ms (massive internal delay)\n   - recommendation p50 latency: 4.2ms → 15013ms (massive internal delay)\n   - These services themselves are slow, not just their callers\n\n3. **Dependency Chain**:\n   - recommendation → product-catalog → astronomy-db\n   - Both recommendation and product-catalog show identical ~15s latency pattern\n   - astronomy-db memory increased: 45.2 MiB → 63.7 MiB (40% jump)\n\n4. **Traffic Pattern**:\n   - shipping traffic drops to near-zero (17.5 expected calls, got ~1.7)\n   - This is a secondary symptom - checkout (which calls shipping) is timing out\n   - Quote also affected (calls shipping)\n\n5. **Error Logs**: Only otelcol-contrib errors (scraping/kafka issues) - not application errors\n\n6. **No Config Changes**: The diff shows no changes to flagd or compose_env\n\n## Root Cause Analysis\n\nThe smoking gun is **astronomy-db**:\n- It's the deepest leaf node showing memory increase\n- Both product-catalog and recommendation call it (indirectly or directly through product-catalog)\n- The latency spike (~15 seconds) matches a memory leak causing slowdown\n- The memory jump (45→63 MiB) during the fault window is the only infrastructure-level change\n- As astronomy-db slows, all callers time out or hit slowdown cascades\n- Checkout times out → shipping never gets called (traffic_zero alert)\n\nThis is a **mem_leak** fault: astronomy-db's memory grew, causing it to slow down dramatically, creating a 15-second response cascade through its callers.\n\n```json\n{\"service\": \"astronomy-db\", \"fault_type\": \"mem_leak\"}\n```"
+  ]
+ },
+ {
+  "card_id": "latency-payment-800",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "checkout",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5315,
+   "output": 557,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.0081,
+  "wall_s": 8.28,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at this incident systematically:\n\n## Alert Analysis\nTwo alerts fired:\n1. **checkout p95 latency**: jumped from 48ms baseline to 895.8ms inject (20.6x increase)\n2. **frontend POST /api/checkout latency**: jumped from 92.5ms to 990ms (10.7x increase)\n\n## Root Cause Investigation\n\n**Trace evidence** is the key:\n- checkout spans show p50 increased from 3.926ms to 4.822ms (minimal, within noise)\n- BUT checkout's **callers** (frontend) show massive jump: p50 went from 38ms to 842ms\n- This indicates frontend is waiting on checkout, not that checkout itself is slow internally\n\n**Service dependency analysis:**\n- Frontend calls checkout\n- Checkout calls: cart, currency, email, flagd, frontend-proxy, payment, product-catalog, shipping\n- All downstream services show normal latencies and error rates during inject window\n\n**Metrics confirmation:**\n- Checkout request rate: stable (0.058 → 0.06 req/s) - not a throughput issue\n- Checkout error rate: 0 - no errors, so it's not crashing\n- Checkout p95: 895ms during inject, 412ms during recover (not sustained)\n- All of checkout's dependencies show normal p95 latencies (1-40ms range)\n\n**Pattern matching:**\n- Service appears reachable (no address-unreachable errors)\n- Service returns responses (frontend gets results, just slowly)\n- Memory stable around 13.3 MiB\n- No configuration diff noted\n- Service responds but takes ~900ms where it should take ~50ms\n\n**The critical insight:**\nCheckout's own internal spans show normal latency (4.8ms), but callers experience 842ms latency. This means checkout is processing requests but something within checkout's request processing path has introduced a 900ms delay.\n\nGiven:\n- No downstream service is slow (all show normal p95)\n- Checkout itself completes quickly internally\n- Callers experience extreme latency waiting for checkout\n- This pattern is consistent across all checkout's callers\n\nThe fault must be in **checkout** itself - it's taking an extremely long time to respond without errors, whi"
+  ]
+ },
+ {
+  "card_id": "latency-quote-800",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "quote",
+   "fault_type": "blackhole"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 6178,
+   "output": 695,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.009653,
+  "wall_s": 9.777,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at the evidence, I need to identify the root cause of the latency spike.\n\n## Analysis\n\n**Key observations:**\n\n1. **Primary symptoms:**\n   - `shipping` service shows massive p95 latency jump: 3.862ms → 1710.188ms (baseline → inject)\n   - `shipping/POST /get-quote` p95: 3.9ms → 1970ms\n   - Latency nearly completely recovers after injection window\n\n2. **Cascade pattern:**\n   - `checkout` latency jumps (calls shipping)\n   - `frontend` latency jumps on checkout and shipping endpoints (calls checkout and shipping)\n   - `quote` service shows high caller_p50_ms from shipping (1602.563ms during inject)\n   - All downstream services show cascading latency but no errors\n\n3. **Trace evidence:**\n   - `shipping` p50_ms during inject: 1602.608ms (normal: 2.547ms)\n   - `quote` caller_p50_ms from shipping during inject: 1602.563ms (normal: 2.461ms)\n   - This indicates `shipping` is waiting on `quote`\n   - `quote` is not itself slow (p50_ms: 0.278ms normal, 0.291ms baseline)\n\n4. **Request rate changes:**\n   - `shipping` req_rate increases: 0.156 → 0.249 req/s (59% increase)\n   - `quote` req_rate increases: 0.111 → 0.165 req/s (49% increase)\n   - All other services show normal or proportional changes\n\n5. **Memory and errors:**\n   - No errors recorded anywhere\n   - No container memory anomalies (ruling out mem_leak)\n   - No crash indicators (services remain reachable)\n   - Logs show otelcol errors (telemetry collection issue, not service fault)\n\n6. **Configuration:**\n   - No config diff provided, ruling out misconfig\n\n**Root cause analysis:**\n\nThe shipping service depends on the quote service. During the injection window:\n- Shipping's p50 latency is 1602.608ms (essentially matching quote's caller_p50_ms of 1602.563ms)\n- Quote service's own latency is normal (0.278ms)\n- This indicates shipping is blocked/waiting, not that quote is slow\n\nThis pattern is consistent with a **blackhole** fault on quote's response path: shipping sends requests to quote, but the responses are silently "
+  ]
+ },
+ {
+  "card_id": "latency-recommendation-3000",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "latency"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5878,
+   "output": 467,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.008213,
+  "wall_s": 6.786,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at the evidence systematically:\n\n**Alert Pattern:**\n- Alerts fired on `frontend` and `frontend-proxy` showing massive latency jumps (67-101x ratio)\n- P95 latency: frontend 41ms → 3367ms, frontend-proxy 41ms → 2792ms\n- But error rates remain zero across all services\n\n**Trace Analysis - Critical Finding:**\n- `recommendation` service caller_p50_ms jumped from 8.649ms (baseline) to **3009.012ms (inject)** \n- This is a ~350x increase in caller latency when calling `recommendation`\n- Meanwhile, `recommendation` service's own p50_ms stayed normal (4.811 → 5.024ms)\n- This indicates `recommendation` itself is slow to respond\n\n**Request Rate Changes:**\n- `frontend` req_rate dropped from 8.738 → 8.035 req/s (8% decrease)\n- `recommendation` req_rate stayed relatively stable (0.404 → 0.395 req/s)\n- No crash pattern (spans continue, no address-unreachable errors)\n\n**Service Dependencies:**\n- `frontend` calls `recommendation`\n- When `frontend` calls `recommendation`, callers see massive delays\n- The latency is happening in the `recommendation` service itself (slow responses), not in downstream services\n\n**Excluding Other Faults:**\n- Not a crash: spans continue, no errors logged in target services\n- Not a blackhole: frontend/frontend-proxy show latency increases, not timeouts (would see errors)\n- Not misconfig: no configuration diff, no service-side errors logged\n- Not mem_leak: memory usage stable across all services\n- `flagd` latency is normal (0.106ms) and unchanged\n\n**Root Cause:**\nThe `recommendation` service is responding slowly (latency fault), causing `frontend` and downstream callers to experience cascading delays when fetching recommendations.\n\n```json\n{\"service\": \"recommendation\", \"fault_type\": \"latency\"}\n```"
+  ]
+ },
+ {
+  "card_id": "blackhole-ad-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "ad",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5041,
+   "output": 416,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.007121,
+  "wall_s": 6.338,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at the evidence, I need to identify the root cause of the extreme latency spike on frontend's GET /api/data endpoint (p95 jumped from 7.47ms to 15000ms).\n\n**Key observations:**\n\n1. **The alert**: Frontend shows massive latency increase (2006x spike) during inject window\n2. **Trace analysis**: \n   - `ad` service shows 0 spans in inject and recover windows (was 24 in baseline)\n   - This is the only service with completely absent traces\n   - `ad` is called by `frontend`\n3. **Metrics**: `ad` req_rate drops from 0.187 to 0.059 req/s during inject\n4. **Error logs**: Only otelcol-contrib has errors (scraping/Kafka issues), not app services\n5. **Frontend-proxy**: Shows some errors (9 in inject) and slightly elevated latency, but this is likely cascade\n6. **No config diff**: Rules out misconfig as primary cause\n\n**Root cause analysis:**\n\nThe `ad` service completely stops producing spans during the inject window. Combined with:\n- Frontend calling `ad` directly\n- The exact timing of ad's disappearance matching the latency spike\n- Frontend's p95 latency jumping to 15 seconds (timeout-like behavior)\n- No error responses logged for frontend itself\n\nThis indicates `ad` crashed. When frontend calls a crashed service, it experiences timeout/hang behavior, explaining the 15-second p95 latency. The cascading errors in frontend-proxy are secondary effects of increased load/timeouts propagating through the system.\n\nThe slight increase in frontend-proxy error_rate and the errors from otelcol are consequences of the upstream ad crash causing timeouts and retries.\n\n{\"service\": \"ad\", \"fault_type\": \"crash\"}"
+  ]
+ },
+ {
+  "card_id": "blackhole-recommendation-01",
+  "model": "claude-haiku-4-5",
+  "answer": {
+   "service": "recommendation",
+   "fault_type": "crash"
+  },
+  "steps": 1,
+  "api_calls": 1,
+  "parse_failures": 0,
+  "terminated": "answered",
+  "error": null,
+  "usage": {
+   "input": 5538,
+   "output": 439,
+   "cache_write": 0,
+   "cache_read": 0
+  },
+  "cost_usd": 0.007733,
+  "wall_s": 6.99,
+  "leak_check": [
+   "no_forbidden_keys",
+   "no_card_id"
+  ],
+  "replies": [
+   "Looking at the evidence systematically:\n\n**Alert Pattern:**\n- `frontend/GET /api/recommendations`: p95 latency jumped 300x (49.9ms → 15000ms)\n- `frontend-proxy`: p95 latency jumped 45x (46.73ms → 2096ms)\n- `recommendation`: p95 latency jumped 3x (8.9ms → 27ms)\n\n**Trace Data - Critical Finding:**\n- `recommendation` service: **0 spans in inject window** (had 90 spans in baseline)\n- `recommendation` req_rate dropped to 0.158 from 0.507\n- `frontend` calling `recommendation`: caller_p50_ms stayed normal (6.416ms) but `frontend` errors jumped from 0 to 120 errors in inject window\n\n**Request Flow:**\n- `frontend` calls `recommendation` to get `/api/recommendations`\n- `frontend` shows 120 errors during inject window\n- `recommendation` has no spans/zero activity\n\n**Latency Analysis:**\nThe massive latency spike on `frontend`'s recommendation endpoint (15000ms = 15 seconds) with errors suggests the service is timing out waiting for a response. The `recommendation` service showing zero spans but decreased request rate indicates it's not processing requests—either crashing or completely unresponsive.\n\n**Why not other candidates:**\n- `flagd`: Has spans and errors, not completely silent\n- Other services: Show either normal behavior or expected cascade effects from recommendation failure\n- No config diff present rules out `misconfig`\n- Memory is stable, no leak pattern\n- No downstream cascade—the root is at `recommendation`\n\nThe service `recommendation` is experiencing a **crash** fault—it's not accepting or processing incoming requests at all (zero spans), causing callers to experience massive timeouts and errors.\n\n```json\n{\"service\": \"recommendation\", \"fault_type\": \"crash\"}\n```"
+  ]
+ }
+]

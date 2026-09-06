@@ -120,8 +120,8 @@ def parse_answer(text):
 def run_card(card_id, model=None, config=None, prices=None, evidence_root=None, client=None):
     config = config or run_agent.load_config()
     prices = prices or run_agent.load_prices()
-    rc = config["run"]
     model = model or config["models"]["primary"]
+    rc = run_agent.run_config_for(model, config)
 
     user, _ = build_user(card_id, evidence_root=evidence_root)
     leak_passed = assert_no_leak(card_id, SYSTEM_PROMPT, user)
@@ -141,7 +141,9 @@ def run_card(card_id, model=None, config=None, prices=None, evidence_root=None, 
         try:
             resp = client.messages.create(
                 model=model, max_tokens=rc["max_tokens"], system=SYSTEM_PROMPT,
-                messages=messages, output_config={"effort": rc["effort"]},
+                messages=messages,
+                # Same per-model omission as the agent arm; see run_config_for.
+                **({"output_config": {"effort": rc["effort"]}} if rc.get("effort") else {}),
                 **({"thinking": {"type": "adaptive"}} if rc.get("thinking") == "adaptive" else {}))
         except anthropic.APIError as exc:
             terminated, error = "api_error", f"{type(exc).__name__}: {exc}"

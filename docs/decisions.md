@@ -1796,3 +1796,86 @@ shipping 11→14（3）、email 5→16（11）。
   批次末尾因此有约 20 分钟花在这两张上。若它们双双失败，
   按上面那条没关掉的中止路径，需要连同 `latency-cart-3000` 三张一起失败才会触发 ——
   但那正好是批次的最后三张，中止与跑完没有区别。
+
+---
+
+## 034 第三、四臂：开箱配置 haiku 4.5 作跨配置对照（2026-09-06 ET）
+
+**选了什么**
+
+1. **新增两臂**：`agent-haiku(开箱)`（v2 prompt + 6 工具 + submit + 五道保险，
+   模型 `claude-haiku-4-5`）与 `基线③ 单轮 haiku(开箱)`（同摘要、同 prompt，只换模型）。
+2. **haiku 臂不带 `thinking`、不带 `output_config.effort`** —— 选项 A。
+3. **实现走 `config.yaml` 的 `model_api` 段 + `run_agent.run_config_for()`**，
+   未列出的模型原样拿到 `config["run"]`，**主 agent 的默认值一个字节没动**；
+   `single_shot_llm.py` 复用同一个函数，**没有复制代码**。
+4. **五臂表由新增的 `scripts/baselines/compare_arms.py` 生成**，
+   `compare_report.py` 一行没动 —— 既有的三臂报告被 docs 引用，必须继续逐字节可重现。
+5. **口径写死为「开箱配置 haiku 4.5 vs 调优 sonnet 5」**，findings §4.5 全文不出现
+   「模型对照」四个字。
+
+**为什么不是「唯一差异是模型」——这个前提被实测证伪**
+
+原计划是「与主 agent 完全同一份配置，唯一差异 model=claude-haiku-4-5」。
+**做不到。** 2026-09-06 对着线上 API 实测（每次 `max_tokens ≤ 64`）：
+
+```
+haiku   effort=high + thinking adaptive  400 adaptive thinking is not supported on this model
+haiku   thinking adaptive only           400 adaptive thinking is not supported on this model
+haiku   effort=high only                 400 This model does not support the effort parameter.
+haiku   无 effort 无 thinking             200
+haiku   thinking={enabled,budget_tokens} 200
+sonnet  effort=high + thinking adaptive  200   ← 对照
+```
+
+**换模型必然同时换掉 thinking 与 effort 两个变量。** 这不是实现选择，是模型档位差异。
+预授权因此失效，三个选项交由用户裁决，用户选 A。
+
+**放弃了什么**
+
+- **放弃 B（haiku 用 `thinking={"type":"enabled","budget_tokens":N}`）。**
+  它在功能上更接近「都让它思考」，但 **N 没有任何实测依据**，
+  而 N 直接决定成本与准确率。把一个编出来的常数放进对照的正中间，
+  正是这个仓库一路在防的东西（比较 F-3 的 10% 上限、`MIN_EXPECTED` 的 5：
+  那两个数至少有实测或任务指定的来源，N 一个都没有）。
+- **放弃 C（两臂都关掉 thinking/effort，sonnet 重跑一遍，得到真正的单变量对照）。**
+  它是唯一能干净拆分「模型贡献」与「配置贡献」的做法，代价是**再花约 $3.1**
+  重跑一个已经有结果的臂，并且那个「关掉思考的 sonnet」**不是 v1 交付的那个 agent** ——
+  §4 会多出一个跟交付物无关的第六臂，把表读糊。
+  **代价写在明处**：本轮**无法回答「模型本身值多少」**，只能回答两个端点之间的总差距。
+- **放弃按裁决之外的方式呈现。** §4.5 只报总差距，不拆分；
+  evidence_audit 的措辞上限相应封在「开箱 haiku vs 调优 sonnet」。
+- **放弃因为 haiku 表现差就调 prompt。** 它的 `validation_rejects` 是 sonnet 的
+  **8 倍**（33 vs 4）、**9/43 跑满 20 步不交卷**，看着都像“再调调就好了”。
+  但 v2 prompt 是冻结的，为一个新臂改它等于把 §4 全部既有数字作废。
+  **计数如实记录在 §1.5，不作为改 prompt 的依据。**
+
+**实测里最值得记的三条**
+
+1. **工具循环的增益在 top-1 上对两种配置都成立**（sonnet +18.8/+18.6，
+   haiku +31.2/+7.0），**但在 service-only 上对开箱 haiku 是负的**（−6.3 / −9.3）。
+   单轮 haiku 看一份固定摘要能答对 69.8% 的服务，让它自己查反而掉到 60.5%。
+   **工具循环对它是净负担。**
+2. **换便宜的模型没有换来便宜的 agent。** 43 卡上 agent-haiku 花 **$3.3025**，
+   **比 agent-sonnet 的 $3.1197 还贵**，而 top-1 低 18.6 个点 ——
+   token 单价便宜一半，步数却是 2.5 倍（13.40 vs 5.40）。
+   **单卡成本必须按「跑完一张卡」算。**
+3. **新失败模式 §1.5「步数耗尽不交卷」**：9/43（20.9%）跑满 20 步没调过 `submit`，
+   sonnet 是 0/43。且**不是卡在循环里** —— `blackhole-ad-01` 20 步打了 35 次
+   工具调用、参数无一重复。是查得越来越宽、就是不收敛。
+   这九张平均 $0.1181，比交卷的 34 张（$0.0659）贵 1.8 倍：
+   **它失败最彻底的卡也是最贵的卡，步数熔断是唯一兜住成本的东西。**
+
+**trade-off**
+
+- **本轮拿到的是两个端点，不是一条曲线。** 「开箱 haiku」与「调优 sonnet」之间
+  差 18.7 个点（有工具、两个卡集互相印证），但这 18.7 里多少来自模型、
+  多少来自思考与 effort，**本轮答不了**，要答就得付 C 的 $3.1。
+- **无工具条件下的差距不可引用**：16 卡 +31.2、43 卡 +7.0，差 24 个点；
+  16 卡上单张值 6.25 个百分点。§4.5 已写明只引有工具那一档。
+- **跨模型这件事仍然只有两点，且不是多家。** evidence_audit 的禁写第 4 条
+  据此改写为「已覆盖：开箱 haiku 与调优 sonnet 两点，非多家、非同配置」，
+  见该文件 C7。
+- **`model_api` 这个新机制会被下一个人用错。** 它长得像「随便覆盖 run 参数」，
+  实际只该用来记**模型 API 不接受某参数**这一类事实。config.yaml 的注释里写了
+  这条界线，但机制本身拦不住误用。

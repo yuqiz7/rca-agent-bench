@@ -33,6 +33,25 @@ run:
   # between a $0.05 card and a $0.30 one.
   prompt_caching: true
 
+# Per-model exceptions to `run` above. An unlisted model gets `run` unchanged.
+#
+# Measured 2026-09-06 against the live API, not inferred from docs:
+#   claude-haiku-4-5  thinking={"type":"adaptive"}   -> 400 "adaptive thinking is
+#                                                       not supported on this model"
+#   claude-haiku-4-5  output_config.effort           -> 400 "This model does not
+#                                                       support the effort parameter."
+#   claude-sonnet-5   both                           -> 200
+#
+# Haiku's own thinking switch is {"type":"enabled","budget_tokens":N}, which was
+# deliberately NOT used: N has no measured basis here, and inventing one would put
+# an unjustified constant in the middle of a comparison (决策 034, option B). The
+# haiku arm therefore runs stock -- no thinking, no effort -- and every report that
+# quotes it says so. This is why the arm is named "开箱配置 haiku 4.5", not "haiku".
+model_api:
+  claude-haiku-4-5:
+    thinking: null
+    effort: null
+
 tools:
   # Return-size caps. These are the real cost control: an uncapped logs_search on a
   # 9k-line pack would put the whole pack in context on step one.
