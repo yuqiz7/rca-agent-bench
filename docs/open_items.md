@@ -1189,7 +1189,22 @@ symptom 侧**已经有**这个守卫：`baseline_rate × inject_s >= 5`，样本
 
 ## O-P2-22　`valkey-cart` 撤除 `drop_inbound` 后重连滞后超过 recover 窗
 
-**状态：埋点已恢复，待本步 4 卡批次实测复验（2026-09-06 ET，决策 030）** ——
+**状态：已被 O-P2-23 取代其前提（2026-09-06 ET）** —— 本条问的是
+「`valkey-cart` 撤除 `drop_inbound` 后重连滞后是否超过 recover 窗」。
+[O-P2-23](#o-p2-23valkey-cart-的调用边埋点在连接被打断后不再恢复只有重启-cart-才回来) 证明
+**这个问题本身问错了**：`drop_inbound` 撤除之后调用边不是「回来得慢」，是
+**根本不再被埋点**，而且不会随时间恢复（今日实测断了 62 分钟仍为 0，重启 cart 立刻回来）。
+历史上三次 `blackhole-valkey-cart-01` 的 `window_after` **全部是 0 span**
+（批次一 08-27 19:16、rerun4b 08-27 22:22、rerun1 08-28 19:05），
+过去被读成「重连滞后」的，现在有更简单的解释。
+
+**本条的处置**：`recover_s=150` 对 `valkey-cart` 的 blackhole 卡**加多长都没用**，
+按 O-P2-23 处理；本条**保留但不再单独推进**，其对 R1 名单其它靶子
+（checkout / email / payment / quote / shipping）的部分仍然有效，见下面的原始记录。
+
+**（以下为 2026-09-06 上午写的状态，当时尚未跑批次六，保留备查）**
+
+**状态（旧）：埋点已恢复，待本步 4 卡批次实测复验（2026-09-06 ET，决策 030）** ——
 本条曾被 F-8 悬空：调用边根本没有 span 时，`recover_s=150` 够不够是无从谈起的问题。
 2026-09-06 开机后 `cart → valkey-cart` 的 client span 重新出现（60 min 窗 1848 条、
 有效窗约 17 min、约 1.7/s，与批次一基线 1.30–1.71/s 同量级），四张卡已放回配方，
@@ -1244,6 +1259,157 @@ O-P2-21 是样本太少读不出信号（期望 1.6 次），本条是样本足�
 在 `docs/findings.md` 成稿之前，**出库卡的成因记在这里**（决策 023 第 7 条要求）。
 每条的形式：出库的卡 / 一句话成因 / 实测数字 / 这条说明了什么。
 `docs/findings.md` 建立后整节迁走。
+
+## O-P2-23　`valkey-cart` 的调用边埋点在连接被打断后不再恢复，只有重启 `cart` 才回来
+
+**状态：open（2026-09-06 ET 开条，根因已定并实测复现，修法待裁决）**
+
+**一句话**：`cart` 的 Valkey 客户端埋点**只在 cart 进程启动时建立的那条连接上有效**。
+这条连接一旦被打断——无论是 `valkey-cart` 容器被杀，还是 `drop_inbound` 把它超时断开——
+重连之后的调用**照常成功但不再产生 client span**，且**不会随时间恢复**；
+只有重启 `cart` 才回来。于是 `crash` 与 `blackhole` 两张 valkey 卡
+**用自己的注入摧毁了证明自己恢复所需要的观测**。
+
+### 一、批次六的现场（2026-09-06，`batch6_20260906T163140Z`，3 连挂后 ABORT）
+
+| # | 卡 | injected | symptom | recovered | 判据实际读到的数 |
+| --- | --- | :-: | :-: | :-: | --- |
+| 1 | `crash-valkey-cart-01` | 通过 | **通过** | **失败** | 基线边 **84 span / 60 s**（p50 0.77 ms，`caller_match_method=["name"]`）；注入窗 0 span → 边静默臂通过；恢复窗仍 0 span → `symptom_still_true=true` → recovered 失败 |
+| 2 | `blackhole-valkey-cart-01` | 通过 | **失败** | 失败 | **基线边就已经是 0 span**；调用方臂 `applicable=false`，理由字面是 `no baseline caller edge; cannot tell a quiet edge from an unmatched one`；边静默臂因 `baseline_rate × inject_s = 0 < 5` 不适用 |
+| 3 | `latency-valkey-cart-800` | 通过 | **失败** | 失败 | 基线与注入窗 p50 **都是 null**，`shift_ms=null`（需 ≥ 640.0）；`caller_spans_total=0` |
+
+**判据在注入窗里到底查到这条边没有 —— 查到过，只在第 1 张卡上。**
+四组窗口的溯源字段（`callers_queried_names` 每次都是 **17 个调用方全查**）：
+
+```
+01_crash   window_baseline          caller_edges_queried=["cart"] match=["name"] spans=84  p50=0.77ms
+01_crash   window_during_immediate  caller_edges_queried=[]                     spans=0
+01_crash   window_during_harvest    caller_edges_queried=[]                     spans=0
+01_crash   window_after             caller_edges_queried=[]                     spans=0    ← valkey 已 Up 且 healthy
+02/03      全部四个窗                caller_edges_queried=[]                     spans=0
+```
+
+**不是查询键的问题，也不是窗口/时间的问题。** 依据三条：
+
+1. 第 1 张卡的基线窗**用同一份代码、同一组 `PEER_KEYS`、同一个 60 s 窗长**匹配到了 84 条边，
+   `caller_match_method` 是 `name`（不靠 IP 反解），`operationName` 形态就是 `valkey-cart:6379`。
+   十分钟后同样的查询在第 2 张卡的基线窗上返回 0 —— **变的是数据，不是查法**。
+2. 每个窗口都查满了 17 个调用方（`callers_queried_names`），
+   `caller_edges_queried=[]` 是「问遍了没人有这条边」，不是「没去查」。
+   这正是决策 029 加的溯源字段要区分的两件事。
+3. `cart` 容器日志在同一时段持续打印 `ValkeyCartStore.GetCartAsync called with userId=...`，
+   **服务本身一直在正常调用 Valkey**，只是这些调用不再产生 span。
+
+### 二、死亡时刻可以卡到两分钟以内
+
+| 时刻（UTC） | 事件 | `cart → valkey-cart` client span |
+| --- | --- | --- |
+| 09-06 16:19 | 决策 030 的复验查询（开机后） | **1848 条 / 60 min 窗**（有效 ~17 min，约 1.7/s） |
+| 16:31:40–16:32:41 | 批次六第 1 张卡的基线窗 | **84 条 / 60 s**（1.4/s） |
+| **16:32:41** | `kill_container apply`（`docker kill valkey-cart`） | — |
+| **16:34:42** | `kill_container revert`（`docker start valkey-cart`） | — |
+| 16:35:12–16:37:12 | 第 1 张卡的 `window_after`，valkey 已 Up healthy | **0** |
+| 16:40 → 16:56 | 第 2、3 张卡全部四窗 | **0** |
+| 17:37 | 本条诊断时的实时查询（断后 62 分钟） | **0**（同窗 `cart → flagd` 230 条，SDK 与导出链路完好） |
+| **17:38** | `docker restart cart` | — |
+| 17:38 + 10 s | 实时查询 | **16 条 / 60 s，p50 1.36 ms —— 立刻回来** |
+
+`cart` 容器在整段时间里**没有重启过**（`Up 2 hours` 跨越全程），
+重启的是 `valkey-cart`。**唯一介于「边活着」与「边死了」之间的事件就是那次 kill + start。**
+
+### 三、历史记录对上了，而且改写了 F-8 的归因
+
+翻 `scripts/out/*/0*valkey*/` 的四窗快照，`blackhole-valkey-cart-01` 每一次运行的
+`window_after` **都是 0 span**——这不是新现象，是从第一天起就有、只是被读成了别的东西：
+
+| 批次 | 时间 | 基线 | 注入窗 | `window_after` |
+| --- | --- | ---: | ---: | ---: |
+| `batch1` | 08-27 19:16 | 78（p50 0.49 ms） | 57（p50 5702 ms） | **0** |
+| `20260827_rerun4b` | 08-27 22:22 | 114（p50 0.51 ms） | 57（p50 5572 ms） | **0** |
+| `rerun1` | 08-28 19:05 | 75（p50 0.58 ms） | 53（p50 5400 ms） | **0** |
+| `batch4` | 08-28 23:23 | **0** | 0 | 0 |
+
+**为什么边在 08-27 那两次之后又活过来了**：`batch1` 的卡序是
+`03_blackhole-valkey-cart-01` 紧接 **`04_crash-cart-01`** —— 那张卡重启了 `cart` 容器，
+边因此复活，所以 22:22 的 rerun4b 还能读到 114 条基线。
+**而 `rerun1` 的 12 张卡里没有任何一张会重启 `cart`**，
+所以 08-28 19:05 那次打断之后边一直没回来，直到 23:23 的 `batch4` 读到 0，
+F-8 就是在那里写下的。
+
+**F-8 的成因归因需要修正（结论不变，机制变了）**：F-8 写的是
+「`cart` 容器约 08-28 18:00 重启后埋点不再生效」，依据是 cart 的容器启动时长 7 小时。
+但 **`rerun1` 在 19:05 —— 那次重启之后一小时 —— 还读到了 75 条基线 span**。
+所以 18:00 的 cart 重启不但没有杀死埋点，**它恰恰是当时让埋点活着的原因**；
+真正的杀手是 `rerun1` 自己在 19:05 打的那一针。
+F-8 的可观测结论（边不再被埋点、四张卡不可测、重启 cart 可恢复）**全部成立且已复验**，
+**只有「是 cart 重启杀死了它」这一句要划掉**。
+
+### 四、判别式：断连接的原语才会杀死埋点
+
+本步跑了一次调试档单卡周期验证（30/60/30，`delay_outbound valkey-cart 800`，
+输出在会话临时目录，未入库、未动卡片、未动判据）：
+
+| 窗口 | 边 span 数 | p50 |
+| --- | ---: | ---: |
+| 基线（30 s） | 32 | 0.72 ms |
+| 注入窗（60 s） | 105 → harvest 111 | **800.91 ms**（右移 800.19，门槛 640） |
+| 撤除后实时查询 | **164 条 / 2 min** | 0.59 ms |
+
+**`delay_outbound` 不杀埋点** —— 连接没有被打断，只是变慢；symptom 判据**干净通过**。
+三个原语因此分成两类：
+
+| 原语 | 对 cart↔valkey 连接 | 埋点 | 卡是否可跑 |
+| --- | --- | --- | --- |
+| `delay_outbound`（latency） | 保持（800 ms 远小于客户端 ~5 s 超时） | **存活** | **可跑**，今日实测 symptom 通过 |
+| `kill_container`（crash） | valkey 进程消失，连接断 | **死亡** | recovered **结构上不可能通过** |
+| `drop_inbound`（blackhole） | 客户端超时后弃用连接、重连 | **死亡** | recovered **结构上不可能通过** |
+
+### 五、根因结论
+
+**`crash-valkey-cart-01` 与 `blackhole-valkey-cart-01` 不是「判据太严」或「窗口太短」，
+是这两张卡的注入动作本身会摧毁判定恢复所需的那一路观测。**
+把 `recover_s` 从 150 加到 300、600、任意值都不会改变结果，因为分子永远是 0。
+`latency-valkey-cart-800` / `-3000` 不受影响，它们只是被同批次前面那张卡连累。
+
+**还有一条批次级后果（此前没有记过）**：
+**在同一批次里，一张 crash/blackhole valkey 卡会毒化它后面所有的 valkey 卡。**
+批次六就是这么挂的 —— 第 1 张卡的注入让第 2、3 张卡的基线变成 0。
+这一条对任何「注入会破坏埋点」的靶子都成立，不只是 valkey。
+
+### 六、修法四条（**均未落码，等裁决**）
+
+| 方案 | 动什么 | 影响面 | 代价 / 风险 |
+| --- | --- | --- | --- |
+| **(a) 判据侧**：无 SDK 靶子的 `recovered` 增加一路不依赖该埋点的旁证（例如调用方自身 server span 是否恢复正常、或靶子健康检查），把「边静默」与「边不再被埋点」分开 | `run_batch.py` 的 `recovered` / 无 SDK 双臂 | **在库 43 张里有 3 张走无 SDK 路径**（`crash-astronomy-db-01`、`blackhole-astronomy-db-01`、`latency-astronomy-db-3000`），**全部已过门**，改动必须先离线回放确认这 3 张不翻盘 | 判据改动，要走决策 029 的离线回放流程；且「旁证」本身要先定义清楚，否则是又加一个没被审计过的判据路径 |
+| **(b) 流程侧**：批次编排规则 —— 会断连接的 valkey 卡必须排在批次最后，且每张这类卡之前先 `docker restart cart` | `run_batch.py` 的编排或一个 pre-card hook（**不动判据**） | **对在库 43 张零影响** | 只解决「毒化后续卡」，**解决不了这两张卡自己的 recovered** |
+| **(c) 配方侧**：`crash-valkey-cart-01` 与 `blackhole-valkey-cart-01` 出库，保留两张 latency 卡 | `recipe.csv`（68 → 66） | 不影响在库 43 | 承认这两张卡在当前埋点条件下不可测；但**理由这次是有根因的**，不像 F-8 当时只能说「不可测」 |
+| **(d) 上游侧**：修 `cart` 的 Valkey 埋点（重连后重新挂钩） | opentelemetry-demo 的 `cart` 服务代码 | 不影响本仓判据 | 超出本仓范围，且会让测试床偏离 pin 住的 3.0.0 tag，**不建议** |
+
+### 七、本轮建议
+
+**建议本轮只做 (b) 的一半 —— 什么都不改，先把结论记在这里，把两张 latency 卡单独跑一批。**
+理由：
+1. `latency-valkey-cart-800` 今天已经实测 symptom 干净通过（右移 800.19 ms / 门槛 640），
+   它**现在就能入库**，不需要任何改动，只要**不和 crash/blackhole 卡同批**。
+   先把能拿的两张拿到手，配方 68、在库 43 → 45。
+2. (a) 触及判据，且影响面是 3 张已过门的在库卡。**在有对比数据之前不该落码** ——
+   而对比数据要跑离线回放，那是下一步的事，不是这一步。
+3. (c) 出库是不可逆的口径变更，而 (a) 一旦成立这两张卡就还能救。**先做可逆的。**
+
+**给用户的裁决点**：要不要现在就把 (c) 做掉（少两张卡换一个干净口径），
+还是先按建议跑两张 latency 卡、把 crash/blackhole 两张挂在本条下等 (a)。
+**我倾向后者，但这是口径决定，不是技术决定。**
+
+**相关**：[F-8](#f-8valkey-cart-的调用边不再被埋点四张卡出库2026-08-29)（本条给出它的机制并修正其归因）、
+[O-P2-22](#o-p2-22valkey-cart-撤除-drop_inbound-后重连滞后超过-recover-窗)（前提被本条推翻）、
+[O-P2-10](#o-p2-10paymentunreachable-开启后-checkout-行为未改变)（同族：重启后 SDK 静默失效）、
+决策 030、决策 031。
+
+**复现**：`scripts/out/batch6_20260906T163140Z/0*/window_*.json` 的
+`caller_edges_queried` / `caller_match_method` / `callers_queried_names` 三个字段；
+历史对照见 `scripts/out/{batch1_20260827T190241Z,20260827_rerun4b,rerun1_20260828T185549Z,batch4_20260828T225020Z}/0*valkey*/window_after.json`。
+
+---
 
 ## F-1　10% 随机故障低于 120 s 窗的检测线（`misconfig-ad-on`，2026-08-28 出库）
 
@@ -1620,6 +1786,13 @@ fingerprints.md 对这个例外写得很清楚：**「`blackhole` 类的「注�
 **任何判据 × 边无埋点 = 不可救**。前三种（计数判据可加窗、分位数判据实为查询缺陷、
 取不到当成零）都是**观测存在但被误读**；这一种是**观测根本不存在**，
 加窗、改判据、修匹配全都无效，只能修埋点或出库。
+
+**2026-09-06 晚更正（见 [O-P2-23](#o-p2-23valkey-cart-的调用边埋点在连接被打断后不再恢复只有重启-cart-才回来)）**：
+本条「成因假设」那一段把埋点失效归给「`cart` 约 08-28 18:00 的一次容器重启」，
+**这一句是错的**——`rerun1` 在 08-28 19:05（那次重启之后一小时）还读到 75 条基线 span。
+真正打断埋点的是 `rerun1` 自己在 19:05 打的那针 `drop_inbound`。
+本条其余部分（边不再被埋点、四张卡当时不可测、重启 `cart` 可恢复）全部成立且已复验。
+按 append-only 原文不改，以本段与 O-P2-23 为准。
 
 **2026-09-06 复验：假设成立，四张卡已回配方。** VM 开机后 `cart` 自然重启
 （容器 Up 17 min），按上面「重新入库条件」原样复查：`cart → valkey-cart` 的
