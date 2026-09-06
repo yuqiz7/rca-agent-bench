@@ -1685,3 +1685,114 @@ O-P2-23 第六节的 (a)（给无 SDK 靶子的 `recovered` 加一路不依赖�
 - **`latency-valkey-cart-3000` 的余量没有量过。** 3000 ms 通过了，但离客户端超时
   （约 5 s）还剩多少、在负载更高时会不会翻过去，本轮没测。
   **不要把「3000 档安全」外推成「delay_outbound 对 valkey 永远安全」。**
+
+---
+
+## 033 v1.1 全量批次：21 张可跑卡一次跑完（2026-09-06 ET，`batch8_20260906T193745Z`）
+
+**选了什么**
+
+1. **卡单 21 张 = 19 张未跑 + 2 张失败复跑**，一次无人值守跑完。
+2. **排除 2 张**：`crash-valkey-cart-01`、`blackhole-valkey-cart-01`，按 O-P2-23 挂起不跑。
+3. **卡序**：会碰 `cart` 的三张排在最后（19–21）。
+4. **`--abort-after-recovered-failures` 显式设为 21**（默认 2）—— 本批目标是全量覆盖，
+   失败本身就是数据，不该让前面几张卡的失败把后面十几张卡的机时吃掉。
+5. **判据、卡片一个字没改。** `latency-shipping-3000` 照原样跑（见下）。
+
+**卡单（按执行序）**
+
+| # | 卡 | 类 | 靶子 | 周期 b/i/r/settle | 备注 |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | `latency-ad-3000` | latency | ad | 60/120/60/150 | 未跑 |
+| 2 | `latency-astronomy-db-800` | latency | astronomy-db | 60/120/60/150 | 未跑；无 SDK 靶子 |
+| 3 | `latency-checkout-3000` | latency | checkout | 60/300/150/150 | 未跑；R1 加长窗 |
+| 4 | `latency-currency-3000` | latency | currency | 60/120/60/150 | 未跑 |
+| 5 | `latency-email-3000` | latency | email | 60/300/150/150 | 未跑；R1 |
+| 6 | `latency-frontend-800` | latency | frontend | 60/120/60/150 | **失败复跑**（rerun1，symptom=False） |
+| 7 | `latency-payment-3000` | latency | payment | 60/300/150/150 | 未跑；R1 |
+| 8 | `latency-product-catalog-3000` | latency | product-catalog | 60/120/60/150 | 未跑 |
+| 9 | `latency-quote-3000` | latency | quote | 60/120/90/150 | 未跑 |
+| 10 | `latency-recommendation-800` | latency | recommendation | 60/120/60/150 | 未跑 |
+| 11 | `latency-shipping-800` | latency | shipping | 60/120/70/150 | 未跑 |
+| 12 | `latency-frontend-3000` | latency | frontend | 60/120/60/150 | 未跑 |
+| 13 | `misconfig-payment-10` | misconfig | payment | 60/300/150/150 | 未跑；R1 |
+| 14 | `latency-shipping-3000` | latency | shipping | 60/120/70/150 | **失败复跑**（批次四，F-3 报错占比 12.0%） |
+| 15 | `misconfig-pc-2ZYFJ3GM2N` | misconfig | product-catalog | 60/120/60/150 | 未跑；targeting 型开关 |
+| 16 | `memleak-email-100x` | mem_leak | email | 60/300/150/150 | 未跑；R1 |
+| 17 | `misconfig-payment-25` | misconfig | payment | 60/300/150/150 | 未跑；R1 |
+| 18 | `misconfig-pc-66VCHSJNUP` | misconfig | product-catalog | 60/120/60/150 | 未跑；targeting 型开关 |
+| 19 | `latency-cart-3000` | latency | **cart** | 60/120/60/150 | 未跑；**排在最后，见卡序理由** |
+| 20 | `misconfig-cart-90` | misconfig | **cart** | 60/120/60/300 | 未跑；O-P2-9 的 `settle_s=300` |
+| 21 | `misconfig-cart-100` | misconfig | **cart** | 60/120/60/300 | 未跑；同上 |
+
+预计总时长 **约 3.06 小时**（每卡按周期 + 打包 40 s 估）。
+
+**为什么这个卡序**
+
+**主约束是 O-P2-23：不能让前面的卡杀掉后面卡要用的埋点。**
+`cart` 的 Valkey 客户端埋点在连接被打断后不再恢复，只有重启 `cart` 才回来。
+本批没有任何 valkey 卡，所以那条边不是本批的判据依赖 —— **但把碰 `cart` 的三张卡放最后
+仍然是对的**：它们跑完之后如果埋点出了事，受影响的是本批之后的东西，
+而不是本批里还没跑的十几张卡。**代价为零，收益是把一整类风险挪到批次边界之外。**
+
+**顺带记一条本批的性质**：21 张卡全部是 `delay_outbound` 或 `set_flag`，
+**一张 `kill_container` / `drop_inbound` 都没有** ——
+按 O-P2-23 的判别式，本批**在结构上不可能自我毒化**。
+这不是编排出来的，是「剩下没跑的卡恰好都是这两类」的结果，但值得写下来：
+下一批只要出现 crash / blackhole 卡，卡序就得重新按这条约束排。
+
+**次约束是同靶子间隔。** 同一个靶子的卡连着跑，前一张的恢复窗和后一张的基线窗贴在一起，
+基线就不干净了。排完之后同靶子最小间隔：
+payment 7→13→17（≥4）、product-catalog 8→15→18（≥3）、frontend 6→12（6）、
+shipping 11→14（3）、email 5→16（11）。
+**唯一没拉开的是 cart 的 19/20/21 三张连排** —— 这是「排最后」这条主约束的代价，
+两条约束冲突时按主约束办；`set_flag` 的撤除是瞬时的（改回 json 并验证），
+不像网络原语那样留尾巴，所以这三张连排的代价小于把它们插回中间的风险。
+
+**关于 `latency-shipping-3000`：照跑，不挪线。**
+它在批次四挂在 F-3 的报错占比上限（实测 12.0%，门槛 10%，上一次是 8.70%）。
+决策 027 已记「两点骑线，等专门测量」。**本批给的正是第三个数据点** ——
+在测量之前把门槛从 10% 挪到 15% 就是拿评测集迁就一张卡。
+挂了就是第三个数据点，过了说明前两次骑线是抖动，两种结果都有用。
+
+**关于 `abort` 阈值：改了一个、另一个改不了，必须写明**
+
+`--abort-after-recovered-failures` 从默认 2 显式设为 **21**（= 卡单长度，等于关掉这条中止）。
+理由是本批的目的是覆盖率不是良率：recovered 连挂两张就停，会让一次三小时的批次
+在第 20 分钟结束，而后面十几张卡的信息一条都拿不到。
+
+**但 runner 里还有第二条中止路径，本步没有关掉**：
+`run_batch.py:126` 的 `BATCH_ABORT_AFTER_FAILURES = 3` 是**模块常量，没有对应的命令行开关**，
+**连续 3 张卡门失败**（不只是 recovered，任何一道门）仍会中止批次 ——
+批次六就是这么停的。关掉它要改 `run_batch.py`，而本步的红线是批次期间只动 `docs/`，
+**所以没有改**。
+
+**这意味着本批的「不中止」只做到一半**：recovered 连挂不会停，
+但如果有 3 张卡连着整体判失败，批次仍会在那里停下。
+真发生的话，剩余卡另起一批补跑即可，不影响已跑卡的结果。
+**这一条是给下一步的输入：要么接受，要么在下一批之前把那个常量提成 CLI 参数。**
+
+**放弃了什么**
+
+- **放弃把 21 张拆成几个小批。** 拆批的好处是每批之间可以人工看一眼，
+  坏处是每批都要重付起批门与批次边界的固定成本，且总墙钟更长。
+  本批已经关掉了 recovered 连挂中止，拆批的主要理由（早停止损）也就不存在了。
+- **放弃为 `latency-shipping-3000` 挪 F-3 的门槛**，理由见上。
+- **放弃顺手把 `BATCH_ABORT_AFTER_FAILURES` 提成 CLI 参数。** 那是 runner 改动，
+  本步不碰；也不该在一个三小时批次起飞前十分钟改 runner。
+- **放弃把两张挂起的 valkey 卡塞进来「再试一次」。** O-P2-23 已经证明它们的
+  `recovered` 结构上不可能通过，跑它们只会消耗机时并且**杀掉 cart 的 valkey 埋点**，
+  让批次七刚入库的两张卡下次重跑时先要重启 `cart`。
+
+**trade-off**
+
+- **一次 3 小时的无人值守批次，中途没有人看。** 起批门查过锁、残留、25/25 容器，
+  但批次中途的环境问题（例如某个容器 OOM）要等收批才会发现。
+  未挂 poweroff 守卫是有意的（今天继续施工）。
+- **本批全部是 latency / misconfig / mem_leak，没有 crash / blackhole。**
+  跑完之后在库的类别分布会进一步偏向 latency 与 misconfig；
+  **引用类别覆盖时要看跑完后的实际分布，不要按配方的 68 张去推。**
+- **`misconfig-cart-90` / `-100` 连排**，两张都带 `settle_s=300`（O-P2-9），
+  批次末尾因此有约 20 分钟花在这两张上。若它们双双失败，
+  按上面那条没关掉的中止路径，需要连同 `latency-cart-3000` 三张一起失败才会触发 ——
+  但那正好是批次的最后三张，中止与跑完没有区别。
