@@ -11,6 +11,7 @@ crash-product-catalog-01,crash,product-catalog,kill_container,{},product-catalog
 crash-quote-01,crash,quote,kill_container,{},quote,crash,2,0,0,"{""recover_s"":90}",false,3,3,
 crash-recommendation-01,crash,recommendation,kill_container,{},recommendation,crash,1,0,0,,false,3,5,
 crash-shipping-01,crash,shipping,kill_container,{},shipping,crash,1,0,0,"{""recover_s"":70}",false,3,11,
+crash-valkey-cart-01,crash,valkey-cart,kill_container,{},valkey-cart,crash,2,0,0,"{""recover_s"":150}",false,,,
 blackhole-ad-01,blackhole,ad,drop_inbound,{},ad,blackhole,1,0,1,,false,3,7,
 blackhole-astronomy-db-01,blackhole,astronomy-db,drop_inbound,{},astronomy-db,blackhole,2,0,1,,false,3,2,
 blackhole-cart-01,blackhole,cart,drop_inbound,{},cart,blackhole,1,0,1,,true,1,2,
@@ -23,6 +24,7 @@ blackhole-product-catalog-01,blackhole,product-catalog,drop_inbound,{},product-c
 blackhole-quote-01,blackhole,quote,drop_inbound,{},quote,blackhole,2,0,1,"{""recover_s"":90}",false,2,16,
 blackhole-recommendation-01,blackhole,recommendation,drop_inbound,{},recommendation,blackhole,1,0,1,,false,3,13,
 blackhole-shipping-01,blackhole,shipping,drop_inbound,{},shipping,blackhole,1,0,1,"{""recover_s"":70}",false,3,16,
+blackhole-valkey-cart-01,blackhole,valkey-cart,drop_inbound,{},valkey-cart,blackhole,2,0,1,"{""recover_s"":150}",false,1,13,
 latency-ad-800,latency,ad,delay_outbound,"{""delay_ms"":800}",ad,latency,1,0,0,,false,3,15,低档，入库档实测值
 latency-ad-3000,latency,ad,delay_outbound,"{""delay_ms"":3000}",ad,latency,1,0,0,,false,,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
 latency-astronomy-db-800,latency,astronomy-db,delay_outbound,"{""delay_ms"":800}",astronomy-db,latency,2,0,0,,false,,,低档，入库档实测值
@@ -47,6 +49,8 @@ latency-recommendation-800,latency,recommendation,delay_outbound,"{""delay_ms"":
 latency-recommendation-3000,latency,recommendation,delay_outbound,"{""delay_ms"":3000}",recommendation,latency,1,0,0,,false,3,10,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
 latency-shipping-800,latency,shipping,delay_outbound,"{""delay_ms"":800}",shipping,latency,1,0,0,"{""recover_s"":70}",false,,,低档，入库档实测值
 latency-shipping-3000,latency,shipping,delay_outbound,"{""delay_ms"":3000}",shipping,latency,1,0,0,"{""recover_s"":70}",false,3,6,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
+latency-valkey-cart-800,latency,valkey-cart,delay_outbound,"{""delay_ms"":800}",valkey-cart,latency,2,0,0,"{""recover_s"":150}",false,3,14,低档，入库档实测值
+latency-valkey-cart-3000,latency,valkey-cart,delay_outbound,"{""delay_ms"":3000}",valkey-cart,latency,2,0,0,"{""recover_s"":150}",false,,,高档；轴 C 暂记 0，待实测重判（决策 011：gRPC 无 deadline）
 misconfig-cart-75,misconfig,cart,set_flag,"{""flag"":""cartFailure"",""variant"":""75%""}",cart,misconfig,1,2,0,"{""settle_s"":300}",false,1,16,方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈4.3%；10%/25%/50% 三档按 O-P2-9 排除
 misconfig-cart-90,misconfig,cart,set_flag,"{""flag"":""cartFailure"",""variant"":""90%""}",cart,misconfig,1,2,0,"{""settle_s"":300}",false,,,方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈5.1%；10%/25%/50% 三档按 O-P2-9 排除
 misconfig-cart-100,misconfig,cart,set_flag,"{""flag"":""cartFailure"",""variant"":""100%""}",cart,misconfig,1,2,0,"{""settle_s"":300}",false,,,方法级：仅 EmptyCart（占 cart 调用 5.7%），服务级有效比例 ≈5.7%；10%/25%/50% 三档按 O-P2-9 排除
