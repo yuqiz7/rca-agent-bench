@@ -268,7 +268,8 @@ is treated as an edge already ruled out.
   classes the rules arm is best at, so the overfitting result covers blackhole,
   crash and latency only.
 - There is no human baseline anywhere in this repository.
-- Every number here comes from one model family.
+- Every accuracy number in the tables above comes from one model family; the
+  cross-configuration arms are not in them yet.
 - Tier coverage is partial: the in-stock set is
   <!-- GEN:instock_by_class -->blackhole 12 / crash 12 / latency 12 / mem_leak 2 / misconfig 7<!-- /GEN -->,
   so the harder latency tier and most misconfiguration variants are thin or absent.
