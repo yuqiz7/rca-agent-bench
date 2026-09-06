@@ -22,11 +22,11 @@ A script injects one fault into a running OpenTelemetry Demo and reverts it. The
 
 <!-- GEN:figure_arms -->
 
-![Top-1 on the 16 unseen holdout cards: rules 50.0%, single-shot LLM 56.2%, agent 75.0%](docs/figures/arms_holdout16.png)
+![Top-1 on the 16 unseen holdout cards: rules, no model 50.0%, single-shot sonnet 56.2%, single-shot haiku (stock) 25.0%, agent-haiku (stock) 56.2%, agent-sonnet (tuned) 75.0%](docs/figures/arms_holdout16.png)
 
 <!-- /GEN -->
 
-Three arms on 16 unseen cards: rules over the pack, one model turn with no tools, and an agent with 6 read-only tools. One card is worth 6.25 points here, so the gaps are an ordering rather than a measurement.
+Five arms on 16 unseen cards: rules over the pack, one model turn with no tools, and an agent with 6 read-only tools, the last two run in a stock and a tuned configuration. One card is worth 6.25 points here, so the gaps are an ordering rather than a measurement.
 
 ## One diagnosis, start to finish
 
@@ -82,18 +82,19 @@ The agent never sees the card id, the primitive that ran, or the ground truth: i
 - **Rules, no model.** A deterministic walk of the topology out from the alerting services, every threshold taken from constants the harness already used. Zero API calls.
 - **Single-shot LLM.** One model turn over a fixed digest of the same pack, no tools, same model and answer space as the agent. The only variable between them is the loop.
 - Tuning is measurable on the rules arm: class-aligned, it falls 16.7 points from 12/18 on cards it was tuned on to 8/16 on cards it has not seen, blackhole going 3/6 to 0/6.
+- The stock arms run haiku 4.5 without thinking or effort, which that model rejects; the tuned arms run sonnet 5 with both. Prompt, tools, guards and breakers are identical across all five.
 
 <!-- GEN:table_all43 -->
 
 | arm | top-1 | service-only | steps | cost/card | p95 |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | rules, no model | 62.8% (27/43) | 72.1% (31/43) | 1.00 | $0.0000 | 0.4s |
-| single-shot LLM | 46.5% (20/43) | 72.1% (31/43) | 1.00 | $0.0240 | 38.9s |
-| agent | 65.1% (28/43) | 83.7% (36/43) | 5.40 | $0.0726 | 63.8s |
+| single-shot sonnet | 46.5% (20/43) | 72.1% (31/43) | 1.00 | $0.0240 | 38.9s |
+| single-shot haiku (stock) | 39.5% (17/43) | 69.8% (30/43) | 1.00 | $0.0091 | 9.8s |
+| agent-haiku (stock) | 46.5% (20/43) | 60.5% (26/43) | 13.40 | $0.0768 | 93.0s |
+| agent-sonnet (tuned) | 65.1% (28/43) | 83.7% (36/43) | 5.40 | $0.0726 | 63.8s |
 
 <!-- /GEN -->
-
-<!-- haiku arms: added by cross-model step -->
 
 - No arm is clean here: the set holds the 19-card dev set and the 27 cards the rules arm was tuned on, and one card is worth 2.33 points.
 - 43 cards are evaluated while 45 in stock — the list was frozen before the last batch landed, which is what keeps two runs comparable.
@@ -114,16 +115,17 @@ The agent never sees the card id, the primitive that ran, or the ground truth: i
 
 ## Findings
 
+- **Cost** · Swapping in the cheaper model did not buy a cheaper agent: 2.5× the steps ate the per-token discount, $3.30 vs $3.12 on 43 cards, 18.6 points lower.
 - **F-7** · Rules that score 12/18 on cards they were tuned on fall to 8/16 on unseen ones — overfitting measured, not assumed.
 - **F-8** · Breaking a connection removed the instrumentation that proves it came back, taking cards out of the set until the target was restarted.
 - **F-1** · A 10% failure rate is invisible to a 120-second window; that card left the set instead of becoming a hard one.
-- Five more, with the agent's four failure modes, in [`docs/findings.md`](docs/findings.md).
+- Five more, with the agent's five failure modes, in [`docs/findings.md`](docs/findings.md).
 
 ## Limitations
 
 - The verdicts are audited, not independently validated: no labelled control set says the verdicts themselves are right.
 - The holdout set has no misconfiguration and no memory-leak cards, the two classes the rules arm is best at.
-- Every accuracy number above comes from one model family.
+- Two models from one family, and the cheaper one runs stock while the other is tuned — a cost-configuration comparison, not a model comparison.
 
 ## Reproduce
 

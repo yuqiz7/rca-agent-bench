@@ -27,10 +27,20 @@ PIPELINE_PNG = os.path.join(FIGURES, "pipeline.png")
 
 # Two greys and one dark accent: the eye should land on the agent bar and nowhere
 # else. Text is near-black rather than black to sit calmly on white.
-GREY, GREY_DARK, ACCENT, INK = "#c3c9ce", "#9aa3ab", "#1f4e5f", "#222222"
-ARMS = [("rules, no model", "rules", GREY),
-        ("single-shot LLM", "single_shot", GREY_DARK),
-        ("agent", "agent", ACCENT)]
+GREY_LIGHT, GREY, GREY_DARK = "#dfe3e6", "#c3c9ce", "#9aa3ab"
+ACCENT, INK = "#1f4e5f", "#222222"
+
+# Five arms. The two stock-configuration arms share the lightest grey: they are one
+# configuration, not two independent results (evidence_audit C7). Hollow marker on
+# agent-haiku in the scatter, because that point is the one worth looking at.
+# Hand-placed so the two arms that land on the same accuracy do not overlap.
+LABEL_OFFSET = {"single_shot_sonnet": (7, -12), "agent_haiku": (7, 7),
+                "single_shot_haiku": (7, 4)}
+ARM_STYLE = {"rules": (GREY, True),
+             "single_shot_sonnet": (GREY_DARK, True),
+             "single_shot_haiku": (GREY_LIGHT, True),
+             "agent_haiku": (GREY_LIGHT, False),
+             "agent_sonnet": (ACCENT, True)}
 
 
 def arms_holdout16(values):
@@ -44,23 +54,25 @@ def arms_holdout16(values):
 
     sys.path.insert(0, HERE)
     import readme_check
-    table = readme_check.report_table("merged_holdout16_20260906")
-    rows = [(label, readme_check.pct_of(table[key]["top1"]),
-             readme_check.usd_of(table[key]["cost"]), color)
-            for label, key, color in ARMS]
+    table = readme_check.report_table("fivearm_holdout16_20260906")
+    rows = sorted(((key, readme_check.ARM_LABEL[key], readme_check.pct_of(m["top1"]),
+                    readme_check.usd_of(m["cost"])) for key, m in table.items()),
+                  key=lambda r: r[2])
 
     fig, (bar, scat) = plt.subplots(
-        1, 2, figsize=(10, 3.4), dpi=200,
+        1, 2, figsize=(10, 3.9), dpi=200,
         gridspec_kw={"width_ratios": [1.7, 1.0], "wspace": 0.35})
     fig.patch.set_facecolor("white")
 
     ys = range(len(rows))
-    bar.barh(list(ys), [r[1] for r in rows], color=[r[3] for r in rows], height=0.55)
-    for y, (label, pct, _cost, color) in zip(ys, rows):
+    bar.barh(list(ys), [r[2] for r in rows],
+             color=[ARM_STYLE[r[0]][0] for r in rows], height=0.55)
+    for y, (key, _label, pct, _cost) in zip(ys, rows):
+        color = ARM_STYLE[key][0]
         bar.text(pct + 1.2, y, f"{pct:.1f}%", va="center", ha="left",
-                 color=color if color != GREY else GREY_DARK, fontsize=11,
+                 color=color if color == ACCENT else GREY_DARK, fontsize=10.5,
                  fontweight="bold" if color == ACCENT else "normal")
-    bar.set_yticks(list(ys), [r[0] for r in rows], fontsize=10, color=INK)
+    bar.set_yticks(list(ys), [r[1] for r in rows], fontsize=9, color=INK)
     bar.invert_yaxis()
     bar.set_xlim(0, 100)
     bar.set_xticks([0, 25, 50, 75, 100], ["0", "25", "50", "75", "100%"])
@@ -70,16 +82,22 @@ def arms_holdout16(values):
         bar.spines[side].set_visible(False)
     bar.spines["bottom"].set_color("#dddddd")
 
-    for label, pct, cost, color in rows:
-        scat.scatter([cost], [pct], s=70, color=color, zorder=3)
+    for key, label, pct, cost in rows:
+        color, filled = ARM_STYLE[key]
+        scat.scatter([cost], [pct], s=70, zorder=3,
+                     color=color if filled else "none",
+                     edgecolors=GREY_DARK if not filled else color,
+                     linewidths=1.4 if not filled else 0)
         scat.annotate(label, (cost, pct), textcoords="offset points",
-                      xytext=(8, -3), fontsize=8.5, color=INK)
+                      xytext=LABEL_OFFSET.get(key, (7, -3)), fontsize=7.5, color=INK)
+    scat.text(0.42, 0.05, "cheaper model, costlier agent", transform=scat.transAxes,
+              fontsize=7.5, color=GREY_DARK, style="italic")
     scat.set_title("accuracy per dollar", fontsize=10, color=INK, loc="left")
     scat.set_xlabel("$ per diagnosis", fontsize=9, color=INK)
     scat.set_ylabel("top-1 %", fontsize=9, color=INK)
-    scat.set_xlim(-0.012, 0.115)
-    scat.set_xticks([0.00, 0.05, 0.10], ["$0", "$0.05", "$0.10"])
-    scat.set_ylim(40, 85)
+    scat.set_xlim(-0.012, 0.125)
+    scat.set_xticks([0.00, 0.04, 0.08, 0.12], ["$0", "$0.04", "$0.08", "$0.12"])
+    scat.set_ylim(18, 85)
     scat.tick_params(labelsize=8, colors=INK)
     for side in ("top", "right"):
         scat.spines[side].set_visible(False)

@@ -51,8 +51,9 @@ KEY SOURCES -- each line is the locator docs/evidence_audit.md cites.
   guards                run_agent.py: 3 counters plus 2 `terminated` breakers            (B2)
   max_steps, cost_cap   scripts/agent/config.yaml run.*                                  (B2)
   devset, devset_move   artifacts/agent_runs/devset_20260828 and devset_v2_20260828      (B4)
-  badges, hero_*        merged_holdout16_20260906/report.md, the arm table           (C3, C5)
-  table_all43           merged_all43_20260906/report.md, the arm table               (C4, C5)
+  badges, hero_*        fivearm_holdout16_20260906/report.md, the arm table      (C3, C5, C7)
+  table_all43           fivearm_all43_20260906/report.md, the arm table          (C4, C5, C7)
+  haiku_*, sonnet_spend the same five-arm table: steps ratio, totals, top-1 gap       (C7)
   overfit_*             baseline1.json of baselines_20260828, class-aligned against
                         merged_holdout16_20260906, regraded with run_eval.grade's rule   (C6)
   ci_gates              `gate N:` steps in .github/workflows/ci.yml                      (D1)
@@ -62,6 +63,8 @@ KEY SOURCES -- each line is the locator docs/evidence_audit.md cites.
                         plus each row of baseline1/baseline2.json, merged_* excluded     (E1)
   scale                 git rev-list --count HEAD, wc -l of the tracked code at HEAD     (E2)
   f1_*                  the numbers in the F-1 heading of docs/open_items.md              (D3)
+  more_findings         `## F-N` headings in docs/open_items.md, minus the 3 listed       (D3)
+  failure_modes         `### 1.N` headings in docs/findings.md                            (D3)
   walkthrough_*         one frozen run json plus its card's ground truth
   figure_arms           markdown image line; the png is redrawn by make_figures.py
 """
@@ -89,6 +92,11 @@ WALKTHROUGH_CARD = "blackhole-shipping-01"
 WALKTHROUGH_RUN = "holdout11_agent_20260906"
 
 BADGE_GREY, BADGE_ACCENT = "555", "1f4e5f"
+
+# F items the Findings section spells out; the rest are summed into "N more".
+LISTED_FINDINGS = 3
+NUMBER_WORD = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five",
+               6: "Six", 7: "Seven", 8: "Eight", 9: "Nine"}
 
 # Keys whose value moves without anyone editing code. --check compares the first
 # number in them with slack instead of demanding the exact string.
@@ -165,37 +173,52 @@ def config():
 
 # ------------------------------------------------------- eval report parsing
 
-ARM_KEYS = [("关键词", "rules"), ("单轮", "single_shot"), ("agent", "agent")]
-ARM_LABEL = {"rules": "rules, no model", "single_shot": "single-shot LLM", "agent": "agent"}
+# Arm labels are Chinese in the reports and one config per arm in the README. The
+# names follow evidence_audit C7: the cheap arms run stock because haiku 4.5
+# rejects the thinking and effort parameters the tuned arms use, so "stock" and
+# "tuned" are part of the arm's name, not a footnote.
+ARM_LABEL = {"rules": "rules, no model",
+             "single_shot_sonnet": "single-shot sonnet",
+             "single_shot_haiku": "single-shot haiku (stock)",
+             "agent_haiku": "agent-haiku (stock)",
+             "agent_sonnet": "agent-sonnet (tuned)"}
 
 
 def arm_key(name):
-    """Report label to stable key. A haiku arm gets a haiku_ prefix, so a
-    cross-configuration report widens the key set instead of colliding with it."""
-    base = None
-    for needle, key in ARM_KEYS:
-        if needle in name:
-            base = key
-    if base is None:
-        return None
-    return ("haiku_" + base) if "haiku" in name.lower() else base
+    """Report label to stable key."""
+    low = name.lower()
+    family = "haiku" if "haiku" in low else "sonnet"
+    if "规则" in name or "关键词" in name:
+        return "rules"
+    if "agent" in low:
+        return f"agent_{family}"
+    if "单轮" in name:
+        return f"single_shot_{family}"
+    return None
 
 
 def report_table(run_dir):
-    """The arm table of a comparison report: {arm_key: {metric: text}}."""
-    body = read(f"artifacts/agent_runs/{run_dir}/report.md")
-    body = body.split("## 四指标对照", 1)[1].split("\n## ", 1)[0]
+    """The arm table of a comparison report: {arm_key: {metric: text}}. Both the
+    three-arm and the five-arm reports open their table with `| 臂 |`, and their
+    first six columns line up, so one parser covers both."""
+    lines = read(f"artifacts/agent_runs/{run_dir}/report.md").split("\n")
+    start = next(i for i, l in enumerate(lines) if l.startswith("| 臂 |"))
     out = collections.OrderedDict()
-    for line in body.strip().split("\n"):
-        if not line.startswith("|") or "---" in line or "top-1" in line:
+    for line in lines[start + 1:]:
+        if not line.startswith("|"):
+            break
+        if "---" in line:
             continue
-        cells = [c.strip() for c in line.strip("|").split("|")]
+        cells = [c.strip().replace("**", "").replace("（", " (").replace("）", ")")
+                 for c in line.strip("|").split("|")]
         key = arm_key(cells[0])
         if key is None:
             continue
-        clean = [c.replace("**", "").replace("（", " (").replace("）", ")") for c in cells]
-        out[key] = {"top1": clean[1], "service": clean[2], "steps": clean[3],
-                    "cost": clean[4], "p95": clean[5]}
+        row = {"top1": cells[1], "service": cells[2], "steps": cells[3],
+               "cost": cells[4], "p95": cells[5]}
+        if len(cells) > 6:
+            row["total"] = cells[6]
+        out[key] = row
     return out
 
 
@@ -314,8 +337,8 @@ def compute():
     rows = recipe_rows()
     stock = instock()
     cfg = config()
-    hold = report_table("merged_holdout16_20260906")
-    all43 = report_table("merged_all43_20260906")
+    hold = report_table("fivearm_holdout16_20260906")
+    all43 = report_table("fivearm_all43_20260906")
     o = overfit()
     hours, batches = batch_logs()
     spend, _runs = api_spend()
@@ -326,10 +349,11 @@ def compute():
     n_stock = len(stock)
     n_hold = len(json.loads(read("scripts/baselines/cardset_holdout16.json")))
     n_eval = len(json.loads(read("scripts/baselines/cardset_all43.json")))
-    top1 = f"{pct_of(hold['agent']['top1']):.1f}%"
-    cost = "${:.3f}".format(usd_of(hold["agent"]["cost"]))
-    p95 = "{:.0f} s".format(float(re.search(r"([0-9.]+)s", hold["agent"]["p95"]).group(1)))
-    gain = pct_of(hold["agent"]["top1"]) - pct_of(hold["single_shot"]["top1"])
+    agent = hold["agent_sonnet"]
+    top1 = f"{pct_of(agent['top1']):.1f}%"
+    cost = "${:.3f}".format(usd_of(agent["cost"]))
+    p95 = "{:.0f} s".format(float(re.search(r"([0-9.]+)s", agent["p95"]).group(1)))
+    gain = pct_of(agent["top1"]) - pct_of(hold["single_shot_sonnet"]["top1"])
 
     v = {}
 
@@ -345,10 +369,10 @@ def compute():
         f"| holdout top-1, agent on {n_hold} unseen cards "
         f"| over the single-shot LLM on the same cards | per diagnosis, wall clock |",
     ])
-    v["figure_arms"] = ("![Top-1 on the {} unseen holdout cards: rules {}, single-shot "
-                        "LLM {}, agent {}](docs/figures/arms_holdout16.png)").format(
-        n_hold, hold["rules"]["top1"].split(" ")[0],
-        hold["single_shot"]["top1"].split(" ")[0], top1)
+    v["figure_arms"] = "![Top-1 on the {} unseen holdout cards: {}]({})".format(
+        n_hold, ", ".join("{} {}".format(ARM_LABEL[k], m["top1"].split(" ")[0])
+                          for k, m in hold.items()),
+        "docs/figures/arms_holdout16.png")
     v["figure_pipeline"] = ("![Pipeline: testbed, fault primitives, scenario cards, probe "
                             "verdicts, evidence packs, three arms, harness, findings]"
                             "(docs/figures/pipeline.png)")
@@ -432,6 +456,21 @@ def compute():
     v["spend"] = "${:.0f} in metered API calls".format(spend)
     v["scale"] = "~{:.0f} commits and ~{:.0f}k lines of Python and shell".format(
         round(commits / 10.0) * 10, code_k)
+
+    # Cross-configuration arms (evidence_audit C7): the cheap arm is not cheaper.
+    v["haiku_steps_ratio"] = "{:.1f}\u00d7 the steps".format(
+        float(all43["agent_haiku"]["steps"]) / float(all43["agent_sonnet"]["steps"]))
+    v["haiku_spend"] = "${:.2f}".format(usd_of(all43["agent_haiku"]["total"]))
+    v["sonnet_spend"] = "${:.2f}".format(usd_of(all43["agent_sonnet"]["total"]))
+    v["haiku_gap"] = "{:.1f} points lower".format(
+        pct_of(all43["agent_sonnet"]["top1"]) - pct_of(all43["agent_haiku"]["top1"]))
+
+    # The Findings section lists 3 of the F items by hand; the rest are counted, so
+    # the "N more" cannot drift when a finding is added.
+    n_more = len(re.findall(r"^## F-\d", read("docs/open_items.md"), re.M)) - LISTED_FINDINGS
+    v["more_findings"] = "{} more".format(NUMBER_WORD[n_more])
+    v["failure_modes"] = "{} failure modes".format(NUMBER_WORD[
+        len(re.findall(r"^### 1\.\d ", read("docs/findings.md"), re.M))].lower())
 
     f1 = re.search(r"^## F-1.*?(\d+)%.*?(\d+) s ", read("docs/open_items.md"), re.M)
     v["f1_rate"] = f"{f1.group(1)}% failure rate"
