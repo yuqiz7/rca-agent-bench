@@ -1,0 +1,21 @@
+# batch 6 -- the four valkey-cart cards, first run since the edge is traced again.
+#
+# These four were retired by F-8 on 2026-08-29: cart -> valkey-cart had 0 spans in
+# batch 4's BASELINE window, before anything was injected, so nothing about them
+# was measurable. The 2026-09-06 boot restarted cart and the edge came back (1848
+# client spans over ~17 min, ~1.7/s against batch 1's 1.30-1.71/s), which is the
+# reopening condition F-8 wrote down. Decision 030 put them back in the recipe.
+#
+# What this batch is actually measuring is O-P2-22: whether recover_s=150 is long
+# enough for cart's connection pool to rebuild after drop_inbound is lifted. That
+# number is a guessed lower bound from decision 027 -- we knew reconnect > 30 s and
+# nothing more -- and it has never been tested against a traced edge. Judgement
+# criteria are untouched: decision 023's two no-SDK arms (step arm >= 1000 ms or
+# >= 100x baseline p50, edge-silence arm) and the valkey percentile reading.
+#
+# Order is recipe order. All four share one target, so they are serial by
+# construction; the batch runner's lock enforces that anyway.
+scenarios/crash-valkey-cart-01.yaml
+scenarios/blackhole-valkey-cart-01.yaml
+scenarios/latency-valkey-cart-800.yaml
+scenarios/latency-valkey-cart-3000.yaml
