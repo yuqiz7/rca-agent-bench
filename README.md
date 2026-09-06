@@ -1,40 +1,180 @@
 # rca-agent-bench
 
-A benchmark for root-cause-analysis agents: faults are injected into a running
-OpenTelemetry Demo, each incident is frozen into a read-only evidence pack whose
-ground truth is the injection itself, and every arm is scored on the same cards by
-the same grader.
+**A benchmark for root-cause-analysis agents, where the injected fault is the ground truth.**
 
-**Ground truth is the injection, not a label.** A card records the service and the
-fault class that a script applied and reverted, so `(service, fault_class)` is
-decided before any arm sees the data, and grading is a string comparison instead of
-a judgement.
+<!-- GEN:badges -->![cards](https://img.shields.io/badge/cards-68-555?style=flat-square) ![in stock](https://img.shields.io/badge/in%20stock-45-555?style=flat-square) ![holdout top-1](https://img.shields.io/badge/holdout%20top--1-75.0%25-1f4e5f?style=flat-square) ![CI](https://img.shields.io/badge/CI-3%20gates-555?style=flat-square) ![cost/card](https://img.shields.io/badge/cost%2Fcard-%240.069-555?style=flat-square)<!-- /GEN -->
 
-**Evaluation is offline.** An arm reads a directory of files, never a live backend.
-The same card scored today and in six months goes through the same bytes, and the
-grader runs without network access.
+| <!-- GEN:hero_top1 -->75.0%<!-- /GEN --> | <!-- GEN:hero_gain -->+18.8 pts<!-- /GEN --> | <!-- GEN:hero_cost -->$0.069<!-- /GEN --> / <!-- GEN:hero_p95 -->63 s<!-- /GEN --> |
+| :--- | :--- | :--- |
+| holdout top-1, agent on <!-- GEN:holdout_set_size -->16<!-- /GEN --> unseen cards | over the single-shot LLM on the same cards | per diagnosis, wall clock |
 
-**The point is the comparison, not the score.** A rules arm with no model, a single
-model turn with no tools, and a tool-calling agent answer the same
-<!-- GEN:eval_set_size -->43<!-- /GEN --> cards, which is what makes "the loop is
-worth its cost" a measurement. The rules arm is also the one place where tuning on
-the cards can be quantified: on cards it was never tuned on its top-1 moves by
-<!-- GEN:rules_overfit_delta -->-16.7<!-- /GEN --> points.
+A script injects one fault into a running OpenTelemetry Demo and reverts it. The
+window is frozen into a read-only evidence pack, and the pair the script applied
+becomes the answer key. Every arm reads the same pack offline and is graded by the
+same function.
 
 ---
 
 ## Results
 
-**Holdout set (<!-- GEN:holdout_set_size -->16<!-- /GEN --> cards, no arm tuned on them)**
+<!-- GEN:figure_arms -->![Top-1 on the 16 unseen holdout cards: rules 50.0%, single-shot LLM 56.2%, agent 75.0%](docs/figures/arms_holdout16.png)<!-- /GEN -->
 
-| arm | top-1 | service-only | steps | cost/card | p95 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| rules, no model | <!-- GEN:holdout16.rules.top1 -->50.0% (8/16)<!-- /GEN --> | <!-- GEN:holdout16.rules.service -->62.5% (10/16)<!-- /GEN --> | <!-- GEN:holdout16.rules.steps -->1.00<!-- /GEN --> | <!-- GEN:holdout16.rules.cost -->$0.0000<!-- /GEN --> | <!-- GEN:holdout16.rules.p95 -->0.5s<!-- /GEN --> |
-| single-shot LLM | <!-- GEN:holdout16.single_shot.top1 -->56.2% (9/16)<!-- /GEN --> | <!-- GEN:holdout16.single_shot.service -->81.2% (13/16)<!-- /GEN --> | <!-- GEN:holdout16.single_shot.steps -->1.00<!-- /GEN --> | <!-- GEN:holdout16.single_shot.cost -->$0.0238<!-- /GEN --> | <!-- GEN:holdout16.single_shot.p95 -->44.5s<!-- /GEN --> |
-| agent | <!-- GEN:holdout16.agent.top1 -->75.0% (12/16)<!-- /GEN --> | <!-- GEN:holdout16.agent.service -->87.5% (14/16)<!-- /GEN --> | <!-- GEN:holdout16.agent.steps -->5.19<!-- /GEN --> | <!-- GEN:holdout16.agent.cost -->$0.0691<!-- /GEN --> | <!-- GEN:holdout16.agent.p95 -->63.1s<!-- /GEN --> |
+Three arms on cards none of them was tuned on: rules over the pack, one model turn
+with no tools, and a tool-calling agent. One card is worth
+<!-- GEN:holdout_card_points -->6.25<!-- /GEN --> points here, so read the gaps as
+an ordering rather than as a measurement.
 
-**Evaluation set (<!-- GEN:eval_set_size -->43<!-- /GEN --> cards, includes the
-<!-- GEN:devset_size -->19<!-- /GEN --> dev cards the prompt was written against)**
+The rules arm is where tuning can be priced. Restricted to the classes the holdout
+contains, it scores <!-- GEN:rules_overfit_seen -->12/18<!-- /GEN --> on the cards
+it was tuned on and <!-- GEN:rules_overfit_held -->8/16<!-- /GEN --> on cards it has
+never seen, a change of <!-- GEN:rules_overfit_delta -->-16.7<!-- /GEN --> points.
+Almost all of it is one class: blackhole goes
+<!-- GEN:rules_overfit_blackhole -->3/6 to 0/6<!-- /GEN -->.
+
+---
+
+## One diagnosis, start to finish
+
+Card `<!-- GEN:walkthrough_card -->blackhole-shipping-01<!-- /GEN -->`, from the
+holdout set: <!-- GEN:walkthrough_steps -->7<!-- /GEN --> steps,
+<!-- GEN:walkthrough_tool_calls -->15<!-- /GEN --> tool calls,
+<!-- GEN:walkthrough_wall -->63 s<!-- /GEN -->,
+<!-- GEN:walkthrough_cost -->$0.129<!-- /GEN -->. The alerts name `frontend` and
+`checkout` — the services that observed the problem, not the one that caused it.
+
+| # | tools | what came back |
+| ---: | --- | --- |
+| 1 | `topology`, `traces_query` | The graph puts `shipping` under both alerting services. Its spans in the window: none. |
+| 2 | `traces_query` ×2, `logs_search` | `checkout -> shipping` is silent and so is `shipping -> quote`. But `shipping` is still writing logs. |
+| 3 | `logs_search`, `traces_query` | `quote` below it is healthy and answering, so `shipping` is not blocked from underneath. |
+| 4 | `traces_query`, `metrics_query` | Widening the window finds calls before and after the fault, none inside. Memory is flat, so no leak. |
+| 5 | `traces_query` ×2 | `checkout`'s order spans sit at its client timeout; its other dependencies answer in milliseconds. |
+| 6 | `config_diff` | Empty. No flag and no environment change, so not a misconfiguration. |
+| 7 | `submit` | Alive in its logs, unreachable to its callers, no errors anywhere: a blackhole, not a crash. |
+
+**Submitted <!-- GEN:walkthrough_agent -->shipping / blackhole<!-- /GEN -->, truth
+<!-- GEN:walkthrough_truth -->shipping / blackhole<!-- /GEN -->.** On the same card
+the rules arm answered
+<!-- GEN:walkthrough_rules -->payment / crash<!-- /GEN --> and the single-shot arm
+<!-- GEN:walkthrough_single_shot -->checkout / latency<!-- /GEN -->.
+
+The agent never sees the card id, the primitive that was run, or the ground truth.
+Its input is a trigger sentence and the symptom window; a leak check asserts that
+before the first token of every card.
+
+---
+
+## How it works
+
+<!-- GEN:flowchart -->
+```mermaid
+flowchart LR
+  T["Testbed<br/>25 containers"] --> P["Fault primitives<br/>4 scripts / 5 classes"]
+  P --> C["Scenario cards<br/>68 recipe / 45 in stock"]
+  C --> V["Probe verdicts<br/>3 probes"]
+  V --> E["Evidence packs<br/>8 files"]
+  E --> A["Agent"]
+  E --> B["Baselines"]
+  A --> H["Harness"]
+  B --> H
+  H --> F["Findings"]
+```
+<!-- /GEN -->
+
+- **Testbed** — the OpenTelemetry Demo on one host under Docker Compose, with
+  Prometheus, Jaeger and OpenSearch as the three signal backends.
+- **Fault primitives** — <!-- GEN:primitive_scripts -->4<!-- /GEN --> shell scripts
+  behind one `apply` / `revert` / `probe` interface, covering
+  <!-- GEN:fault_classes -->5<!-- /GEN --> fault classes.
+- **Scenario cards** — <!-- GEN:recipe_cards -->68<!-- /GEN --> recipe rows
+  generated into yaml; a card enters the set only after a clean run.
+- **Probe verdicts** — the runner decides from the three backends that the
+  injection took, the symptom appeared and the service recovered, plus a residue
+  check. The arms never see any of it.
+- **Evidence packs** — the window frozen to disk,
+  <!-- GEN:evidence_files -->8<!-- /GEN --> files per card, of which
+  <!-- GEN:evidence_hashed -->5<!-- /GEN --> carry a sha256 in the manifest.
+- **Harness** — one grader for every arm: top-1, service-only, steps, cost per card
+  and p95 wall clock.
+
+---
+
+<details>
+<summary><b>Testbed &amp; fault injection</b></summary>
+
+<br>
+
+The demo runs <!-- GEN:containers -->25<!-- /GEN --> containers, of which
+<!-- GEN:injectable_targets -->16<!-- /GEN --> are injection targets. The rest are
+the observability backends, the collector, the load generator and the control
+plane, which cannot be faulted without cutting off the evidence.
+
+<!-- GEN:primitive_scripts -->4<!-- /GEN --> primitive scripts cover
+<!-- GEN:fault_classes -->5<!-- /GEN --> classes: container kill, inbound packet
+drop inside the target's network namespace, outbound delay filtered by service
+port, and a flag write that serves both misconfiguration and memory-leak cards.
+Injection is filtered down to the target's own traffic rather than cutting a
+container off the network.
+
+Rate and latency comparisons use a
+<!-- GEN:baseline_window_s -->300<!-- /GEN --> second baseline window before
+injection. <!-- GEN:recover_window_cards -->34<!-- /GEN --> cards carry a longer
+recovery window, solved offline from the target's measured call rate so the window
+can hold enough calls to decide recovery at all. Targets whose callers have no SDK
+are judged by a separate arm that reads the caller's view.
+
+The detector that turns a pack into alerts has
+<!-- GEN:alert_rules -->7<!-- /GEN --> rules, including a
+<!-- GEN:p95_floor_ms -->100<!-- /GEN --> ms absolute floor on latency jumps, so a
+ratio over a tiny baseline cannot fire on its own.
+
+</details>
+
+<details>
+<summary><b>Agent &amp; guards</b></summary>
+
+<br>
+
+A hand-written function-calling loop against the Anthropic SDK: no agent framework,
+the loop is a `while` over `messages.create`. The model is
+`<!-- GEN:agent_model -->claude-sonnet-5<!-- /GEN -->`.
+
+<!-- GEN:agent_tools -->6<!-- /GEN --> read-only tools over the pack — log search,
+metric query, trace query, config diff, topology, alerts — plus `submit` as a tool,
+so the answer space is enforced by a JSON schema rather than parsed out of prose.
+
+<!-- GEN:agent_guards -->5<!-- /GEN --> guards, each recorded per run: argument
+validation, in-tool retry, a format nudge when a turn calls no tool, a step breaker
+at <!-- GEN:max_steps -->20<!-- /GEN --> steps, and a cost breaker at
+$<!-- GEN:cost_cap_usd -->0.20<!-- /GEN --> per card.
+
+The leak check runs before the first API call of every card. It asserts that the
+system prompt and tool schemas are card-independent constants and that the user
+turn is a projection of the task view, and raises instead of continuing. It is one
+of the CI gates.
+
+The prompt was iterated once on a <!-- GEN:devset_size -->19<!-- /GEN -->-card dev
+set, from <!-- GEN:devset_before -->52.6%<!-- /GEN --> to
+<!-- GEN:devset_after -->57.9%<!-- /GEN --> top-1, then frozen before any holdout
+run. Service-only accuracy moved the other way in the same edit.
+
+</details>
+
+<details>
+<summary><b>Evaluation harness &amp; baselines</b></summary>
+
+<br>
+
+**Rules, no model.** Deterministic scoring over the same pack: walks the topology
+out from the alerting services, separates starved callers from broken callees, and
+takes every threshold from constants the harness already used. Zero API calls.
+
+**Single-shot LLM.** One model turn over a fixed digest of the same pack, no tools,
+same model and same answer space as the agent. The only variable between it and the
+agent is the loop.
+
+All <!-- GEN:eval_set_size -->43<!-- /GEN --> in-stock cards at the time the set was
+frozen:
 
 | arm | top-1 | service-only | steps | cost/card | p95 |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -44,150 +184,28 @@ the cards can be quantified: on cards it was never tuned on its top-1 moves by
 
 <!-- haiku arms: added by cross-model step -->
 
-Both tables are small samples: one card is worth
-<!-- GEN:holdout_card_points -->6.2<!-- /GEN --> points in the first table and
-<!-- GEN:eval_card_points -->2.3<!-- /GEN --> points in the second, so read the
-gaps as an ordering and not as a measurement.
+The holdout table above is the one to read: this set includes the
+<!-- GEN:devset_size -->19<!-- /GEN --> dev cards the prompt was written against and
+the 27 cards the rules arm was tuned on, so no arm here is clean. One card is worth
+<!-- GEN:eval_card_points -->2.33<!-- /GEN --> points.
 
-The evaluation set is <!-- GEN:eval_set_size -->43<!-- /GEN --> cards while
-<!-- GEN:instock_cards -->45<!-- /GEN --> cards are in stock: the set was frozen to
-a card list before the last batch landed, and a frozen list is what keeps two runs
-comparable. Steps and p95 are 1 and sub-second for the rules arm by construction --
-it cannot investigate. p95 is wall clock, including local reads of the pack.
+<!-- GEN:eval_set_size -->43<!-- /GEN --> cards are evaluated while
+<!-- GEN:instock_cards -->45<!-- /GEN --> are in stock: the card list was frozen
+before the last batch landed, and a frozen list is what keeps two runs comparable.
+Steps and p95 are 1 and sub-second for the rules arm by construction — it cannot
+investigate. p95 is wall clock and includes local reads of the pack.
 
-The rules arm was tuned on 27 cards. Restricted to the classes the holdout
-contains, it scores <!-- GEN:rules_overfit_seen -->12/18<!-- /GEN --> on cards it
-was tuned on and <!-- GEN:rules_overfit_held -->8/16<!-- /GEN --> on cards it has
-never seen, a change of <!-- GEN:rules_overfit_delta -->-16.7<!-- /GEN --> points.
-Almost all of it is one class: blackhole goes
-<!-- GEN:rules_overfit_blackhole -->3/6 to 0/6<!-- /GEN -->.
+</details>
 
----
+<details>
+<summary><b>Engineering &amp; reliability</b></summary>
 
-## How it works
-
-```
-  testbed
-     |
-     v
-  fault primitives
-     |
-     v
-  scenario cards
-     |
-     v
-  probe verdicts
-     |
-     v
-  evidence packs
-     |
-     v
-  agent / baselines
-     |
-     v
-  harness
-```
-
-- **testbed** -- the OpenTelemetry Demo on one host under Docker Compose,
-  <!-- GEN:containers -->25<!-- /GEN --> containers, with Prometheus, Jaeger and
-  OpenSearch as the three signal backends.
-- **fault primitives** -- <!-- GEN:primitive_scripts -->4<!-- /GEN --> shell scripts
-  with one `apply` / `revert` / `probe` interface, covering
-  <!-- GEN:fault_classes -->5<!-- /GEN --> fault classes.
-- **scenario cards** -- <!-- GEN:recipe_cards -->68<!-- /GEN --> rows of a recipe
-  file generated into `scenarios/*.yaml`, each carrying target, primitive,
-  parameters, cycle timing and the ground truth.
-- **probe verdicts** -- after every cycle the runner decides
-  <!-- GEN:probe_gates -->3<!-- /GEN --> things from the three backends (the
-  injection took, the symptom appeared, the service recovered) plus a residue check;
-  a card enters the set only if all of them pass.
-- **evidence packs** -- the fault window frozen into `evidence/<card>/`:
-  <!-- GEN:evidence_files -->8<!-- /GEN --> files per card, of which
-  <!-- GEN:evidence_hashed -->5<!-- /GEN --> carry a size and sha256 in the manifest
-  so a pack can be recomputed.
-- **agent / baselines** -- each arm reads the pack, never the live system, and
-  submits one `(service, fault_class)` pair from a fixed answer space.
-- **harness** -- one grader for every arm, reporting top-1, service-only, average
-  steps, cost per card, p95 wall clock and total cost.
-
----
-
-## Testbed and faults
-
-The demo runs <!-- GEN:containers -->25<!-- /GEN --> containers;
-<!-- GEN:injectable_targets -->16<!-- /GEN --> of them are injection targets, the
-rest being the observability backends, the collector, the load generator and the
-control plane, which cannot be faulted without cutting off the evidence.
-
-<!-- GEN:primitive_scripts -->4<!-- /GEN --> primitive scripts cover
-<!-- GEN:fault_classes -->5<!-- /GEN --> fault classes: container kill, inbound
-packet drop inside the target's network namespace, outbound delay filtered by
-service port, and a flag write that serves both misconfiguration and memory-leak
-cards. Injection is filtered down to the target's traffic rather than cutting a
-container off the network.
-
-Each cycle is judged by <!-- GEN:probe_gates -->3<!-- /GEN --> automatic probes plus
-a residue check, all on the runner side; the arms never see the probe output.
-Rate and latency comparisons use a
-<!-- GEN:baseline_window_s -->300<!-- /GEN --> second baseline window before
-injection. <!-- GEN:recover_window_cards -->34<!-- /GEN --> cards carry a longer
-recovery window, solved offline from the target's measured call rate so that the
-window can hold enough calls to decide recovery at all. Targets without an SDK on
-the caller side are judged by a separate arm that reads the caller's view.
-
-The detector that turns a pack into alerts has
-<!-- GEN:alert_rules -->7<!-- /GEN --> rules, including a
-<!-- GEN:p95_floor_ms -->100<!-- /GEN --> ms absolute floor on latency jumps so a
-ratio over a tiny baseline cannot fire on its own.
-
----
-
-## Agent
-
-A hand-written function-calling loop against the Anthropic SDK: no agent framework,
-the loop is a `while` over `messages.create`. The model is
-`<!-- GEN:agent_model -->claude-sonnet-5<!-- /GEN -->`.
-
-<!-- GEN:agent_tools -->6<!-- /GEN --> read-only tools over the pack (log search,
-metric query, trace query, config diff, topology, alerts) plus `submit` as a tool,
-so the answer space is enforced by a JSON schema rather than parsed out of prose.
-
-<!-- GEN:agent_guards -->5<!-- /GEN --> guards, each recorded per run: argument
-validation, in-tool retry, a format nudge when a turn calls no tool, a step breaker
-at <!-- GEN:max_steps -->20<!-- /GEN --> steps and a cost breaker at
-$<!-- GEN:cost_cap_usd -->0.20<!-- /GEN --> per card.
-
-A leak check runs before the first token of every card: it asserts that the system
-prompt and tool schemas are card-independent constants and that the user turn is a
-projection of the task view, and raises rather than continuing. It is fail-closed
-and it is one of the CI gates.
-
-The prompt was iterated once on a <!-- GEN:devset_size -->19<!-- /GEN -->-card dev
-set, from <!-- GEN:devset_before -->52.6%<!-- /GEN --> to
-<!-- GEN:devset_after -->57.9%<!-- /GEN --> top-1, then frozen before any holdout
-run. Service-only accuracy moved the other way in the same edit.
-
----
-
-## Baselines
-
-**Rules, no model.** Deterministic scoring over the same pack: walks the topology
-from the alerting services, splits starved callers from broken callees, and takes
-all of its thresholds from constants the harness already used. Zero API calls,
-sub-second.
-
-**Single-shot LLM.** One model turn on a fixed digest of the same pack, no tools,
-same model and same answer space as the agent. The only variable between it and the
-agent is the loop.
-
----
-
-## Engineering
+<br>
 
 CI is <!-- GEN:ci_gates -->3<!-- /GEN --> offline gates on every push: pytest
-(including the leak assertions), a check that regenerating every scenario card from
-the recipe changes nothing, and the detector staying silent on two fault-free
-windows. No gate touches the VM or the API.
+including the leak assertions, a check that regenerating every card from the recipe
+changes nothing, and the detector staying silent on two fault-free windows. No gate
+touches the VM or the API.
 
 A `None`-versus-zero audit walked <!-- GEN:audit_paths -->27<!-- /GEN --> verdict
 paths and fixed <!-- GEN:audit_fixes -->7<!-- /GEN --> places that read a missing
@@ -195,57 +213,61 @@ measurement as a zero, then replayed the
 <!-- GEN:audit_replay_cards -->41<!-- /GEN --> cards in stock at that date to
 confirm the defect had never passed a card.
 
-Cards are produced by an unattended batch runner: a global serial lock so only one
-fault is ever live, `nohup` wrapping, and abort on consecutive failures rather than
-on the first one. <!-- GEN:batch_count -->7<!-- /GEN --> recorded batches account
-for <!-- GEN:batch_hours -->8.9<!-- /GEN --> hours of machine time. Every model call
-is priced per card: <!-- GEN:api_spend -->$9.07<!-- /GEN --> over
-<!-- GEN:api_runs -->237<!-- /GEN --> metered single-card runs.
+Cards come from an unattended batch runner: a global serial lock so only one fault
+is ever live, `nohup` wrapping, and abort on consecutive failures rather than on the
+first one. <!-- GEN:batch_count -->7<!-- /GEN --> recorded batches account for
+<!-- GEN:batch_hours -->8.9<!-- /GEN --> hours of machine time.
 
-Repository scale: <!-- GEN:commits -->~68<!-- /GEN --> commits,
+Every model call is priced per card:
+<!-- GEN:api_spend -->$9.07<!-- /GEN --> over
+<!-- GEN:api_runs -->237<!-- /GEN --> metered single-card runs. Repository scale:
+<!-- GEN:commits -->~68<!-- /GEN --> commits,
 <!-- GEN:code_loc -->~8.3k<!-- /GEN --> lines of Python and shell,
 <!-- GEN:docs_loc -->~6.8k<!-- /GEN --> lines of design docs.
+
+</details>
 
 ---
 
 ## Findings
 
-Each entry in `docs/open_items.md` is an item that cost a batch or changed a
-verdict; `docs/findings.md` holds the analysis.
+Eight items, each one paid for by a batch or a wrong verdict —
+[`docs/findings.md`](docs/findings.md) has the analysis,
+[`docs/open_items.md`](docs/open_items.md) the running list.
 
-- **F-1** a 10% failure rate sits below the detection line of a 120 s window.
-- **F-2** the recovery window was too short for low-traffic targets; two cards
+- **F-1** · A 10% failure rate is invisible to a 120-second window — the card was
+  taken out of the set rather than kept as a hard one.
+- **F-2** · Recovery windows sized in seconds fail on low-traffic targets: two cards
   failed on sample size, not on recovery.
-- **F-3** the latency verdict required errors to stay flat, which an 800 ms delay
-  does not satisfy.
-- **F-4** a target's client reconnects after revert more slowly than the recovery
-  window allows.
-- **F-5** a blackhole special case for long-lived connections was written as the
-  general rule, and two cards were graded as latency.
-- **F-6** one service's gRPC egress resolves its peer to a container IP, leaving
-  four edges permanently empty in the probe.
-- **F-7** on a holdout set the rules baseline drops and the agent holds, which is
-  what "cards it has seen" is worth.
-- **F-8** a target's call edge stops being instrumented after its connection is
-  broken, taking its cards out of the set.
+- **F-3** · The latency verdict demanded that errors stay flat, which an 800 ms
+  delay does not do; the conjunct was the bug, not the card.
+- **F-4** · A client that reconnects after the fault is reverted can miss the
+  recovery window entirely.
+- **F-5** · A special case for long-lived connections was written as the general
+  rule, and two cards were graded as the wrong class.
+- **F-6** · One service's gRPC egress resolves its peer to a container IP, which
+  leaves four edges permanently empty in the probe.
+- **F-7** · Rules that look like 12/18 on cards they were tuned on fall to 8/16 on
+  unseen ones — overfitting measured, not assumed.
+- **F-8** · Breaking a connection can remove the instrumentation that proves it came
+  back, which takes cards out of the set until the target restarts.
 
-Agent failure modes, four of them, in `docs/findings.md` §1: crash and blackhole
-collapse into the same shape at harvest time; there is no procedure for memory
-leaks; on a low-traffic target the caller takes the blame; and an edge that was
-never enumerated is treated as an edge already ruled out.
+Four agent failure modes, in `docs/findings.md` §1: crash and blackhole collapse
+into the same shape at harvest time; there is no procedure for memory leaks; on a
+low-traffic target the caller takes the blame; and an edge that was never enumerated
+is treated as an edge already ruled out.
 
 ---
 
 ## Limitations
 
-- The verdicts are audited, not independently validated. Every path where a verdict
-  could read a missing measurement as a zero has been checked, but there is no
-  labelled control set that says the verdicts themselves are right.
-- The holdout set contains no misconfiguration and no memory-leak cards, which are
-  the two classes the rules arm is best at. The overfitting result covers blackhole,
+- The verdicts are audited, not independently validated: every path where a verdict
+  could read a missing measurement as a zero has been checked, but no labelled
+  control set says the verdicts themselves are right.
+- The holdout set contains no misconfiguration and no memory-leak cards, the two
+  classes the rules arm is best at, so the overfitting result covers blackhole,
   crash and latency only.
-- There is no human baseline. Nothing in this repository records how fast or how
-  accurately a person diagnoses these cards.
+- There is no human baseline anywhere in this repository.
 - Every number here comes from one model family.
 - Tier coverage is partial: the in-stock set is
   <!-- GEN:instock_by_class -->blackhole 12 / crash 12 / latency 12 / mem_leak 2 / misconfig 7<!-- /GEN -->,
@@ -259,31 +281,34 @@ never enumerated is treated as an edge already ruled out.
 ## Reproduce
 
 ```bash
-bash scripts/maintenance/wakeup.sh                                    # start the testbed, gate on health
+bash scripts/maintenance/wakeup.sh                                            # start the testbed, gate on health
 python scripts/runner/run_batch.py --scenarios scenarios/crash-cart-01.yaml   # inject one card, probe, pack evidence
-python scripts/harness/run_eval.py --cards crash-cart-01              # run the agent on that pack and grade it
+python scripts/harness/run_eval.py --cards crash-cart-01                      # run the agent on that pack and grade it
 ```
 
-`python scripts/tools/readme_check.py --check` verifies every number on this page
-against the repository; `--write` refreshes them.
+Every number on this page is generated: `python scripts/tools/readme_check.py
+--check` compares it against the repository and `--write` refreshes it, figures
+included.
 
-Docs: `docs/recipe.md` (the card recipe and difficulty axes), `docs/fault_schema.md`
-(primitives, targets, verdicts), `docs/fingerprints.md` (measured signal shapes per
-fault class), `docs/decisions.md` (what was chosen, why, and what was given up),
-`docs/open_items.md` (open questions and findings), `docs/evidence_audit.md` (every
-claim traced to a path), `docs/probe_audit.md` (the `None`-versus-zero audit).
+Docs: [recipe](docs/recipe.md) · [fault schema](docs/fault_schema.md) ·
+[fingerprints](docs/fingerprints.md) · [decisions](docs/decisions.md) ·
+[open items](docs/open_items.md) · [evidence audit](docs/evidence_audit.md) ·
+[probe audit](docs/probe_audit.md)
 
----
+<details>
+<summary><b>Repository layout</b></summary>
 
-## Repository layout
+<br>
 
 ```
 scripts/    primitives, batch runner, probes, evidence packer, detector, agent, baselines, harness
 scenarios/  one yaml per card: target, primitive, params, cycle timing, ground truth, probe verdict
 evidence/   one frozen pack per card, the only thing an arm may read
 artifacts/  batch logs and per-run eval results with per-card cost
-docs/       design docs, decisions, findings, audits
+docs/       design docs, decisions, findings, audits, figures
 tests/      offline tests: leak assertions, clean-window negative control
 testbed/    compose overrides for the demo
 tools/      fixture maintenance
 ```
+
+</details>

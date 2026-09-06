@@ -58,6 +58,12 @@ KEY SOURCES -- each line is the same locator docs/evidence_audit.md cites.
   batch_hours/count     first-to-last timestamp of each artifacts/batches/*.log          (D4)
   api_spend/api_runs    cost_usd of every per-card json under artifacts/agent_runs/,
                         plus each row of baseline1/baseline2.json, merged_* excluded     (E1)
+  badges                shields.io line built from cards / stock / holdout / gates / cost
+  figure_arms           markdown image line; the png itself is redrawn by make_figures.py
+  flowchart             the whole mermaid block, generated from the counts above
+  hero_*                holdout16 agent top-1, its gap over the single-shot arm, cost, p95 (C3, C5)
+  walkthrough_*         one frozen run json under artifacts/agent_runs/ plus the two
+                        baseline answers for the same card in merged_holdout16_20260906
   commits               git rev-list --count HEAD (tolerance 5; skipped when shallow)    (E2)
   code_loc              wc -l of scripts/*.py|sh, tests/*.py, tools/*.py at HEAD         (E2)
   docs_loc              wc -l of docs/*.md at HEAD                                       (E2)
@@ -71,6 +77,7 @@ import os
 import re
 import subprocess
 import sys
+import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
@@ -273,6 +280,48 @@ def loc(patterns):
     return total
 
 
+# ------------------------------------------------------------- hero, walkthrough
+
+# The card the README walks through. Chosen for being on the holdout set, answered
+# correctly in 7 steps, and wrong in both baselines -- not for being the best score.
+WALKTHROUGH_CARD = "blackhole-shipping-01"
+WALKTHROUGH_RUN = "holdout11_agent_20260906"
+
+BADGE_GREY, BADGE_ACCENT = "555", "1f4e5f"
+
+
+def pct_of(text):
+    return float(re.search(r"([0-9.]+)%", text).group(1))
+
+
+def shield(label, message, color):
+    """One shields.io static badge. `-` and `_` are escaped as shields requires."""
+    def esc(t):
+        return urllib.parse.quote(t.replace("-", "--").replace("_", "__"), safe="")
+    return (f"![{label}](https://img.shields.io/badge/"
+            f"{esc(label)}-{esc(message)}-{color}?style=flat-square)")
+
+
+def walkthrough(v):
+    """Summary numbers for the worked example, from the frozen run and the two
+    baseline answer files for the same card."""
+    run = json.loads(read(f"artifacts/agent_runs/{WALKTHROUGH_RUN}/{WALKTHROUGH_CARD}.json"))
+    gt = scenarios()[WALKTHROUGH_CARD]["ground_truth"]
+    out = {"walkthrough_card": WALKTHROUGH_CARD,
+           "walkthrough_steps": str(run["steps"]),
+           "walkthrough_tool_calls": str(sum(len(s["tool_calls"]) for s in run["transcript"])),
+           "walkthrough_wall": f"{run['wall_s']:.0f} s",
+           "walkthrough_cost": f"${run['cost_usd']:.3f}",
+           "walkthrough_truth": f"{gt['service']} / {gt['class']}",
+           "walkthrough_agent": "{service} / {fault_type}".format(**run["answer"])}
+    for name, key in (("baseline1", "walkthrough_rules"),
+                      ("baseline2", "walkthrough_single_shot")):
+        rows = json.loads(read(f"artifacts/agent_runs/merged_holdout16_20260906/{name}.json"))
+        row = next(r for r in rows if r["card_id"] == WALKTHROUGH_CARD)
+        out[key] = "{service} / {fault_type}".format(**row["answer"])
+    return out
+
+
 # --------------------------------------------------------------------- keys
 
 def compute():
@@ -312,8 +361,8 @@ def compute():
     v["eval_set_size"] = str(len(json.loads(read("scripts/baselines/cardset_all43.json"))))
     v["holdout_set_size"] = str(len(json.loads(read("scripts/baselines/cardset_holdout16.json"))))
     # What one card is worth in each table -- the honest unit of both result sets.
-    v["eval_card_points"] = "%.1f" % (100.0 / int(v["eval_set_size"]))
-    v["holdout_card_points"] = "%.1f" % (100.0 / int(v["holdout_set_size"]))
+    v["eval_card_points"] = "%.2f" % (100.0 / int(v["eval_set_size"]))
+    v["holdout_card_points"] = "%.2f" % (100.0 / int(v["holdout_set_size"]))
 
     # agent
     v["agent_model"] = cfg["models"]["primary"]
@@ -359,6 +408,47 @@ def compute():
     v["api_spend"] = f"${spend:.2f}"
     v["api_runs"] = str(runs)
 
+    # hero numbers: the three the top of the README is allowed to show
+    v["hero_top1"] = f"{pct_of(v['holdout16.agent.top1']):.1f}%"
+    gain = pct_of(v["holdout16.agent.top1"]) - pct_of(v["holdout16.single_shot.top1"])
+    v["hero_gain"] = f"{gain:+.1f} pts"
+    v["hero_cost"] = "${:.3f}".format(float(re.search(r"\$([0-9.]+)",
+                                                     v["holdout16.agent.cost"]).group(1)))
+    v["hero_p95"] = "{:.0f} s".format(float(re.search(r"([0-9.]+)s",
+                                                     v["holdout16.agent.p95"]).group(1)))
+    v["badges"] = " ".join([
+        shield("cards", v["recipe_cards"], BADGE_GREY),
+        shield("in stock", v["instock_cards"], BADGE_GREY),
+        shield("holdout top-1", v["hero_top1"], BADGE_ACCENT),
+        shield("CI", f"{v['ci_gates']} gates", BADGE_GREY),
+        shield("cost/card", v["hero_cost"], BADGE_GREY),
+    ])
+    v["figure_arms"] = ("![Top-1 on the {} unseen holdout cards: rules {}, "
+                        "single-shot LLM {}, agent {}](docs/figures/arms_holdout16.png)").format(
+        v["holdout_set_size"], v["holdout16.rules.top1"].split(" ")[0],
+        v["holdout16.single_shot.top1"].split(" ")[0], v["hero_top1"])
+    v.update(walkthrough(v))
+    # The whole mermaid block is one marker: GEN comments inside a fenced block
+    # would render as text, so the diagram is generated wholesale instead.
+    v["flowchart"] = "\n".join([
+        "",           # the fence must begin a line, so the marker gets its own
+        "```mermaid",
+        "flowchart LR",
+        f'  T["Testbed<br/>{v["containers"]} containers"] --> P["Fault primitives<br/>'
+        f'{v["primitive_scripts"]} scripts / {v["fault_classes"]} classes"]',
+        f'  P --> C["Scenario cards<br/>{v["recipe_cards"]} recipe / '
+        f'{v["instock_cards"]} in stock"]',
+        f'  C --> V["Probe verdicts<br/>{v["probe_gates"]} probes"]',
+        f'  V --> E["Evidence packs<br/>{v["evidence_files"]} files"]',
+        "  E --> A[\"Agent\"]",
+        "  E --> B[\"Baselines\"]",
+        "  A --> H[\"Harness\"]",
+        "  B --> H",
+        "  H --> F[\"Findings\"]",
+        "```",
+        "",
+    ])
+
     v["commits"] = "~" + git("rev-list", "--count", "HEAD").strip()
     v["code_loc"] = "~%.1fk" % (loc(["scripts/*.py", "scripts/*.sh",
                                      "tests/*.py", "tools/*.py"]) / 1000.0)
@@ -375,6 +465,22 @@ SHALLOW_SKIP = {"commits"}
 def _num(text):
     m = re.search(r"-?[0-9]+(?:\.[0-9]+)?", text)
     return float(m.group(0)) if m else None
+
+
+def redraw_figures(values):
+    """--write also redraws docs/figures/. matplotlib is not a CI dependency, so a
+    missing one is a warning here: the committed png stays, --check still runs."""
+    sys.path.insert(0, HERE)
+    try:
+        import make_figures
+    except ImportError as exc:                                    # noqa: BLE001
+        print(f"figures not redrawn: {exc}", file=sys.stderr)
+        return
+    try:
+        for path in make_figures.regenerate(values):
+            print(f"wrote {os.path.relpath(path, REPO)}")
+    except ImportError as exc:                                    # noqa: BLE001
+        print(f"figures not redrawn (matplotlib missing): {exc}", file=sys.stderr)
 
 
 def main():
@@ -403,6 +509,7 @@ def main():
                 return m.group(0)
             return f"<!-- GEN:{key} -->{values[key]}<!-- /GEN -->"
 
+        redraw_figures(values)
         out = MARKER.sub(sub, text)
         if missing:
             print("unknown keys in README: " + ", ".join(sorted(set(missing))), file=sys.stderr)
