@@ -1963,6 +1963,185 @@ card span 已经结束。做法是把 card span 的 context 存下来，
 
 ---
 
+## 036 评测服务化 v1：REST + Postgres + compose，单机不开公网（2026-09-07 ET）
+
+**落码范围**：`000f4c6`（步骤 1）到 `66e3ea8`（步骤 7）共 7 个 commit，外加本条所在的落痕 commit（步骤 8）。
+设计文档 `docs/design/service_v1.md`（状态已改「已实现」）。
+本条与设计文档的分工：**设计文档说要建什么，本条说建的时候做了哪些设计里没有的判断**。
+
+**选了什么**
+
+1. **FastAPI + Pydantic v2 + PostgreSQL 16 + docker compose**，部署在现有 GCP VM。
+2. **异步提交-轮询**：`POST /runs` → 202 + `run_id`，`GET /runs/{id}` 轮询。
+3. **Postgres 队列表 + 单 worker**（`FOR UPDATE SKIP LOCKED`），不引 Celery/Redis。
+4. **Postgres 是服务态权威，`artifacts/agent_runs/*.json` 仍是评测证据件，双写。**
+5. **不开公网**，演示走 SSH 端口转发（决策 037 第 1 条）。
+6. **服务不注入故障、不碰测试床、不改判据、不返回 ground truth。**
+
+**为什么**
+
+- **异步**：单卡 10–100 s，同步会被 SSH/反代/客户端的 30–60 s 默认超时截断，
+  正常完成的运行会被读成失败。
+- **队列表而不是 `BackgroundTasks`**：后者的任务活在 web 进程里，重启即丢，
+  而每个任务花真钱且要跑一分钟以上，丢任务不是「重试一下」的事。
+- **双写而不是迁移**：`readme_check`（本地门）与 findings 的全部数字都从 **HEAD 的 JSON** 读。
+  把权威搬进数据库，等于让「README 的数字是否属实」依赖一个跑着的数据库 ——
+  **一个 checkout 就不再能自证**。
+- **不开公网**：每个 `POST /runs` 都是计费的模型调用。公网 + 自动计费的组合下，
+  一次 token 泄漏的损失没有上界。真实用户只有面试时的我自己，SSH 转发够用。
+- **真值不进 DB**：服务一旦对外，能查 `GET /cards` 的人就能拿答案，
+  而 `leak_check` 守的正是这条线。判分时现读 yaml。
+
+**落地时做的判断（设计里没有的，一条一行）**
+
+*schema 与迁移*
+
+- **`cards` 的 DDL 排在 `runs` 之前**，与设计 §3 的叙述顺序相反：`runs.card_id`
+  引用 `cards(card_id)`，按设计的顺序写下来 `psql -f 001_init.sql` 直接报错。
+  语句本身逐字未改，改的只是先后。
+- **`schema_migrations` 在 `001_init.sql` 里和在 `migrate.py` 里各声明一次**，都带
+  `IF NOT EXISTS`。迁移器要先有账本才能读账本，而 `001_init.sql` 必须是数据库的完整描述 ——
+  单独 `psql -f` 它出来的应当是真 schema，不是少一张表的 schema。
+- **唯一索引建在 `(artifact_path, card_id)` 而不是 `artifact_path`**：
+  `run_agent.py` 一卡一文件，但两个基线写手各自只写**一个** `baseline*.json`、
+  里面是一个 per-card 列表，所以**一个文件合法地对应 27 次运行**。
+  「一个文件 = 一次运行」这个直觉在这里是错的，而按错的直觉建索引会让回填在基线上直接失败。
+  partial on NOT NULL，因为服务自己新建的 run 在跑完之前没有证据件。
+- **不用 Alembic**（决策 037 第 2 条），手写 SQL + `schema_migrations`，实际约 30 行。
+
+*容器与部署*
+
+- **api 与 worker 以宿主的 uid:gid `1001:1002` 运行**。它们通过 bind mount 往
+  `artifacts/agent_runs/` 写证据件，容器默认的 root 会写出宿主用户改不动、
+  但又必须 commit 的文件 —— 每次都要 `sudo chown` 的那种小伤口。
+- **`scripts/` 是只读 bind mount，不是 `COPY` 进镜像**。设计 §5 只列了三个挂载，这是第四个。
+  构建期拷一份等于**存在第二个判官**，可以和磁盘上那个悄悄分叉，而 §4 要求服务与 CLI
+  的数字逐位相同。`:ro` 把「服务只 import、不改」从承诺变成文件系统属性。
+- **`RCA_ADMIN_ENABLED` 关闭时 `/admin/*` 返回 404 而不是 403**。403 等于告诉对方
+  「这里有个管理端点，只是你没权限」。它是回环绑定之后的第二层，两层的失效方式不同：
+  端口绑定是部署属性，一个反代或一次 compose 编辑就能撤销，而这一层跟着镜像走。
+- **`RCA_RUN_TIMEOUT_S=600`**：比最慢一臂（agent-haiku，实测 p95 **93 s**）高一个数量级。
+  取小了会把还活着的 run 重新入队并**第二次收费**，取大了只是恢复慢一点 ——
+  两侧的代价不对称，所以往慢的一侧取。
+- **`PyYAML==6.0.1` 与 `requirements-agent.txt` 同钉**。服务 import 的是同一份判官，
+  判官读 yaml；两边版本漂开，「服务与 CLI 数字相同」这条就只在大多数时候成立。
+- **证据件目录是 `service_<日期>_<run uuid 前 8 位>`**，不是 `service_<日期>`。
+  `write_result()` 的文件名是**卡**不是**运行**，一天共用一个目录会让同一张卡的两次运行
+  撞上 `(artifact_path, card_id)` 唯一索引，更糟的是**第二次会静默覆盖第一次的证据**。
+- **`artifacts/agent_runs/service_*/` 进 `.gitignore`**。服务跑出来的是运行产物，
+  不是评测证据；让它入库会把「README 的数字来自 HEAD 的 JSON」这条搅浑。
+
+*API 语义*
+
+- **四道检查的顺序是 card → leak → 幂等回查 → 日预算 → 入队**，每一道都比下一道更便宜也更确定。
+  **幂等回查刻意排在预算门前面**：重放不产生新费用，它只是把已经存在的 run 交回去。
+  让它过预算门意味着**日预算一花完，正在重试的客户端就查不到自己的 run_id** ——
+  熔断器开始扣留信息而不是扣留钱。门应该拦在「会新增收费的工作」前面。
+- **`evidence_leak` 与 `evidence_missing` 是两个码，不是一个 422**。前者是
+  「包在，但会把答案送到模型面前」，后者是「包不在或读不了」。
+  第一个是**必须有人去看的事故**，第二个通常只是没打包，混成一个码等于把前者藏进后者的噪声里。
+- **`RunRef.status` 放宽成四值**，设计 §2 写的是 `Literal["queued"]`。
+  对新提交它是对的，对**幂等键存在的唯一理由 —— 原运行已经跑完的那次重试 —— 它是假的**。
+  给一个已经 `succeeded` 的 run 回 `"queued"`，是在它即将轮询的那件事上对它撒谎。
+- **`/healthz` 数据库不可达时回 503，但用的仍是 `Health` 形状，且余量报 `0.0` 而不是满额**。
+  余量此刻是**未知**，而未知绝不能读成「还有很多」；0 已经是「不接新活」的既有词汇。
+  预算耗尽时反过来仍是 **200** —— 服务是健康的，它只是不接活。
+- **`pick=latest` 与 `pick=run_ids` / `pick=published_all43` 是两个口径，都要有。**
+  回填进来的 421 个 run 里有大量同 `(card, arm, model)` 的重复执行（`devset` 与
+  `devset_v2` 互为重跑，`merged_*/baseline*.json` 是更早批次的再聚合），
+  一个 `GROUP BY arm` 会把同一次执行数两遍，得出一个仓库里任何报告都没有的数字。
+  **「服务当前的口径」与「某张已发布表的口径」是两个问题**，只给前者会让服务复现不了自家仓库的数。
+- **`published_all43` 用常量表写死批次名，而不是 129 个 uuid**。名字在代码里被测试盯着，
+  粘进 URL 的 129 个 uuid 没人盯。它**不过滤 `status='succeeded'`** ——
+  `succeeded` 是服务自己在回填时发明的分类（`terminated` 不是 submit/answered 即 failed），
+  而已发布的表读的是批次目录里的每一个证据件。43 个 agent-haiku 运行里有 9 个撞 `max_steps`，
+  发布表把它们算了进去：它们烧了 token 且答错。滤掉它们不动 top-1（缺卡本来也是零分），
+  却会把均步数从 13.40 压到 11.65、臂总花费从 $3.30 压到 $2.24 ——
+  **一个把最贵的运行扔掉换来的成本数字**。
+- **`arms=` 没有复用 `compare_arms.parse_arm`**。那个函数的文法是
+  `<label>:<rows|runs>:<source>`，解析的是磁盘路径与批次目录，返回的是从盘上读到的行；
+  服务是从 Postgres 选行，`agent:claude-sonnet-5` 连它 split 需要的冒号数都不够。
+  **只有臂的拼写是本地的，算术仍然全部是 `compare_arms.metrics()`**（决策 037 第 3 条）。
+- **进 `metrics()` 之前把 `Decimal` 转成 `float`**。`cost_usd`/`wall_s` 是 `numeric()`，
+  psycopg 还回来是 `Decimal`；`metrics()` 从 int 0 起 `sum()` 并调 `statistics.mean`，
+  `Decimal + float` 直接抛。CLI 读的 JSON 本来就是 float，**转换是「两条路径算术相同」而不是「相近」的那一步**。
+
+*测试与门*
+
+- **DB 测试用一次性 schema（`svc_test_<pid>_<rand>`）而不是事务回滚**。
+  并发那条测试需要**两个连接看见彼此已提交的行**，而「每个测试包一层 rollback」的写法
+  从构造上就做不到这件事。顺带地，因为迁移是真跑的，这些测试同时也在断言
+  「迁移能应用到一个空库」。
+- **并发门靠 `statement_timeout = '3s'` 把阻塞变成失败**。没有 `SKIP LOCKED` 时第二个
+  claim 会**阻塞**在第一个持有的行锁上，而**一个会挂住的测试是挂住整个套件，不是让它变红**。
+- **`docker-compose.service.test.yml` 把 Postgres 发到 `127.0.0.1:5433`**（只回环，
+  且避开测试床登记的 5432），跑完收回。**部署用的 `docker-compose.service.yml` 永远不映射数据库端口。**
+- **依赖三分**：`requirements-service-ci.txt`（离线门要的 fastapi/pydantic）、
+  `requirements-service-test.txt`（＋psycopg/httpx）、`service/requirements.txt`（运行时）。
+  测试环境**故意不装 `anthropic`** —— `harness.py` 把三臂的 import 放在函数里，
+  一个装不上模型客户端的测试环境就是这条性质的守卫。venv 也分开（`.venv-service/`），不动评测用的 `.venv`。
+- **CI 第四道门装包排在门 1 之后**。门 1 的语义是「一个空白 checkout 上，仓库自己的测试」，
+  把服务依赖装到它前面会悄悄改掉这个语义，还会让契约测试在门 1 和门 4 各跑一遍。
+
+*可观测性*
+
+- **uvicorn 的 access log 改成 JSON**：原来 `INFO:     172.20.0.1:48738 - "GET /healthz
+  HTTP/1.1" 200 OK` 与应用的 JSON 挤在同一个 stdout 上，既不能 `json.loads`，
+  也没有延迟、没有 `run_id`。改法是 `app/log_config.json` 让 uvicorn 自己的 logger 走
+  同一个 formatter、`uvicorn.access` 不给 handler，请求行由中间件打，带 `latency_ms`，
+  路径上有 `run_id` 的带 `run_id` —— **与 worker 的日志、与 trace 的 `rca.run_id` 同一个 join key**。
+- **worker 的开机回收扫描无条件打一行，稳态扫描静默**。稳态每 2 s 扫一次，
+  每次都打等于一天四万行「什么都没发生」，而开机那次回答的是
+  **「我刚接替的容器有没有留下卡住的 run」** —— 静默的 no-op 让这件事从日志里读不出来。
+- **`steps.duration_ms` 与 `model_calls.latency_s` 当前全是 NULL**。它们唯一的来源是
+  `traces.jsonl`，而 tracing 默认关（决策 035），服务也不覆盖这个默认。
+  **列先建着**：开 tracing 之后有值，不开就是 NULL，这比事后加列便宜。见 O-P2-26。
+
+**放弃了什么**
+
+- **放弃 Celery + Redis**：两个新组件换来的重试/定时/扇出，v1 一个都不需要。
+  这是本设计里最容易被「看起来专业」诱惑的地方。
+- **放弃 Alembic**：六张表、一个人、一天。它的价值在长期多分支增量迁移，
+  代价是依赖 + `env.py` + autogenerate 假阳性。**这是可辩护的反向选择**，
+  面试里讲「为什么这个规模不该上 Alembic」比讲「我用了 Alembic」更有内容。
+- **放弃「服务也能触发批次」**。它会让这个服务从「只读证据 + 花钱调模型」升级成
+  「能改测试床状态」，安全面和故障面都翻倍，换来的只是省掉一次 SSH。
+  **批次仍然只由人在 VM 上手工挂。**
+- **放弃 SQLite**。用到了 `FOR UPDATE SKIP LOCKED`、`jsonb`、partial unique index，
+  三样它都不支持 —— 在 SQLite 上测出来的绿，恰好在这个服务最容易出错的地方（队列并发）无效。
+- **放弃 testcontainers**。它要拉镜像，直接违反「CI 的门一律离线」这条第一硬规则。
+
+**trade-off**
+
+- **双写的顺序是「先落 JSON，再写数据库行」，这个顺序本身是规则**：
+  *JSON 可以没有数据库行，数据库行不可以没有 JSON*。第三步失败时 run 标 failed、
+  JSON 留在盘上，`POST /admin/reimport` 能把它读回来；反过来会留下一个指向不存在文件的行，
+  **仓库里没有任何东西能修好那个状态**。代价是「跑完了但没入库」这个中间态真实存在，
+  且只能靠人跑一次 reimport 收拾。
+- **并发上限就是 1，而这是特性不是缺陷** —— 它让「这东西一小时最多花多少钱」成为可算的数，
+  不是估的数。代价也很实在：**43 张卡串行跑一轮 agent 臂要 45 分钟以上**
+  （按实测单卡 p95 63.8 s 算），所以这个服务**不适合用来跑批**，跑批仍然走 CLI。
+- **服务与 CLI 共用 `run_agent.run_card`，所以服务继承了它的全部行为**，
+  包括熔断阈值、prompt、工具面 —— 好处是数字逐位一致，坏处是
+  **任何为服务而改 `run_agent` 的动作都会同时改掉 CLI 的历史口径**。
+  这条边界目前只由「不改判据」这个纪律守着，没有机器门。
+- **v1 没有认证、没有备份、没有告警、没有水平扩展**，且都是故意的。
+  引用时的硬边界见 `docs/evidence_audit.md` B6/D5：
+  **不能写「生产级」「高并发」「微服务架构」「CI/CD」**，
+  提 Postgres 要能答上来「为什么不用 SQLite」。
+- **`GET /summary` 是最能打动 AI Engineer 面试官的端点，也是唯一可能出现「同口径两份实现」
+  的地方**。复用 `compare_arms.metrics()` 把这个风险直接消掉了，但**代价是服务的聚合
+  被钉死在 CLI 的实现上** —— 那边改一行，服务的输出跟着变，而服务这侧没有独立的回归基线。
+
+**备注（运维）**
+
+`sudo systemctl restart docker` 会把**宿主上所有 `restart: unless-stopped` 的容器一起拉起**，
+包括整套测试床的 25 个容器（本步验证重启策略时实际发生过两次）。
+这正是 **O-P2-10** 的触发条件（重启后 SDK 静默失效那一族）。
+**下次挂批次前先跑 `scripts/maintenance/wakeup.sh`**，不要假设重启回来的测试床可以直接用。
+
+---
+
 ## 037 批次八收批在库 63、未跑清零；abort 参数化；服务化 036 的三项前置裁决（2026-09-06 ET）
 
 **选了什么**

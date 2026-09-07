@@ -630,7 +630,8 @@
      "pick": {
       "enum": [
        "latest",
-       "run_ids"
+       "run_ids",
+       "published_all43"
       ],
       "title": "Pick",
       "type": "string"

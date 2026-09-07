@@ -135,7 +135,7 @@ class ArmMetrics(BaseModel):
 class Summary(BaseModel):
     cardset: str
     n_cards: int
-    pick: Literal["latest", "run_ids"]
+    pick: Literal["latest", "run_ids", "published_all43"]
     arms: list[ArmMetrics]
 
 
@@ -226,7 +226,8 @@ ERROR_CODES = (
     "not_found",            # 404  unrouted path, or /admin/* while disabled
     "arm_unknown",          # 400  arm spec empty or unrecognised
     "bad_cursor",           # 400  cursor was not issued by this API
-    "bad_pick",             # 400  pick is neither latest nor run_ids
+    "bad_pick",             # 400  unknown pick, or a published pick asked for over
+                            #      a cardset it is not defined on
     "bad_request",          # 400  otherwise-malformed query
     "validation_error",     # 422  body/query does not match the schema
     "evidence_leak",        # 422  leak_check.LeakError -- the pack leaks the answer

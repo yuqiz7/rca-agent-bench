@@ -110,6 +110,7 @@ The agent never sees the card id, the primitive that ran, or the ground truth: i
 - A `None`-versus-zero audit walked 27 verdict paths, fixed 7 places that read a missing measurement as a zero, and replayed 41 cards to confirm none had ever passed on one.
 - Cards come from an unattended batch runner: one global lock so a single fault is live at a time, `nohup` wrapping, and abort on consecutive failures rather than on the first one.
 - 8 batches account for 11.9 hours of machine time; every model call is priced per card, $9 in metered API calls so far.
+- The evaluation harness is also wrapped as a REST service: 8 endpoints on FastAPI, submit-and-poll (202 plus a run id) over a Postgres queue table claimed with `FOR UPDATE SKIP LOCKED`, three cost breakers (per card, one worker, $5 daily budget), and an idempotency key so a retry cannot pay twice. It binds to loopback only and is demoed over an SSH tunnel — every submission is a billed model call ([decision 036](docs/decisions.md)).
 - Repository scale: ~80 commits and ~10k lines of Python and shell.
 
 </details>

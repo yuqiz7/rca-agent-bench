@@ -1504,6 +1504,174 @@ F-8 的可观测结论（边不再被埋点、四张卡不可测、重启 cart �
 
 ---
 
+## O-P2-25　崩溃回收的备注只在重试期间存在，耐久记录只有 worker 日志（2026-09-07）
+
+**状态：open（2026-09-07 ET 开条，服务化 v1 落码时发现，处置待裁决）**
+
+**内容**
+worker 把超时的 `running` 行推回 `queued` 时，会往 `runs.error` 追加一行
+`requeued after worker restart`（`service/app/repo.py:299,305-313`，用
+`concat_ws` 追加而非覆盖，因为该 run 可能已经记了别的东西）。
+但**重试跑完时这个备注就没了**：`service/app/runner.py:126` 写回的是
+`"error": result.get("error")`，成功时为 `None`，**整列被覆盖**。
+于是「这次运行曾经被回收过一次」这个事实，在终态行上**查不到**。
+
+**依据**
+- 追加：`repo.py:305-313` `REQUEUE_SQL`，条件 `status='running' AND started_at < now() - 超时`。
+- 覆盖：`runner.py:116-126` 的终态 `update_run`，`error` 是无条件写入的字段之一。
+- 唯一的耐久记录是 worker 的日志行 `{"event":"worker.requeued","run_ids":[...]}`，
+  落在 docker 的 json-file driver（`max-size=10m`, `max-file=3`）——
+  **也就是说它会被轮转掉**，而且轮转的依据是字节数不是时间。
+
+**影响**
+不影响任何已发布数字：被回收的 run 要么最终成功（数字正常），要么最终失败（有别的 error）。
+影响的是**事后归因**：想回答「这批运行里有几次是崩溃恢复后重跑的」，
+目前只能去翻 docker 日志，而日志按 10 MB × 3 轮转。
+
+**处置（未做）**
+要让它留在行上，得加列 —— `attempts int NOT NULL DEFAULT 1` 与
+`requeued_at timestamptz`，回收时 `attempts = attempts + 1`，终态写回不碰这两列。
+那是一次 schema 变更（`003_*.sql`）。**本轮不做**：v1 的 worker 崩溃恢复迄今
+只在测试里触发过，真实发生率是 0，为一个没发生过的事加两列是提前优化。
+**如果哪天真的开始按运行做成本归因，这两列就必须先加** —— 到那时
+「重跑了几次」是成本表里的一项，不是日志里的一行。
+
+---
+
+## O-P2-26　`steps.duration_ms` 与 `model_calls.latency_s` 当前全为 NULL（2026-09-07）
+
+**状态：open（2026-09-07 ET 开条，已知且刻意，等 tracing 常开后自动关闭）**
+
+**内容**
+`GET /runs/{id}/trace` 返回的每一步都带 `duration_ms`，每次 model_call 都带
+`latency_s`，**两者当前一律是 `null`**。不是 bug：这两个值在仓库里唯一的来源是
+`artifacts/agent_runs/<run-id>/traces.jsonl`，而 tracing **默认关闭**（决策 035），
+服务侧也不覆盖这个默认（`service/app/runner.py` 不传 `--trace` 等价物）。
+
+**依据**
+- 来源：`service/app/reimport.py:97` 的注释写明「per-step timing only in
+  `traces.jsonl`, which exists for exactly one batch」——
+  全仓只有 `traceverify_20260906/` 那两张卡带 traces.jsonl。
+- 默认：`scripts/agent/config.yaml` `tracing.enabled: false`。
+- 实测（2026-09-07，服务跑的 `crash-email-01`，run `530eab9b`）：
+  5 步 5 次 model_call，`duration_ms` 与 `latency_s` 全部为 null，
+  该 run 的证据件目录里**没有** traces.jsonl。
+
+**影响**
+`/runs/{id}/trace` 的层级、token、单步成本、stop_reason、工具返回字节数**都是实的**，
+只有这两个时间字段是空的。**引用 trace 端点时不要说「每步耗时」** ——
+可说的是「每步的模型调用与工具调用、token 与单步成本」。
+
+**处置（未做，且倾向不做）**
+列先建着是刻意的：开了 tracing 就有值，不开就是 NULL，比事后加列便宜。
+真要填上，两条路：(a) 服务跑 agent 臂时默认开 tracing —— 代价是每卡多一个导出器，
+且违反决策 035「默认关」的理由；(b) 让 `run_agent` 在不开 tracing 时也记步时长 ——
+那是给评测器加一个只有服务用得上的字段。**两条都不急**，等真的需要按步做延迟归因时再裁决。
+
+---
+
+## O-P2-27　starlette 对 httpx TestClient 的 deprecation 警告未处理（2026-09-07）
+
+**状态：open（2026-09-07 ET 开条，处置＝暂不处理，记录以免下次被当成新问题）**
+
+**内容**
+`make test` 里 `tests/service/test_evidence_gate.py` 每次产生两条警告：
+
+```
+StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is
+  deprecated; install `httpx2` instead.
+DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated,
+  use anyio.from_thread.BlockingPortal instead.
+```
+
+两条都来自 starlette/anyio 内部，不来自本仓代码。测试全过（本步 **59 passed**）。
+
+**依据**
+`requirements-service-test.txt` 钉 `httpx==0.28.1`；警告出自
+`.venv-service/.../starlette/testclient.py:1` 与 `:53`。
+
+**处置（未做）**
+换 `httpx2` 会动测试依赖的钉版，而这套依赖是**为了让门可复现才钉的**；
+为消两条内部警告去动它，风险大于收益。**不加 `filterwarnings` 去屏蔽** ——
+屏蔽等于把下一条真警告也一起藏了。等 starlette 升级时顺手处理。
+
+---
+
+## O-P2-28　GCP 防火墙未从 API 侧核实（实例服务账号缺 compute scope）（2026-09-07）
+
+**状态：open（2026-09-07 ET 开条，判据已用替代证据补上）**
+
+**内容**
+「服务不开公网」这条，本轮**没能**从 GCP 侧核实。VM 上装了 `gcloud`，但
+`gcloud compute firewall-rules list` 返回：
+
+```
+ERROR: (gcloud.compute.firewall-rules.list) Some requests did not succeed:
+ - Request had insufficient authentication scopes.
+```
+
+实例的默认服务账号没有 compute 读权限，因此**无法从 API 侧证明 8000 入站未开**。
+
+**替代判据（已核，2026-09-07）**
+- `docker-compose.service.yml:78-80` 绑定写死 `"127.0.0.1:8000:8000"`；
+- `ss -ltn` 实测：`LISTEN 0 4096 127.0.0.1:8000 0.0.0.0:*`，
+  **宿主的外部网卡上根本没有 8000 这个 socket**，防火墙开与不开都到不了；
+- `db` 无 `ports:`，`ss` 里没有 5432 监听。
+
+**这条判据比防火墙规则更强还是更弱**：更强的地方是它不依赖云侧配置正确；
+更弱的地方是它**只覆盖 8000**，说不了「这台 VM 整体的入站面是什么样」——
+而实际上 `0.0.0.0` 上有 30 多个监听（测试床的，见 O-P2-29）。
+**因此引用时只能说「评测服务只绑回环」，不能说「这台 VM 不开公网」。**
+
+**处置（未做）**
+要真核实，得给实例服务账号加 `compute.readonly` scope（需停机改 scope）
+或用一个有权限的账号 `gcloud auth login`。**都不在本轮范围内**，
+且第一条会改 VM 配置。留待需要对外声明入站面时再做。
+
+---
+
+## O-P2-29　宿主 `0.0.0.0` 上的 30 余个临时端口属测试床 compose，非本仓（2026-09-07）
+
+**状态：已查明并关闭（2026-09-07 ET，结论＝不属本仓，不动）**
+
+**内容**
+VS Code 的 Ports 面板上出现一个 `0.0.0.0:32786` 的 docker-proxy 监听，
+怀疑是本仓 compose 漏了回环绑定。**查明结果：属于测试床，不属本仓。**
+
+**依据（2026-09-07 实测）**
+```
+$ sudo ss -ltnp | grep :32786
+LISTEN 0 4096  0.0.0.0:32786  0.0.0.0:*  users:(("docker-proxy",pid=1870173,fd=8))
+$ docker ps --format '{{.Names}}\t{{.Ports}}' | grep 32786
+checkout	0.0.0.0:32786->5050/tcp, [::]:32786->5050/tcp
+$ docker inspect checkout --format '{{index .Config.Labels "com.docker.compose.project"}}'
+opentelemetry-demo
+```
+上游 `opentelemetry-demo/compose.yaml:127-128` 对 `checkout` 写的是
+`ports: - "${CHECKOUT_PORT}"` —— **只给容器端口、不给宿主端口**，
+docker 因此在 `0.0.0.0` 上分配一个临时端口。同样形状的映射有 20 余个
+（32768–32789），全部来自测试床工程。
+
+**端口号不稳定**：本会话内一次 `systemctl restart docker` 之后，
+`checkout` 的宿主端口从 **32785 变成 32786** —— 临时端口每次重启重新分配，
+所以 Ports 面板上看到的号码不能当成固定事实记录。
+
+**本仓自己发布的端口，全部核过**：
+| compose | 端口 | 绑定 |
+| --- | --- | --- |
+| `docker-compose.service.yml` | 8000 | **`127.0.0.1` only** |
+| `docker-compose.service.yml` | db | **不发布** |
+| `docker-compose.service.test.yml`（仅 `make test-db` 期间） | 5433 | **`127.0.0.1` only** |
+| `docker-compose.agent-obs.yml` | 16687 / 4327 / 4328 | `0.0.0.0`（既有，决策 035） |
+
+**处置**
+测试床的映射是上游 compose 的既有行为，**只记录不动** ——
+改它等于改被评测系统的配置，而那正是服务化 v1 全程守着不碰的东西（决策 036）。
+`docker-compose.agent-obs.yml` 的三个 `0.0.0.0` 是决策 035 定的，本条不重开。
+**本条对本仓的结论是：没有需要收回的绑定。**
+
+---
+
 ## F-1　10% 随机故障低于 120 s 窗的检测线（`misconfig-ad-on`，2026-08-28 出库）
 
 **一句话**：`adFailure` 只让 **10%** 的 `GetAds` 失败，而检测器规则 1/5 的阈值

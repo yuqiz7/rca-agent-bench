@@ -57,6 +57,8 @@ KEY SOURCES -- each line is the locator docs/evidence_audit.md cites.
   overfit_*             baseline1.json of baselines_20260828, class-aligned against
                         merged_holdout16_20260906, regraded with run_eval.grade's rule   (C6)
   ci_gates              `gate N:` steps in .github/workflows/ci.yml                      (D1)
+  service_endpoints     paths in tests/fixtures/openapi.json, the committed contract      (D5)
+  service_budget        RCA_DAILY_BUDGET_USD in docker-compose.service.yml                (D5)
   audit_*               docs/probe_audit.md, the statistics line of the conclusion       (D2)
   batches, machine      first-to-last timestamp of each artifacts/batches/*.log          (D4)
   spend                 cost_usd of every per-card json under artifacts/agent_runs/,
@@ -447,6 +449,16 @@ def compute():
 
     v["ci_gates"] = "{} offline gates".format(
         len(re.findall(r'name: "gate \d', read(".github/workflows/ci.yml"))))
+
+    # The evaluation service (决策 036). Both come from files the API cannot change
+    # without changing: the OpenAPI snapshot is the committed contract and moves
+    # only when gate 4 is deliberately re-baselined, and the daily budget is the
+    # value the container actually runs with rather than the one the design names.
+    v["service_endpoints"] = "{} endpoints".format(
+        len(json.loads(read("tests/fixtures/openapi.json"))["paths"]))
+    v["service_budget"] = "${:g} daily budget".format(float(re.search(
+        r'RCA_DAILY_BUDGET_USD:\s*"([\d.]+)"',
+        read("docker-compose.service.yml")).group(1)))
     v["audit_paths"] = f"{stats.group(1)} verdict paths"
     v["audit_fixes"] = f"{stats.group(4)} places"
     v["audit_replay"] = "{} cards".format(

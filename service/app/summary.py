@@ -16,16 +16,72 @@ devset / devset_v2 are re-runs of one another. A `GROUP BY arm` over that table
 would count the same execution twice and report a number that matches no report
 in the repo. So a summary must pick exactly one run per (card, arm):
 
-  pick=latest    the newest succeeded run. What the service means by "current".
-  pick=run_ids   an explicit list. What you use to reproduce a published table,
-                 whose arms are specific batches rather than "whatever is newest".
+  pick=latest            the newest succeeded run. What the service means by
+                         "current".
+  pick=run_ids           an explicit list. What you use to reproduce a published
+                         table, whose arms are specific batches rather than
+                         "whatever is newest".
+  pick=published_all43   the run set behind ONE named published table, by name
+                         instead of by 129 uuids. See PUBLISHED_ALL43 below.
 
-Both are offered because they answer different questions, and quietly having only
-`latest` would have made the service unable to reproduce its own repo's numbers.
+All three are offered because they answer different questions, and quietly having
+only `latest` would have made the service unable to reproduce its own repo's
+numbers.
 """
 import re
 
 from . import harness, repo
+
+# The run set behind artifacts/agent_runs/fivearm_all43_20260906/report.md
+# (added in commit c54a6c8, 决策 034), keyed by (arm, model) and valued by the
+# artefact directories those runs were written to. Every path here is the third
+# segment of runs.artifact_path, which is where reimport recorded which batch a
+# run came from.
+#
+# WHY A CONSTANT TABLE AND NOT A QUERY
+# ------------------------------------
+# There is no query that finds "the runs that table cites". The published table
+# is five arms assembled from batches run on four different days, and the same
+# (card, arm, model) appears in the database several times over -- devset and
+# devset_v2 are re-runs of one another, and merged_*/baseline*.json re-aggregate
+# earlier batches. `pick=latest` deliberately answers a different question
+# ("what does the service think is current"), and it does NOT reproduce this
+# table: for the agent arm it would pick up devset_20260828 and the service's own
+# runs. Naming the batches is the only thing that reproduces a frozen number, and
+# a name typed once here is checked by a test, where 129 uuids pasted into a URL
+# are checked by nobody.
+#
+# The two haiku arms are listed as evidence_audit C7 locates them: the set*
+# directories are the runs themselves, and merged_all43_haiku_20260906 is a
+# re-aggregation of the same executions -- either reproduces the table, and using
+# the set* ones keeps all four multi-batch arms spelled the same way.
+#
+# ADDING AN ARM HERE IS ADDING A CLAIM: that these batches hold exactly one run
+# per card in cardset_all43.json, and that the numbers they aggregate to are the
+# numbers in the report. That claim is checked against the live database, not by
+# a unit test -- the two arm shapes make it impossible to check off disk, since
+# the agent arms store one file per card while the rules and single_shot arms are
+# a single baseline*.json holding all 43. What the tests do check is the part
+# that can go wrong silently: gate 4 pins the pick into the OpenAPI enum and
+# checks every directory named here exists, and the local DB gate pins the
+# selector's semantics (batch scope, failed runs kept, newest wins).
+PUBLISHED_ALL43 = {
+    ("rules", None):                        ("merged_all43_20260906",),
+    ("rules", "none"):                      ("merged_all43_20260906",),
+    ("single_shot", "claude-sonnet-5"):     ("merged_all43_20260906",),
+    ("agent", "claude-sonnet-5"):           ("devset_v2_20260828",
+                                             "devset_v2_extra8_20260828",
+                                             "holdout5_agent_20260828",
+                                             "holdout11_agent_20260906"),
+    ("single_shot", "claude-haiku-4-5"):    ("set27_haiku_20260906",
+                                             "set5_haiku_20260906",
+                                             "set11_haiku_20260906"),
+    ("agent", "claude-haiku-4-5"):          ("set27_agent_haiku_20260906",
+                                             "set5_agent_haiku_20260906",
+                                             "set11_agent_haiku_20260906"),
+}
+
+PUBLISHED_PICKS = {"published_all43": ("all43", PUBLISHED_ALL43)}
 
 _CARDSET_FILE = re.compile(r"^cardset_(?P<name>[A-Za-z0-9_]+)\.json$")
 
@@ -93,6 +149,24 @@ def _row_for_metrics(run: dict) -> dict:
     }
 
 
+def published_arms_for(pick: str) -> dict | None:
+    """The (arm, model) -> batches table a published pick names, or None."""
+    entry = PUBLISHED_PICKS.get(pick)
+    return None if entry is None else entry[1]
+
+
+def published_cardset_for(pick: str) -> str | None:
+    """The cardset a published pick is defined over.
+
+    A published table is a claim about one specific card set: asking for
+    `?cardset=holdout16&pick=published_all43` would silently compute a 16-card
+    slice of a 43-card table and print it under the published table's name. main
+    rejects the mismatch using this rather than letting the number out.
+    """
+    entry = PUBLISHED_PICKS.get(pick)
+    return None if entry is None else entry[0]
+
+
 def compute(cur, cardset_name: str, cards: list[str], arms, *, pick="latest", run_ids=None) -> dict:
     # Ground truth enters this function's local scope and leaves with the two
     # booleans metrics() derives from it. It is not returned, not logged, not
@@ -103,10 +177,14 @@ def compute(cur, cardset_name: str, cards: list[str], arms, *, pick="latest", ru
     explicit = None
     if pick == "run_ids":
         explicit = repo.runs_by_ids(cur, run_ids or [])
+    published = published_arms_for(pick)
 
     out = []
     for arm, model in arms:
-        if explicit is None:
+        if published is not None:
+            chosen = repo.runs_in_artifact_dirs(
+                cur, cards, arm, model, published.get((arm, model), ()))
+        elif explicit is None:
             chosen = repo.latest_succeeded_per_card(cur, cards, arm, model)
         else:
             chosen = {}

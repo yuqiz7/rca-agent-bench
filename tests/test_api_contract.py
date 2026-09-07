@@ -175,3 +175,55 @@ def test_the_endpoint_set_is_the_designed_one():
     assert "ground_truth" not in {
         prop for schema in spec["components"]["schemas"].values()
         for prop in schema.get("properties", {})}
+
+
+# --------------------------------------------------------------------------- #
+# pick=published_all43 -- the named run set behind a published table
+# --------------------------------------------------------------------------- #
+
+def _published():
+    pytest.importorskip("fastapi", reason="service deps; CI installs them with gate 4")
+    from service.app import summary                                   # noqa: PLC0415
+    return summary
+
+
+def test_published_pick_is_in_the_wire_enum():
+    """The pick a client may send and the pick the service knows must be one list.
+
+    Summary.pick is a Literal, so a value the endpoint accepts but the response
+    model does not know about would serialise-error at the end of a request that
+    already did all its work -- and only for that pick, which is the kind of hole
+    a snapshot diff shows and a smoke test on `latest` never reaches.
+    """
+    app = _app()
+    summary = _published()
+    enum = set(app.openapi()["components"]["schemas"]["Summary"]["properties"]["pick"]["enum"])
+    assert set(summary.PUBLISHED_PICKS) <= enum
+    assert {"latest", "run_ids", "published_all43"} == enum
+
+
+def test_published_pick_names_directories_that_exist():
+    """Every batch named in PUBLISHED_ALL43 is on disk, under the cardset it claims.
+
+    Offline half of the claim: this catches a typo or a renamed batch directory in
+    CI. The other half -- that those batches hold one run per card and aggregate
+    to the published numbers -- needs the database and is verified there.
+    """
+    summary = _published()
+    runs_root = os.path.join(REPO, "artifacts", "agent_runs")
+    for pick, (cardset, table) in summary.PUBLISHED_PICKS.items():
+        assert os.path.exists(os.path.join(
+            REPO, "scripts", "baselines", f"cardset_{cardset}.json")), pick
+        assert summary.published_cardset_for(pick) == cardset
+        assert table, f"{pick} names no arms"
+        for (arm, model), dirs in table.items():
+            assert dirs, f"{pick}: arm {arm}/{model} names no batch"
+            for d in dirs:
+                assert os.path.isdir(os.path.join(runs_root, d)), f"{pick}: missing batch {d}"
+
+
+def test_unknown_pick_is_not_silently_accepted():
+    summary = _published()
+    assert summary.published_arms_for("latest") is None
+    assert summary.published_arms_for("run_ids") is None
+    assert summary.published_cardset_for("nope") is None

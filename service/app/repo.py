@@ -406,6 +406,55 @@ def latest_succeeded_per_card(cur, card_ids, arm, model=None) -> dict:
     return {r["card_id"]: r for r in cur.fetchall()}
 
 
+def runs_in_artifact_dirs(cur, card_ids, arm, model, dirs) -> dict:
+    """One finished run per card, restricted to a named set of artefact batches.
+
+    Backs pick=published_all43. Same DISTINCT ON shape as
+    latest_succeeded_per_card -- so "which run of this card" is decided the same
+    way in both -- with the candidate set narrowed to runs whose artifact_path
+    sits under one of `dirs`. The four named batches of the agent arm hold one
+    run per card between them, so the tie-break never fires there; it is kept
+    because nothing in the schema enforces that, and a batch re-imported twice
+    should shift a published number by zero rather than by whichever row the
+    planner returned first.
+
+    IT DOES NOT FILTER status = 'succeeded', AND THAT IS THE POINT. `succeeded`
+    is the service's own classification, invented when step 2 backfilled these
+    artefacts: a run whose `terminated` is not submit/answered is called failed.
+    compare_arms had no such notion -- it read every artefact in the batch
+    directory. Nine of the 43 agent-haiku runs hit max_steps, and the published
+    table counts them: they burned tokens and got the card wrong. Excluding them
+    leaves top-1 alone (a missing card scores zero either way) but quietly drops
+    the mean steps from 13.40 to 11.65 and the arm total from $3.30 to $2.24 --
+    a cost claim made better by throwing away the expensive runs. Reproducing a
+    published number means selecting the rows it selected, not the rows this
+    service would now call healthy. The status filter belongs to pick=latest,
+    where the question really is "what is the current answer".
+
+    Terminal rows only, so a queued or running row can never enter a published
+    aggregate. Backfilled batches have none; this costs nothing and does not
+    depend on that staying true.
+
+    split_part over LIKE: artifact_path is
+    `artifacts/agent_runs/<batch>/<card>.json`, and comparing segment 3 for
+    equality means a batch name can never match as somebody else's prefix.
+    """
+    if not dirs:
+        return {}
+    cur.row_factory = dict_row
+    sql = ["SELECT DISTINCT ON (card_id) * FROM runs",
+           "WHERE status IN ('succeeded', 'failed')",
+           "AND card_id = ANY(%(cards)s) AND arm = %(arm)s",
+           "AND split_part(artifact_path, '/', 3) = ANY(%(dirs)s)"]
+    params = {"cards": list(card_ids), "arm": arm, "dirs": list(dirs)}
+    if model is not None:
+        sql.append("AND model = %(model)s")
+        params["model"] = model
+    sql.append("ORDER BY card_id, created_at DESC, run_id DESC")
+    cur.execute(" ".join(sql), params)
+    return {r["card_id"]: r for r in cur.fetchall()}
+
+
 def runs_by_ids(cur, run_ids) -> list[dict]:
     if not run_ids:
         return []

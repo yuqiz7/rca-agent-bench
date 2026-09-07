@@ -3,6 +3,11 @@
 **日期**：2026-09-06 ET　**审计对象**：HEAD `fa63bdb`　**方法**：每条候选事实对到仓库一手证据
 （文件路径:行 / commit / CSV·JSON 字段），只读核实，不改代码、不改判据。
 
+**增补（2026-09-07 ET，审计对象 `000f4c6..HEAD` 的评测服务化 v1，决策 036）**：
+新增 **B6**（agent 臂做成 REST API）与 **D5**（服务的工程质量），**D1 加了一条勘误注**
+（三道门 → 四道门，12 项测试的数字作废）。增补行的日期与主表不同，行内自带标注。
+**原有各行未改动** —— 它们是 `fa63bdb` 那一刻的记录，改了就不再是记录。
+
 **读法**：数字一律以仓库现状为准。候选表里写错的，本文直接给正确值，
 并在「措辞边界」一栏写清**这条最强可辩护的说法**与**不能用的词**。
 「措辞边界」不是修辞建议，是一旦被追问就要拿出证据的那条线。
@@ -31,6 +36,7 @@
 | B3 | card_id 泄漏断言 fail-closed；agent 只见 task_view | `scripts/agent/leak_check.py`：`FORBIDDEN_KEYS`（:33）、按值查 card_id（:55）、系统提示与工具 schema 必须是卡无关常量（:69,:71）、user turn 字段必须是 task.json 的投影（:78-83）；调用点 `run_agent.py:116`，**在 :150 第一次 `messages.create` 之前**，抛 `LeakError` 即中止 | **通过（fail-closed 位置正确）**，一处要改口径：agent 输入是 **trigger + `agent_visible_symptom`** 两项，**alerts 不是第三项**，它在 `agent_visible_symptom` 里面。`task_view.WHITELIST` 另含 `card_id` / `evidence_dir`，但那两项**不进模型输入**（进的是工具寻址） | 可说「**答案泄漏在花第一个 token 之前 fail-closed 拦截，是 CI 门之一**」「agent 看到的只有触发语和告警症状」。**不能说「agent 看不到 card_id」**——它看不到，但 harness 用 card_id 寻址证据目录，措辞要落在「模型输入」上 |
 | B4 | prompt 一次迭代冻结：19 卡 52.6%→57.9% | `artifacts/agent_runs/devset_20260828/report.md:13`（52.6%，10/19）、`artifacts/agent_runs/devset_v2_20260828/report.md:13`（57.9%，11/19）；决策 `docs/decisions.md:1111` 025 | **通过** | 可说「**prompt 只迭代一次即冻结，开发集 top-1 52.6%→57.9%**」「冻结是留出集测试的前提」。**不能把 +5.3 说成显著**——19 张卡单张值 5.3 个百分点，这一步正好是一张卡。同一次改动里 service-only 从 84.2% **掉到** 78.9%，引用时不要只报涨的那个 |
 | B5 | agent 可观测性（OpenTelemetry 追踪） | `scripts/agent/tracing.py`；开关 `--trace` / `config.yaml` 的 `tracing.enabled`（默认 **false**）；层级 card → step N → `model.call` / `tool.<name>`，判分是 card 的子 span `grade`（由 `run_eval` 开，因为 `run_agent` 结构上不能知道答案）；两个落点 `artifacts/agent_runs/<run-id>/traces.jsonl` 与 独立 Jaeger `docker-compose.agent-obs.yml`（16687/4327/4328）；依赖 pin 在 `requirements-agent.txt`。**实测验证**（`artifacts/agent_runs/traceverify_20260906/`，2 张卡）：30 个 span / 2 条 trace（13 + 17），独立 Jaeger `/api/services` 返回 `["rca-agent"]`，测试床 Jaeger `/api/services` 返回 17 个服务且 **不含 `rca-agent`**；关闭时 `sys.modules` 里 opentelemetry 模块数为 **0** | **通过** | 可说「**agent 的每一次模型调用与工具调用都以 OpenTelemetry span 记录（token、单步成本、stop_reason、返回字节数、五道保险的触发标记），可在独立 Jaeger 中按 card → step → call 逐层查看**」「**追踪落点与测试床后端物理隔离，以免评测器混进被评测系统的真值**」。**不能说「生产级可观测性」** —— 没有采样策略、没有告警、没有保留策略、没有多进程聚合，只有单进程 span 导出。**不要提 Langfuse 或任何托管观测平台** —— 本仓刻意没用（决策 035）。**不能说「默认开启」或「零成本」**：默认关闭，开启后每卡多一个导出器 |
+| B6 | agent 臂做成 HTTP 服务：异步提交、逐步 trace、入口 leak gate、真值不出服务（2026-09-07 补，决策 036） | 端点 `service/app/main.py`：`POST /runs`（:179，202 + `run_id`）、`GET /runs/{run_id}`（:348）、`GET /runs/{run_id}/trace`（:359，card → step → model_call / tool_call）；入口 leak gate `main.py:227` 调 `harness.check_card`，**在入队之前**，与 `run_card` 内部那次是两道；真值只进函数局部作用域 `runner.py:101`、`summary.py:174`，**六张表里没有真值列**（gate 4 的 `test_response_model_declares_no_truth_field` 逐个响应模型断言）；判分 import `run_eval.grade`，不重写。**实测端到端**（2026-09-07，run `530eab9b`，`crash-email-01` / claude-sonnet-5）：succeeded、`terminated=submit`、5 步、9 次工具调用、**$0.06064**、top1_ok；JSON 证据件 / Postgres 行 / `GET /runs` / `GET /runs/{id}/trace` 四处**逐位一致**，把证据件的 answer 重新过一遍 `run_eval.grade` 复现出同一个判分 | **通过**，两处要标注：`/runs/{id}/trace` 的 `duration_ms` 与 `latency_s` **当前全是 NULL**（唯一来源是 `traces.jsonl`，而 tracing 默认关，见 O-P2-26）；服务只跑**单卡**，批次仍然只由人在 VM 上手工挂 | 可说「**把 agent 评测做成 REST API：提交一张卡返回 202 + run_id，异步执行，可查每一步的模型调用与工具调用**」「**答案泄漏检查在入队之前就跑一次，卡进不了队列**」「**真值不进数据库，判分在服务端完成，`GET /cards` 不返回答案**」「**服务 import 评测器现有实现而非复制，API 与 CLI 的数字逐位一致**（已实测：证据件 / DB / API 三处对齐）」。**不能说「每步耗时」** —— 那两个字段是 NULL。**不能说「服务能跑批」** —— 并发上限是 1，43 卡串行一轮 45 分钟以上，且服务刻意不触发批次 |
 
 ---
 
@@ -52,10 +58,11 @@
 
 | 编号 | 事实 | 证据定位 | 结论 | 措辞边界 |
 | --- | --- | --- | --- | --- |
-| D1 | CI 三道门 | `.github/workflows/ci.yml`：门 1 `python -m pytest tests/ -q`（本步实跑 **12 passed**，`--collect-only` 亦为 12）、门 2 `generate.py --check`（本步 `cards=68 changed=0` rc=0）、门 3 干净窗负对照。三道门全部离线，CI 不碰 VM / 不碰 API（文件头写明） | **通过** | 可说「**GitHub Actions 三道离线门：12 项测试、场景生成器幂等、检测器干净窗负对照**」。**不能说「CI 跑评测」**——刻意不装 `anthropic`，任何门都不许发网络请求 |
+| D1 | CI 三道门 | `.github/workflows/ci.yml`：门 1 `python -m pytest tests/ -q`（本步实跑 **12 passed**，`--collect-only` 亦为 12）、门 2 `generate.py --check`（本步 `cards=68 changed=0` rc=0）、门 3 干净窗负对照。三道门全部离线，CI 不碰 VM / 不碰 API（文件头写明） | **通过** | 可说「**GitHub Actions 三道离线门：12 项测试、场景生成器幂等、检测器干净窗负对照**」。**不能说「CI 跑评测」**——刻意不装 `anthropic`，任何门都不许发网络请求。**〔勘误 2026-09-07〕上面这一行连同本行左侧三栏都是 2026-09-06 的记录，原文不删。现在是四道门不是三道**：决策 036 加了门 4「API 契约」（schema 单测 + OpenAPI 快照逐字节比对），`.github/workflows/ci.yml` 现有 `gate 1..4` 四个步骤。**测试数也不再是 12**：CI run **34169550229**（步骤 7）门 1 报 `24 passed, 16 skipped`、门 4 报 `22 passed`；本步（步骤 8）本地逐字复跑同一组命令为门 1 `24 passed, 20 skipped`、门 4 `25 passed`。skipped 的那些是**要 Postgres 或要 fastapi 的服务测试**，它们按理由跳过而不是失败 —— 门 1 的语义是「一个空白 checkout 上，仓库自己的测试」（`docs/workflow.md` §9）。**因此该说「四道离线门」，测试数按 CI 当次输出报，不要再引用 12** |
 | D2 | None-vs-zero 审计 | `docs/probe_audit.md:113`：**27 条**判据路径，正确 11 / 可接受 9 / **错误 7**；其中 **25 条读码找出、2 条由批次四撞出**（:104）。7 处已修 `docs/probe_audit.md:115` + 决策 029（commit `5182209`）。追溯核查 `docs/probe_audit.md:120`：**41 张在库卡 × 四窗快照零命中** | **数字不符 → 是 27 条路径不是 25**。25 是「读代码找出来的那部分」 | 可说「**审计了 27 条判据路径，改掉 7 处把『取不到』当成零的写法，并回放全部在库卡确认这个缺陷从未放行过任何一张**」。**不能说「审计发现 25 处」**。追溯核查的分母是**当时的 41 张**（2026-08-29），不是现在的 43——那是带日期的历史记录 |
 | D3 | findings 与决策留痕 | `docs/open_items.md` **F-1…F-8 共 8 条**；`docs/findings.md` §1.1–§1.4 **四类 agent 失败模式**（1.4 于本轮新增）；`docs/decisions.md` **31 个决策编号 001–031，32 个小节**（018 拆「第一部分/第二部分」两节） | **通过**，一处要注意：小节数 32 ≠ 编号数 31 | 可说「**8 条实测 finding、4 类 agent 失败模式、31 条决策记录，每条写明选了什么/为什么/放弃了什么**」。**不要说「32 条决策」** |
 | D4 | 批次 runner 与量产机时 | 串行锁 `scripts/state/runner.lock`（`run_batch.py` 存在性检查 + 探针侧 `flock`，`docs/workflow.md:192`、`prom_wal_restart_probe.sh:36-42`）；nohup 包装 `scripts/runner/run_batch.sh`；中止条件 `--abort-after-recovered-failures`（默认 2）与门失败连击 3。机时按 `artifacts/batches/*.log` 首末时间戳汇总：batch1 110.1 / batch2 109.3 / rerun1 107.0 / batch3 61.0 / batch4 115.5 / batch5 14.0 / batch6 25.1 分钟，**7 批合计 9.03 小时** | **数字给出 → 9.03 h**；**「失败即停」不符**：是**连续**失败到阈值才中止，单张失败继续跑下一张（batch6 就是撞到 3/3 才 ABORT） | 可说「**无人值守批跑，全局串行锁保证同一时刻只有一个故障在注入，连续失败自动中止；累计约 9 小时机时产出 7 个批次**」。**不能说「失败即停」**，也**不能把 9 小时说成「实验总时长」**——它只是批次运行占用的机时，不含开发与评测 |
+| D5 | 评测服务的工程质量：Postgres 队列、三层熔断、幂等键、四道门 + 本地门、契约快照、仅回环（2026-09-07 补，决策 036） | `docker-compose.service.yml`：db / api / worker 三容器，`restart: unless-stopped`（:36,:84,:119）、端口 `"127.0.0.1:8000:8000"`（:78-80）、db **无 `ports:`**；队列 `service/app/repo.py:295` `FOR UPDATE SKIP LOCKED`，单 worker（compose 一个副本，即并发上限）；三层熔断＝`scripts/agent/config.yaml` `max_usd_per_card: 0.20`（单卡，沿用 CLI 不覆盖）＋ worker 副本 1（并发）＋ `RCA_DAILY_BUDGET_USD: "5.00"`（日预算，`main.py:252-259` 超限 429）；幂等键 partial unique index `runs_idem`（`001_init.sql:60`）＋ `main.py:296-311` 先 INSERT 再解冲突；迁移手写 SQL + `schema_migrations`（`001_init.sql`、`002_reimport_dedup.sql`、`app/migrate.py`）。**门**：CI 四道（run **34169550229**，步骤 7：门 1 `24 passed, 16 skipped`、门 2 `cards=68 changed=0`、门 3 `4 passed`、门 4 API 契约 `22 passed`）；本步（步骤 8）同样四道，本地逐字复跑为 **24 passed / 20 skipped**、`cards=68 changed=0`、**4 passed**、**25 passed**。另有**只在本地**的门：`make test-db` **18 passed**（仓储层 + `SKIP LOCKED` 双连接并发 + 两种 422），`make test` 合计 **59 passed**；契约快照 `tests/fixtures/openapi.json` 逐字节比对。**实测重启**：`systemctl restart docker` 两次，三容器自动回来、`/healthz` 200 在 ~16 s，重启前后行数一致（runs 422 / steps 1229 / model_calls 1122 / tool_calls 1526 / grades 422），命名卷未重建 | **通过**，三处要标注：CI 的四道门**都不碰数据库**，要 Postgres 的那一半是**本地门**（`docs/workflow.md` §9）；「三层熔断」的第二层是**并发上限 1**，它是配置不是算法；GCP 防火墙未从 API 侧核实（O-P2-28），「仅回环」的判据是 compose 绑定 + `ss -ltn`，只覆盖 8000 这一个端口 | 可说「**把评测能力包成 REST API（FastAPI + Pydantic v2）+ PostgreSQL 16，docker compose 一键部署到一台 GCP VM**」「**异步任务模型**：202 + run_id，Postgres 队列表 `FOR UPDATE SKIP LOCKED` 驱动 worker，崩溃后可恢复」「**三层成本熔断**：单卡上限、并发上限、每日预算，超限 429」「**幂等键**防重复提交造成的重复计费（实测：同键同体重放返回原 run_id，预算余量不变）」「**API 契约以提交的 OpenAPI 快照做门**，契约改了就必须同时提交快照」。**不能说「生产级 / production-ready」** —— 单 worker、无认证、不开公网、无监控告警、无备份、无水平扩展。**不能说「高并发 / 可扩展」** —— 并发上限就是 1，且是故意的。**不能说「微服务架构」** —— 一个进程加一个数据库。**不能说「CI/CD」** —— 只有四道离线门，没有 CD，部署是手工 `docker compose up -d`。**不能说「云部署」** —— 只能说「**docker compose 部署在一台 GCP VM、仅绑回环、演示走 SSH 端口转发**」。**提 Postgres 必须能答「为什么不用 SQLite」**：`FOR UPDATE SKIP LOCKED`、`jsonb`、partial unique index，SQLite 三样都没有，在它上面测出来的绿恰好在队列并发处无效 |
 
 ---
 
@@ -82,7 +89,9 @@
 - **B4** prompt 一次迭代冻结 52.6% → 57.9%
 - **C2 / C3 / C4 / C5 / C6** 两基线、16 卡留出集、43 卡全集、成本延迟步数、过拟合 −16.7 与 blackhole 0/6
 - **C7** 开箱 haiku vs 调优 sonnet 的五臂对照（**口径受限，措辞按 C7 那一栏，不能写成「模型对照」**）
-- **D1** CI 三道离线门
+- **D1** CI 离线门（**数已变：四道，不是三道**，见 D1 的勘误注）
+- **B6** agent 臂做成 REST API：异步提交、逐步 trace、入口 leak gate、真值不出服务（**不能说「每步耗时」**，那两列是 NULL；见 B6 边界栏）
+- **D5** 服务的工程质量：Postgres 队列 + `SKIP LOCKED`、三层熔断、幂等键、四道 CI 门 + 本地 DB 门、仅回环（**措辞按 D5 那一栏，不能写「生产级」「高并发」「微服务」「CI/CD」「云部署」**）
 - **D3** 8 条 finding / 4 类失败模式 / 31 条决策
 
 ### 二、需修正后才能用（数字或说法与仓库不符）
@@ -97,6 +106,10 @@
 | D2 | 「审计 25 路径」 | **27 条路径**（25 读码 + 2 批次撞出），7 处修复 |
 | D4 | 「失败即停」 | **连续失败到阈值才中止**（recovered 连挂 2 / 门连挂 3） |
 | D4 | 量产总机时未填 | **9.03 小时 / 7 个批次** |
+| D1 | 「CI 三道门 / 12 项测试」 | **四道门**（决策 036 加了 API 契约门）；测试数按 CI 当次输出报，CI run 34169550229 是门 1 `24 passed, 16 skipped` + 门 4 `22 passed` |
+| D5 | 「生产级 / 高并发 / 微服务 / CI/CD / 云部署」这类形容服务的词 | 全部**不能用**。可用的上限是「**docker compose 部署在一台 GCP VM、仅绑回环、SSH 转发演示**」「**并发上限 1，且是故意的**」 |
+| D5 | 提 Postgres 而答不上「为什么不用 SQLite」 | 必须能答：**`FOR UPDATE SKIP LOCKED` / `jsonb` / partial unique index**，SQLite 三样都没有 |
+| B6 | 「服务能跑批」「每步耗时」 | **并发上限 1**、服务刻意不触发批次；`duration_ms`/`latency_s` **当前全为 NULL**（O-P2-26） |
 | E1 | API 花费未填 | **$9.07 / 237 次单卡运行**（仅限已记账的运行；由 `readme_check.py` 生成、CI 校验） |
 | E2 | 仓库规模未填 | **61 commits / 16 天 / 约 7.7k 行代码 / 6k 行文档** |
 

@@ -438,8 +438,18 @@ def get_summary(cardset: str, arms: str,
     if cards is None:
         raise ApiError(404, "cardset_not_found", f"no cardset {cardset!r}",
                        {"cardset": cardset, "known": sorted(summary_mod.available_cardsets())})
-    if pick not in ("latest", "run_ids"):
-        raise ApiError(400, "bad_pick", "pick must be 'latest' or 'run_ids'", {"pick": pick})
+    known_picks = ("latest", "run_ids", *sorted(summary_mod.PUBLISHED_PICKS))
+    if pick not in known_picks:
+        raise ApiError(400, "bad_pick", "unknown pick",
+                       {"pick": pick, "known": list(known_picks)})
+    # A published pick names a table over one specific card set. Computing it
+    # over a different cardset would produce a slice of a published number and
+    # label it with the published name, which is the one failure mode a named
+    # pick exists to prevent.
+    want_cardset = summary_mod.published_cardset_for(pick)
+    if want_cardset is not None and want_cardset != cardset:
+        raise ApiError(400, "bad_pick", f"pick={pick} is defined over cardset={want_cardset!r}",
+                       {"pick": pick, "cardset": cardset, "required_cardset": want_cardset})
     parsed = summary_mod.parse_arms(arms)
     if not parsed:
         raise ApiError(400, "arm_unknown", "arms is empty", {"arms": arms})

@@ -41,6 +41,8 @@
  "recipe_cards": "68 recipe rows",
  "recover_cards": "34 cards carry a longer recovery window",
  "scale": "~80 commits and ~10k lines of Python and shell",
+ "service_budget": "$5 daily budget",
+ "service_endpoints": "8 endpoints",
  "sonnet_spend": "$3.12",
  "spend": "$9 in metered API calls",
  "targets": "16 injection targets",
