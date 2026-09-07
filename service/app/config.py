@@ -63,3 +63,17 @@ def database_url() -> str:
         host = f"{host}:{parts.port}"
     userinfo = f"{quote(parts.username or '', safe='')}:{quote(password, safe='')}"
     return urlunsplit((parts.scheme, f"{userinfo}@{host}", parts.path, parts.query, parts.fragment))
+
+
+def admin_enabled() -> bool:
+    """Whether /admin/* exists at all.
+
+    The port is already bound to 127.0.0.1 only (决策 037), so this is the second
+    layer, not the first. It earns its place because the two layers fail
+    differently: the port binding is a deployment property that an `ssh -L`, a
+    reverse proxy or an edited compose file can undo without touching this repo,
+    while this one travels with the image. Anything but a truthy value hides the
+    endpoint as 404 rather than 403 -- a disabled admin surface should not
+    advertise that it exists.
+    """
+    return os.environ.get("RCA_ADMIN_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}

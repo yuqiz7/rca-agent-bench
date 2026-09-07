@@ -28,8 +28,8 @@ import time
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from . import config, db, migrate
-from .models import Health, install_error_handlers
+from . import cards_sync, config, db, migrate, reimport
+from .models import ApiError, Health, ReimportResult, install_error_handlers
 
 # §5: structured JSON on stdout, picked up by docker's json-file driver. No file
 # sink, no shipper. Every line will carry run_id once there are runs to carry --
@@ -47,13 +47,19 @@ async def lifespan(app: FastAPI):
     # so, which is more diagnostic than exit code 1.
     for attempt in range(10):
         try:
-            with db.connect() as conn:
+            with db.connect(autocommit=True) as conn:
                 applied = migrate.apply_pending(conn)
-                conn.commit()
-            log("migrations.applied", applied=applied)
+                log("migrations.applied", applied=applied)
+                # The cards snapshot is refreshed on every boot rather than by a
+                # command someone has to remember. scenarios/*.yaml is the
+                # authority (§3) and it moves whenever a batch lands, so a
+                # snapshot that is only as fresh as the last manual sync is a
+                # snapshot nobody can trust. The upsert is a no-op when nothing
+                # changed, which is what makes running it unconditionally cheap.
+                log("cards.synced", **cards_sync.sync(conn))
             break
         except Exception as exc:                      # noqa: BLE001 -- reported, not swallowed
-            log("migrations.failed", attempt=attempt + 1, error=str(exc))
+            log("startup.failed", attempt=attempt + 1, error=str(exc))
             time.sleep(1)
     yield
 
@@ -88,3 +94,21 @@ def healthz():
     # carry float noise the column cannot hold.
     remaining = round(max(budget - spent, 0.0), 6)
     return Health(status="ok", db="ok", budget_remaining_usd=remaining)
+
+
+@app.post("/admin/reimport", response_model=ReimportResult)
+def admin_reimport():
+    """Backfill artifacts/agent_runs/ into Postgres. Local, idempotent, re-runnable.
+
+    404 rather than 403 when disabled: see config.admin_enabled(). Runs
+    synchronously -- it is a few hundred file reads against a local mount, the
+    caller is a human on a loopback port, and putting it on the queue would make
+    the one endpoint that repairs the database depend on the worker that reads it.
+    """
+    if not config.admin_enabled():
+        raise ApiError(404, "not_found", "admin endpoints are disabled")
+    with db.connect(autocommit=True) as conn:
+        result = reimport.reimport(conn)
+    log("admin.reimport", **{k: v for k, v in result.items() if k != "failed"},
+        failed=len(result["failed"]))
+    return result

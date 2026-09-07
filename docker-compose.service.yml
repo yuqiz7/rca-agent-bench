@@ -55,12 +55,23 @@ services:
       # build arg: it must not enter the image (§5).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       RCA_DAILY_BUDGET_USD: "5.00"
+      # /admin/* exists only while this is truthy. Second layer behind the
+      # loopback-only port, not a replacement for it: the port binding can be
+      # undone by a proxy or an edited compose file, this travels with the image.
+      RCA_ADMIN_ENABLED: "1"
       # No password here on purpose; app/config.py splices in the secret file.
       RCA_DB_URL: postgresql://rca@db/rca
       RCA_PG_PASSWORD_FILE: /run/secrets/pg
     secrets:
       - pg
     volumes:
+      # The evaluator itself, read-only. Mounted rather than COPYed into the
+      # image on purpose (design §5 lists three mounts; this is a fourth): a
+      # build-time copy would be a SECOND version of the judge, free to drift
+      # from the one the CLI runs, and §4 requires the service and the CLI to
+      # produce digit-for-digit the same numbers. :ro makes "服务只 import、
+      # 不改" a filesystem property instead of a promise.
+      - ./scripts:/repo/scripts:ro
       - ./evidence:/repo/evidence:ro                        # frozen packs, read-only
       - ./scenarios:/repo/scenarios:ro                       # ground truth, read-only, grading reads it
       - ./artifacts/agent_runs:/repo/artifacts/agent_runs    # JSON evidence artefacts are written

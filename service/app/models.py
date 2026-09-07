@@ -75,6 +75,19 @@ class Page[T](BaseModel):
     next_cursor: str | None
 
 
+class ReimportFailure(BaseModel):
+    artifact_path: str
+    card_id: str | None
+    error: str
+
+
+class ReimportResult(BaseModel):
+    scanned: int
+    imported: int
+    skipped: int
+    failed: list[ReimportFailure]
+
+
 class Health(BaseModel):
     status: Literal["ok", "degraded"]
     db: Literal["ok", "error"]

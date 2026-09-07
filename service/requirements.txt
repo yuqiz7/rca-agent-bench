@@ -6,6 +6,10 @@
 # why PyYAML is pinned to the SAME version requirements-agent.txt pins rather
 # than to the newest release -- one YAML parser across the repo, so a card that
 # parses in the CLI parses identically in the service.
+# anthropic is pulled in transitively and not optionally: harness.py imports
+# run_eval, which imports run_agent, which imports the client at module level.
+# Step 2 makes no API call; step 3 does. Same pin as requirements-agent.txt.
+anthropic==1.2.0
 fastapi==0.141.1
 uvicorn[standard]==0.52.4
 pydantic==2.13.5
