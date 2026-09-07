@@ -37,7 +37,12 @@ class RunCreate(BaseModel):
 
 class RunRef(BaseModel):              # 202 的响应体
     run_id: UUID
-    status: Literal["queued"]
+    # §2 writes this as Literal["queued"], which is true of a fresh submission and
+    # false of the one case the key exists for: a retry whose original has already
+    # started or finished. Returning "queued" for a run that is `succeeded` would
+    # make the idempotent reply lie about the thing the caller is about to poll
+    # for, so the field carries the run's actual status.
+    status: Literal["queued", "running", "succeeded", "failed"]
     poll: str                         # "/runs/{run_id}"
 
 

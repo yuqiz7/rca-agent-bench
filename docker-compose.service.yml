@@ -88,6 +88,41 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # The queue consumer. Same image, same mounts, same environment as api -- it
+  # runs the same code against the same evidence -- but its own process, because
+  # a run that lives inside the web process dies with every restart (§4). One
+  # replica, and that IS the concurrency limit: it makes "the most this can spend
+  # in an hour" arithmetic rather than a guess.
+  worker:
+    build: ./service
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+    user: "${RCA_UID:-1001}:${RCA_GID:-1002}"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      RCA_DAILY_BUDGET_USD: "5.00"
+      RCA_DB_URL: postgresql://rca@db/rca
+      RCA_PG_PASSWORD_FILE: /run/secrets/pg
+      # A `running` row older than this is a run whose worker died. 600s is above
+      # the p95 of the slowest arm (agent-haiku, 93 s measured) with room to spare;
+      # too low and a live run gets requeued and charged twice.
+      RCA_RUN_TIMEOUT_S: "600"
+    secrets:
+      - pg
+    volumes:
+      - ./scripts:/repo/scripts:ro
+      - ./evidence:/repo/evidence:ro
+      - ./scenarios:/repo/scenarios:ro
+      - ./artifacts/agent_runs:/repo/artifacts/agent_runs
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 secrets:
   pg:
     file: ./secrets/pg_password

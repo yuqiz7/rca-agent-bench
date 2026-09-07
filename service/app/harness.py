@@ -49,3 +49,43 @@ def grade(answer, gt):
 def ground_truth(card_id):
     """The answer, in process memory only. It must never reach a column (§3)."""
     return run_eval().ground_truth(card_id)
+
+
+def run_agent():
+    import run_agent as _run_agent
+    return _run_agent
+
+
+def single_shot_llm():
+    import single_shot_llm as _single_shot
+    return _single_shot
+
+
+def keyword_heuristic():
+    import keyword_heuristic as _keyword
+    return _keyword
+
+
+def leak_check():
+    import leak_check as _leak_check
+    return _leak_check
+
+
+def check_card(card_id):
+    """The entry-side leak gate (§4). Raises leak_check.LeakError on a bad pack."""
+    return leak_check().check_card(card_id)
+
+
+def load_config():
+    """scripts/agent/config.yaml. Never inlined here: models.primary and
+    max_usd_per_card are the CLI's values and the service must not hold a second
+    opinion about them (§4 -- the per-card breaker is "沿用 config.yaml，服务不覆盖")."""
+    return run_agent().load_config()
+
+
+def load_prices():
+    return run_agent().load_prices()
+
+
+def primary_model(config=None):
+    return (config or load_config())["models"]["primary"]

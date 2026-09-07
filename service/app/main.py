@@ -21,21 +21,20 @@ for: at zero remaining, /healthz stays **200** -- the service is healthy, it jus
 will not take work. 503 is reserved for "the database is not there".
 """
 import contextlib
+import hashlib
 import json
-import sys
 import time
+import uuid
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from . import cards_sync, config, db, migrate, reimport
-from .models import ApiError, Health, ReimportResult, install_error_handlers
+import psycopg
 
-# §5: structured JSON on stdout, picked up by docker's json-file driver. No file
-# sink, no shipper. Every line will carry run_id once there are runs to carry --
-# the same value as the trace attribute rca.run_id, so logs and traces join.
-def log(event: str, **fields) -> None:
-    print(json.dumps({"ts": time.time(), "event": event, **fields}, default=str), file=sys.stdout, flush=True)
+from . import cards_sync, config, db, harness, migrate, reimport, repo
+from .logs import log
+from .models import (ApiError, Health, ReimportResult, RunCreate, RunRef,
+                     install_error_handlers)
 
 
 @contextlib.asynccontextmanager
@@ -112,3 +111,116 @@ def admin_reimport():
     log("admin.reimport", **{k: v for k, v in result.items() if k != "failed"},
         failed=len(result["failed"]))
     return result
+
+
+# --------------------------------------------------------------------------- #
+# POST /runs (§2)
+# --------------------------------------------------------------------------- #
+
+def _request_digest(body: RunCreate) -> str:
+    """What "same body" means for the idempotency key.
+
+    Canonical JSON over the request minus the key itself, so field order and
+    whitespace cannot make two identical submissions look different. The key is
+    excluded because it is the name of the comparison, not part of what is being
+    compared.
+    """
+    payload = {"card_id": body.card_id, "arm": body.arm, "model": body.model}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+@app.post("/runs", status_code=202, response_model=RunRef)
+def create_run(body: RunCreate):
+    """Accept a run, or refuse it before it can cost anything.
+
+    The four gates run in this order because each is cheaper and more certain than
+    the next, and because §4 is explicit that the expensive checks must not be
+    what protects the budget:
+
+      1. card_not_found (404) -- a card not in the snapshot, or not in stock.
+      2. evidence_leak (422)  -- leak_check.check_card on the pack. run_card runs
+         this again internally before the first token; this outer one exists
+         because the service adds "automatic, batched, unattended" to the picture,
+         and in that setting a broken pack should never enter a system that will
+         retry it (§4).
+      3. budget_exceeded (429) -- the daily breaker. The rules arm passes through
+         it too even though it costs nothing: one rule that is always true beats
+         two rules that are usually true, and an arm-dependent breaker is exactly
+         the sort of thing that is correct until someone adds a fourth arm.
+      4. the idempotency key.
+    """
+    with db.connect(autocommit=True) as conn:
+        with conn.cursor() as cur:
+            card = repo.get_card(cur, body.card_id)
+        if card is None:
+            raise ApiError(404, "card_not_found",
+                           f"no card {body.card_id!r} in the in-stock set",
+                           {"card_id": body.card_id})
+        if not card["in_stock"]:
+            raise ApiError(404, "card_not_found",
+                           f"card {body.card_id!r} is not in stock",
+                           {"card_id": body.card_id, "in_stock": False})
+
+        try:
+            harness.check_card(body.card_id)
+        except Exception as exc:                  # noqa: BLE001 -- LeakError, or a pack that will not open
+            log("runs.evidence_leak", card_id=body.card_id, error=str(exc))
+            raise ApiError(422, "evidence_leak",
+                           f"card {body.card_id!r} failed the entry leak check",
+                           {"card_id": body.card_id, "detail": str(exc)[:400]}) from None
+
+        budget = config.daily_budget_usd()
+        with conn.cursor() as cur:
+            spent = repo.spent_today(cur)
+        if spent >= budget:
+            raise ApiError(429, "budget_exceeded",
+                           "daily budget is spent; no new runs today",
+                           {"budget_usd": budget, "spent_usd": round(spent, 6),
+                            "remaining_usd": 0.0})
+
+        digest = _request_digest(body)
+        # rules calls no model; every other arm resolves through config.yaml
+        # rather than through a constant here (§4: the service does not hold a
+        # second opinion about models.primary).
+        model = "none" if body.arm == "rules" else (body.model or harness.primary_model())
+        run_id = uuid.uuid4()
+        run = {
+            "run_id": run_id,
+            "card_id": body.card_id,
+            "arm": body.arm,
+            "model": model,
+            "status": "queued",
+            "idempotency_key": body.idempotency_key,
+            "run_config": {"request": {"card_id": body.card_id, "arm": body.arm,
+                                       "model": body.model},
+                           "request_digest": digest,
+                           "resolved_model": model},
+        }
+
+        # INSERT FIRST, then resolve the conflict. A read-then-write would leave a
+        # window between "no run with this key" and the insert, and two retries
+        # landing in that window is exactly the double charge the key exists to
+        # prevent. The runs_idem partial unique index from step 1 is what actually
+        # decides; this code only reports what it decided.
+        try:
+            with conn.transaction(), conn.cursor() as cur:
+                repo.insert_run(cur, run)
+        except psycopg.errors.UniqueViolation:
+            with conn.cursor() as cur:
+                existing = repo.get_run_by_idempotency_key(cur, body.idempotency_key)
+            if existing is None:                  # the other writer rolled back
+                raise ApiError(409, "idempotency_conflict",
+                               "idempotency key is in flight; retry",
+                               {"idempotency_key": body.idempotency_key}) from None
+            if ((existing.get("run_config") or {}).get("request_digest")) != digest:
+                raise ApiError(409, "idempotency_conflict",
+                               "idempotency key was already used with a different body",
+                               {"idempotency_key": body.idempotency_key,
+                                "run_id": str(existing["run_id"])}) from None
+            log("runs.idempotent_replay", run_id=str(existing["run_id"]),
+                idempotency_key=body.idempotency_key)
+            return RunRef(run_id=existing["run_id"], status=existing["status"],
+                          poll=f"/runs/{existing['run_id']}")
+
+    log("runs.queued", run_id=str(run_id), card_id=body.card_id, arm=body.arm, model=model)
+    return RunRef(run_id=run_id, status="queued", poll=f"/runs/{run_id}")

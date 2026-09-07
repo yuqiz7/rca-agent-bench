@@ -266,3 +266,95 @@ def insert_run_bundle(conn, run: dict, *, grade=None, steps=None,
         insert_steps(cur, run["run_id"], steps or [])
         insert_model_calls(cur, run["run_id"], model_calls or [])
         insert_tool_calls(cur, run["run_id"], tool_calls or [])
+
+
+# --------------------------------------------------------------------------- #
+# the queue (§4)
+# --------------------------------------------------------------------------- #
+
+# Design §4, verbatim. Two properties, neither of which a `SELECT then UPDATE`
+# has: SKIP LOCKED lets a second worker step over a row the first is already
+# claiming instead of blocking on it, and doing the claim as one statement means
+# there is no window in which a run is picked but not yet marked running -- the
+# window a crash would leave a permanently `queued` row that two workers both
+# think they own. Postgres accepts the locking clause on either side of LIMIT;
+# this is the design's spelling, and it plans onto the runs_queue partial index.
+CLAIM_SQL = """
+UPDATE runs SET status='running', started_at=now()
+WHERE run_id = (SELECT run_id FROM runs WHERE status='queued'
+                ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1)
+RETURNING *
+"""
+
+REQUEUE_NOTE = "requeued after worker restart"
+
+# A `running` row older than the timeout is a run whose worker died mid-flight.
+# started_at is cleared along with the status so the next claim sets it fresh --
+# otherwise the row would carry the dead attempt's start time and the timeout
+# would fire again immediately.
+REQUEUE_SQL = f"""
+UPDATE runs
+   SET status = 'queued',
+       started_at = NULL,
+       error = concat_ws(E'\\n', error, '{REQUEUE_NOTE}')
+ WHERE status = 'running'
+   AND started_at < now() - make_interval(secs => %s)
+RETURNING run_id
+"""
+
+
+def claim_next(conn) -> dict | None:
+    """Claim one queued run, or None. Its own transaction, held only for the UPDATE."""
+    with conn.transaction(), conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(CLAIM_SQL)
+        return cur.fetchone()
+
+
+def requeue_stale(conn, timeout_s: int) -> list:
+    with conn.transaction(), conn.cursor() as cur:
+        cur.execute(REQUEUE_SQL, (timeout_s,))
+        return [r[0] for r in cur.fetchall()]
+
+
+def get_run_by_idempotency_key(cur, key: str) -> dict | None:
+    cur.row_factory = dict_row
+    cur.execute("SELECT * FROM runs WHERE idempotency_key = %s", (key,))
+    return cur.fetchone()
+
+
+def spent_today(cur) -> float:
+    cur.execute("SELECT COALESCE(SUM(cost_usd), 0) FROM runs "
+                "WHERE created_at > date_trunc('day', now())")
+    return float(cur.fetchone()[0])
+
+
+def update_run(cur, run_id, fields: dict) -> None:
+    values = dict(fields)
+    for col in _JSONB_RUN_COLUMNS:
+        if values.get(col) is not None:
+            values[col] = Jsonb(values[col])
+    cols = [c for c in RUN_COLUMNS if c in values]
+    values["run_id"] = run_id
+    cur.execute(
+        f"UPDATE runs SET {', '.join(f'{c} = %({c})s' for c in cols)} WHERE run_id = %(run_id)s",
+        values,
+    )
+
+
+def clear_run_children(cur, run_id) -> None:
+    """Drop a previous attempt's rows so a requeued run does not collide with itself."""
+    for table in ("grades", "steps", "model_calls", "tool_calls"):
+        cur.execute(f"DELETE FROM {table} WHERE run_id = %s", (run_id,))
+
+
+def finish_run(conn, run_id, fields: dict, *, grade=None, steps=None,
+               model_calls=None, tool_calls=None) -> None:
+    """Land a finished run and its children atomically -- same rule as insert_run_bundle."""
+    with conn.transaction(), conn.cursor() as cur:
+        clear_run_children(cur, run_id)
+        update_run(cur, run_id, fields)
+        if grade is not None:
+            insert_grade(cur, run_id, grade)
+        insert_steps(cur, run_id, steps or [])
+        insert_model_calls(cur, run_id, model_calls or [])
+        insert_tool_calls(cur, run_id, tool_calls or [])

@@ -88,7 +88,7 @@ def _batch_created_at(path):
     return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
 
 
-def _agent_children(row):
+def agent_children(row):
     steps, model_calls, tool_calls = [], [], []
     previous_cumulative = 0.0
     for entry in row.get("transcript") or []:
@@ -139,7 +139,7 @@ def _agent_children(row):
     return steps, model_calls, tool_calls
 
 
-def _single_shot_children(row):
+def single_shot_children(row):
     usage = row.get("usage") or {}
     return (
         [{"step_no": 1, "duration_ms": None}],
@@ -177,11 +177,11 @@ def build(row, arm, artifact_path, path, stored_grade=None):
     finished_at = created_at + timedelta(seconds=float(wall_s)) if wall_s is not None else None
 
     if arm == "agent":
-        steps, model_calls, tool_calls = _agent_children(row)
+        steps, model_calls, tool_calls = agent_children(row)
         counters = row.get("counters")
         model = row["model"]
     elif arm == "single_shot":
-        steps, model_calls, tool_calls = _single_shot_children(row)
+        steps, model_calls, tool_calls = single_shot_children(row)
         counters = {"api_calls": row.get("api_calls") or 0,
                     "parse_failures": row.get("parse_failures") or 0}
         model = row["model"]
