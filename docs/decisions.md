@@ -1505,7 +1505,7 @@ Envoy 命名造成的）。在 30 秒恢复窗里，调用方臂因基线边为 
    的 client span，确认 **1848 条 / 约 17 min ≈ 1.7/s** 之后，才把四张 valkey-cart 卡
    放回 `recipe.csv`。**配方 64 → 68**。
 3. **回配方的方式是取回原行、重跑生成器**，不是手写 yaml：
-   四行原样取自 `git show 5a36341^:scripts/scenarios/recipe.csv`，
+   四行原样取自 `git show e678ef5^:scripts/scenarios/recipe.csv`，
    `generate.py` 重生四张卡，`--check` 干净（CI 门 2）。
 4. **判据一个字没动。** 四张卡仍用决策 023 的无 SDK 双臂（台阶档 / 边静默档）
    与 valkey 的分位数口径，`recover_s=150` 也照旧。
