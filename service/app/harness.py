@@ -34,6 +34,7 @@ for _sub in ("agent", "harness", "scenarios", "baselines"):
 SCENARIOS_DIR = REPO / "scenarios"
 EVIDENCE_DIR = REPO / "evidence"
 RUNS_ROOT = REPO / "artifacts" / "agent_runs"
+CARDSETS_DIR = REPO / "scripts" / "baselines"
 
 
 def run_eval():
@@ -74,6 +75,11 @@ def leak_check():
 def check_card(card_id):
     """The entry-side leak gate (§4). Raises leak_check.LeakError on a bad pack."""
     return leak_check().check_card(card_id)
+
+
+def compare_arms():
+    import compare_arms as _compare_arms
+    return _compare_arms
 
 
 def load_config():

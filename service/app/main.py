@@ -20,21 +20,24 @@ TIME, which is the one an HTTP entry point needs. Note the asymmetry §4 asks
 for: at zero remaining, /healthz stays **200** -- the service is healthy, it just
 will not take work. 503 is reserved for "the database is not there".
 """
+import binascii
 import contextlib
 import hashlib
 import json
 import time
 import uuid
+from uuid import UUID
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 
 import psycopg
 
-from . import cards_sync, config, db, harness, migrate, reimport, repo
+from . import cards_sync, config, db, harness, migrate, reimport, repo, summary as summary_mod
 from .logs import log
-from .models import (ApiError, Health, ReimportResult, RunCreate, RunRef,
-                     install_error_handlers)
+from .models import (Answer, ApiError, Card, Grade, Health, Page, ReimportResult,
+                     Run, RunCreate, RunRef, RunTrace, Summary, TraceModelCall,
+                     TraceStep, TraceToolCall, install_error_handlers)
 
 
 @contextlib.asynccontextmanager
@@ -129,6 +132,16 @@ def _request_digest(body: RunCreate) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
+def _replay_or_conflict(existing: dict, digest: str, key: str) -> RunRef:
+    """Same key: hand back the original run, or refuse if the body differs."""
+    if ((existing.get("run_config") or {}).get("request_digest")) != digest:
+        raise ApiError(409, "idempotency_conflict",
+                       "idempotency key was already used with a different body",
+                       {"idempotency_key": key, "run_id": str(existing["run_id"])})
+    return RunRef(run_id=existing["run_id"], status=existing["status"],
+                  poll=f"/runs/{existing['run_id']}")
+
+
 @app.post("/runs", status_code=202, response_model=RunRef)
 def create_run(body: RunCreate):
     """Accept a run, or refuse it before it can cost anything.
@@ -143,11 +156,17 @@ def create_run(body: RunCreate):
          because the service adds "automatic, batched, unattended" to the picture,
          and in that setting a broken pack should never enter a system that will
          retry it (§4).
-      3. budget_exceeded (429) -- the daily breaker. The rules arm passes through
-         it too even though it costs nothing: one rule that is always true beats
-         two rules that are usually true, and an arm-dependent breaker is exactly
-         the sort of thing that is correct until someone adds a fourth arm.
-      4. the idempotency key.
+      3. the idempotency key -- looked up BEFORE the budget gate. A replay does
+         not spend anything: it hands back a run that already exists. Making it
+         pass the budget check would mean that the moment the daily budget runs
+         out, a retrying client stops being able to find out its own run_id --
+         the breaker would start withholding information instead of withholding
+         money. The gate belongs in front of work that will newly charge.
+      4. budget_exceeded (429) -- the daily breaker, on new runs only. The rules
+         arm passes through it too even though it costs nothing: one rule that is
+         always true beats two rules that are usually true, and an arm-dependent
+         breaker is exactly the sort of thing that is correct until someone adds a
+         fourth arm.
     """
     with db.connect(autocommit=True) as conn:
         with conn.cursor() as cur:
@@ -169,6 +188,21 @@ def create_run(body: RunCreate):
                            f"card {body.card_id!r} failed the entry leak check",
                            {"card_id": body.card_id, "detail": str(exc)[:400]}) from None
 
+        digest = _request_digest(body)
+
+        # The idempotency lookup, ahead of the budget gate. This is the read half;
+        # the write half below still resolves a genuine race through the unique
+        # index, because two retries can arrive between this SELECT and that
+        # INSERT and only the database can order them.
+        if body.idempotency_key is not None:
+            with conn.cursor() as cur:
+                existing = repo.get_run_by_idempotency_key(cur, body.idempotency_key)
+            if existing is not None:
+                replay = _replay_or_conflict(existing, digest, body.idempotency_key)
+                log("runs.idempotent_replay", run_id=str(existing["run_id"]),
+                    idempotency_key=body.idempotency_key, status=existing["status"])
+                return replay
+
         budget = config.daily_budget_usd()
         with conn.cursor() as cur:
             spent = repo.spent_today(cur)
@@ -178,7 +212,6 @@ def create_run(body: RunCreate):
                            {"budget_usd": budget, "spent_usd": round(spent, 6),
                             "remaining_usd": 0.0})
 
-        digest = _request_digest(body)
         # rules calls no model; every other arm resolves through config.yaml
         # rather than through a constant here (§4: the service does not hold a
         # second opinion about models.primary).
@@ -212,15 +245,169 @@ def create_run(body: RunCreate):
                 raise ApiError(409, "idempotency_conflict",
                                "idempotency key is in flight; retry",
                                {"idempotency_key": body.idempotency_key}) from None
-            if ((existing.get("run_config") or {}).get("request_digest")) != digest:
-                raise ApiError(409, "idempotency_conflict",
-                               "idempotency key was already used with a different body",
-                               {"idempotency_key": body.idempotency_key,
-                                "run_id": str(existing["run_id"])}) from None
+            replay = _replay_or_conflict(existing, digest, body.idempotency_key)
             log("runs.idempotent_replay", run_id=str(existing["run_id"]),
-                idempotency_key=body.idempotency_key)
-            return RunRef(run_id=existing["run_id"], status=existing["status"],
-                          poll=f"/runs/{existing['run_id']}")
+                idempotency_key=body.idempotency_key, status=existing["status"], raced=True)
+            return replay
 
     log("runs.queued", run_id=str(run_id), card_id=body.card_id, arm=body.arm, model=model)
     return RunRef(run_id=run_id, status="queued", poll=f"/runs/{run_id}")
+
+
+# --------------------------------------------------------------------------- #
+# read side (§2 endpoint table)
+# --------------------------------------------------------------------------- #
+
+def _to_run(row: dict, grade: dict | None) -> Run:
+    """A runs row (+ its grade) as the §2 Run model.
+
+    answer is None rather than {"service": null} when the run never answered:
+    §2 types it `Answer | None`, and a half-empty object would make "no answer"
+    and "answered with nothing" indistinguishable to a client.
+    """
+    answer = None
+    if row.get("answer_service") or row.get("answer_fault"):
+        answer = Answer(service=row.get("answer_service") or "",
+                        fault_type=row.get("answer_fault") or "")
+    return Run(
+        run_id=row["run_id"], card_id=row["card_id"], arm=row["arm"], model=row["model"],
+        status=row["status"], created_at=row["created_at"], started_at=row["started_at"],
+        finished_at=row["finished_at"], answer=answer,
+        grade=Grade(**grade) if grade else None,
+        terminated=row["terminated"], steps=row["steps"],
+        cost_usd=float(row["cost_usd"]) if row["cost_usd"] is not None else None,
+        wall_s=float(row["wall_s"]) if row["wall_s"] is not None else None,
+        counters=row["counters"], error=row["error"],
+    )
+
+
+@app.get("/runs", response_model=Page[Run])
+def list_runs(card: str | None = None, arm: str | None = None, status: str | None = None,
+              model: str | None = None,
+              limit: int = Query(50, ge=1, le=200), cursor: str | None = None):
+    with db.connect(autocommit=True) as conn, conn.cursor() as cur:
+        try:
+            rows, next_cursor = repo.list_runs(cur, card_id=card, arm=arm, status=status,
+                                               model=model, limit=limit, cursor=cursor)
+        except (ValueError, TypeError, binascii.Error) as exc:
+            # A cursor is opaque to the client, so a bad one is a client error with
+            # nothing to fix in the query -- 400 with a code, not a 500.
+            raise ApiError(400, "bad_cursor", "cursor is not a cursor this API issued",
+                           {"cursor": cursor, "detail": str(exc)[:200]}) from None
+        grades = repo.grades_for(cur, [r["run_id"] for r in rows])
+    return Page[Run](items=[_to_run(r, grades.get(r["run_id"])) for r in rows],
+                     next_cursor=next_cursor)
+
+
+@app.get("/runs/{run_id}", response_model=Run)
+def get_run(run_id: UUID):
+    with db.connect(autocommit=True) as conn, conn.cursor() as cur:
+        row = repo.get_run(cur, run_id)
+        if row is None:
+            raise ApiError(404, "run_not_found", f"no run {run_id}", {"run_id": str(run_id)})
+        grade = repo.get_grade(cur, run_id)
+    return _to_run(row, {"top1_ok": grade["top1_ok"], "service_ok": grade["service_ok"]}
+                   if grade else None)
+
+
+@app.get("/runs/{run_id}/trace", response_model=RunTrace)
+def get_run_trace(run_id: UUID):
+    with db.connect(autocommit=True) as conn, conn.cursor() as cur:
+        row = repo.get_run(cur, run_id)
+        if row is None:
+            raise ApiError(404, "run_not_found", f"no run {run_id}", {"run_id": str(run_id)})
+        steps = repo.get_steps(cur, run_id)
+        model_calls = repo.get_model_calls(cur, run_id)
+        tool_calls = repo.get_tool_calls(cur, run_id)
+
+    # Three queries and a group-by in Python, not one query per step: the tree is
+    # small and bounded by max_steps (20), and this keeps /runs/{id}/trace at a
+    # fixed query count no matter how long the run was.
+    by_step_models, by_step_tools = {}, {}
+    for call in model_calls:
+        by_step_models.setdefault(call["step_no"], []).append(TraceModelCall(
+            model=call["model"], input_tokens=call["input_tokens"],
+            output_tokens=call["output_tokens"], cache_write_tokens=call["cache_write_tokens"],
+            cache_read_tokens=call["cache_read_tokens"],
+            step_cost_usd=float(call["step_cost_usd"]) if call["step_cost_usd"] is not None else None,
+            stop_reason=call["stop_reason"],
+            latency_s=float(call["latency_s"]) if call["latency_s"] is not None else None))
+    for call in tool_calls:
+        by_step_tools.setdefault(call["step_no"], []).append(TraceToolCall(
+            tool=call["tool"], args_digest=call["args_digest"],
+            result_bytes=call["result_bytes"], ok=call["ok"],
+            validation_reject=call["validation_reject"], retried=call["retried"],
+            error=call["error"]))
+
+    return RunTrace(
+        run_id=row["run_id"], card_id=row["card_id"], arm=row["arm"],
+        model=row["model"], status=row["status"],
+        steps=[TraceStep(
+            step_no=s["step_no"],
+            duration_ms=float(s["duration_ms"]) if s["duration_ms"] is not None else None,
+            model_calls=by_step_models.get(s["step_no"], []),
+            tool_calls=by_step_tools.get(s["step_no"], []),
+        ) for s in steps])
+
+
+@app.get("/cards", response_model=list[Card])
+def list_cards(cardset: str | None = None, in_stock: bool | None = None):
+    wanted = None
+    if cardset is not None:
+        wanted = summary_mod.load_cardset(cardset)
+        if wanted is None:
+            raise ApiError(404, "cardset_not_found", f"no cardset {cardset!r}",
+                           {"cardset": cardset,
+                            "known": sorted(summary_mod.available_cardsets())})
+        wanted = set(wanted)
+    with db.connect(autocommit=True) as conn, conn.cursor() as cur:
+        rows = repo.list_cards(cur, in_stock=in_stock)
+    return [_to_card(r) for r in rows if wanted is None or r["card_id"] in wanted]
+
+
+@app.get("/cards/{card_id}", response_model=Card)
+def get_card(card_id: str):
+    with db.connect(autocommit=True) as conn, conn.cursor() as cur:
+        row = repo.get_card(cur, card_id)
+    if row is None:
+        raise ApiError(404, "card_not_found", f"no card {card_id!r}", {"card_id": card_id})
+    return _to_card(row)
+
+
+def _to_card(row: dict) -> Card:
+    # Named fields only. Never `Card(**row)`: that would forward whatever the
+    # table happens to have, which is the mechanism by which an answer column
+    # would one day reach a client (§1).
+    return Card(card_id=row["card_id"], **{"class": row["class"]}, target=row["target"],
+                primitive=row["primitive"], difficulty=row["difficulty"],
+                in_stock=row["in_stock"], evidence_ok=row["evidence_ok"],
+                snapshot_at=row["snapshot_at"])
+
+
+@app.get("/summary", response_model=Summary)
+def get_summary(cardset: str, arms: str,
+                pick: str = "latest", runs: str | None = None):
+    """The four-metric table, aggregated by compare_arms.metrics() (决策 037)."""
+    cards = summary_mod.load_cardset(cardset)
+    if cards is None:
+        raise ApiError(404, "cardset_not_found", f"no cardset {cardset!r}",
+                       {"cardset": cardset, "known": sorted(summary_mod.available_cardsets())})
+    if pick not in ("latest", "run_ids"):
+        raise ApiError(400, "bad_pick", "pick must be 'latest' or 'run_ids'", {"pick": pick})
+    parsed = summary_mod.parse_arms(arms)
+    if not parsed:
+        raise ApiError(400, "arm_unknown", "arms is empty", {"arms": arms})
+
+    run_ids = None
+    if pick == "run_ids":
+        try:
+            run_ids = [UUID(u.strip()) for u in (runs or "").split(",") if u.strip()]
+        except ValueError as exc:
+            raise ApiError(400, "bad_request", "runs must be a comma-separated uuid list",
+                           {"detail": str(exc)[:200]}) from None
+        if not run_ids:
+            raise ApiError(400, "bad_request", "pick=run_ids needs &runs=<uuid,...>", {})
+
+    with db.connect(autocommit=True) as conn, conn.cursor() as cur:
+        result = summary_mod.compute(cur, cardset, cards, parsed, pick=pick, run_ids=run_ids)
+    return result

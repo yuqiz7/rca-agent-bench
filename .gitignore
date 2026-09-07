@@ -29,3 +29,10 @@ evidence/**/traces.json
 # it must never be the one place it exists in the history either. The Anthropic
 # key is not here at all -- it comes from the VM shell environment.
 secrets/
+
+# 服务自己跑出来的证据件（docker-compose.service.yml 的 worker 写的）。
+# 命名由 service/app/runner.py 的 artifact_run_id() 定：service_<日期>_<run uuid 前 8 位>。
+# 不入库的理由与 scripts/out/ 一样：它们是演示与冒烟的产物，不是被 findings.md /
+# README / readme_check 引用的评测证据件。把它们放进版本库会让「artifacts/agent_runs/
+# 下的东西都是被引用过的数据」这条性质失效，而那条性质正是证据审计能查得动的前提。
+artifacts/agent_runs/service_*/

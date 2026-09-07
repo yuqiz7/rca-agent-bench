@@ -131,7 +131,7 @@ def decode_cursor(cursor: str) -> tuple[str, str]:
     return created_at, run_id
 
 
-def list_runs(cur, *, card_id=None, arm=None, status=None, limit=50, cursor=None):
+def list_runs(cur, *, card_id=None, arm=None, status=None, model=None, limit=50, cursor=None):
     """One page of runs, newest first. Returns (rows, next_cursor).
 
     Fetches limit+1 rows and keeps limit: that extra row is how the caller learns
@@ -147,6 +147,9 @@ def list_runs(cur, *, card_id=None, arm=None, status=None, limit=50, cursor=None
     if status is not None:
         where.append("status = %(status)s")
         params["status"] = status
+    if model is not None:
+        where.append("model = %(model)s")
+        params["model"] = model
     if cursor is not None:
         created_at, run_id = decode_cursor(cursor)
         # Row-value comparison, not "created_at < x OR (= x AND run_id < y)":
@@ -358,3 +361,47 @@ def finish_run(conn, run_id, fields: dict, *, grade=None, steps=None,
         insert_steps(cur, run_id, steps or [])
         insert_model_calls(cur, run_id, model_calls or [])
         insert_tool_calls(cur, run_id, tool_calls or [])
+
+
+def grades_for(cur, run_ids) -> dict:
+    """{run_id: grade} for a page of runs -- one query, not one per row.
+
+    The N+1 an ORM would have made here is the whole reason §3 says hand-written
+    SQL: a 50-row page must cost two queries, not fifty-one.
+    """
+    if not run_ids:
+        return {}
+    cur.row_factory = dict_row
+    cur.execute("SELECT run_id, top1_ok, service_ok FROM grades WHERE run_id = ANY(%s)",
+                (list(run_ids),))
+    return {r["run_id"]: {"top1_ok": r["top1_ok"], "service_ok": r["service_ok"]}
+            for r in cur.fetchall()}
+
+
+def latest_succeeded_per_card(cur, card_ids, arm, model=None) -> dict:
+    """One succeeded run per card for an arm: the newest. {card_id: row}.
+
+    DISTINCT ON is the reason this is one statement instead of a loop: Postgres
+    keeps the first row per card_id in the ORDER BY, so "newest succeeded run of
+    this card on this arm" costs one index-ordered pass. run_id breaks ties on an
+    identical created_at, the same tie-break the cursor pagination uses, so the
+    two agree about what "newest" means.
+    """
+    cur.row_factory = dict_row
+    sql = ["SELECT DISTINCT ON (card_id) * FROM runs",
+           "WHERE status = 'succeeded' AND card_id = ANY(%(cards)s) AND arm = %(arm)s"]
+    params = {"cards": list(card_ids), "arm": arm}
+    if model is not None:
+        sql.append("AND model = %(model)s")
+        params["model"] = model
+    sql.append("ORDER BY card_id, created_at DESC, run_id DESC")
+    cur.execute(" ".join(sql), params)
+    return {r["card_id"]: r for r in cur.fetchall()}
+
+
+def runs_by_ids(cur, run_ids) -> list[dict]:
+    if not run_ids:
+        return []
+    cur.row_factory = dict_row
+    cur.execute("SELECT * FROM runs WHERE run_id = ANY(%s)", (list(run_ids),))
+    return cur.fetchall()

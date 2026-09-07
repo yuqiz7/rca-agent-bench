@@ -20,7 +20,7 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
@@ -78,6 +78,108 @@ class Run(BaseModel):
 class Page[T](BaseModel):
     items: list[T]
     next_cursor: str | None
+
+
+# --------------------------------------------------------------------------- #
+# cards / summary / trace -- the read side (§2 endpoint table)
+# --------------------------------------------------------------------------- #
+
+class Card(BaseModel):
+    """The snapshot fields, and ONLY the snapshot fields.
+
+    There is no ground_truth here and there is nowhere for one to appear: the
+    model is closed over eight named fields, so even if a future query started
+    selecting `*` from a table that had grown an answer column, this would refuse
+    to carry it. §1 puts the reason plainly -- leak_check guards the line that a
+    card's answer must not be reachable, and an endpoint anyone with the port can
+    call is exactly where that line would break.
+    """
+    model_config = ConfigDict(populate_by_name=True)
+
+    card_id: str
+    # `class` is a Python keyword; the wire name is still "class" (§3's column).
+    class_: str = Field(alias="class")
+    target: str
+    primitive: str
+    difficulty: str | None
+    in_stock: bool
+    evidence_ok: bool
+    snapshot_at: datetime
+
+
+class ArmMetrics(BaseModel):
+    """compare_arms.metrics() output, field for field, plus what /summary adds.
+
+    The names are not re-chosen here: n / missing / top1 / svc / top1_pct /
+    svc_pct / steps / cost / total / p95 / per_hit are the keys that function
+    returns, and 决策 037 item 3 is explicit that the endpoint reuses it rather
+    than re-deriving the same table. `selected` and `arm` / `model` are the only
+    additions, and they describe WHICH runs were fed in, not what was computed.
+    """
+    arm: str
+    model: str | None
+    selected: int                     # runs actually chosen for this arm
+    n: int
+    top1: int
+    svc: int
+    top1_pct: float
+    svc_pct: float
+    steps: float
+    cost: float
+    total: float
+    p95: float
+    per_hit: float | None             # None at zero hits -- never rendered as 0
+    missing: list[str]                # cards with no succeeded run; counted as misses
+
+
+class Summary(BaseModel):
+    cardset: str
+    n_cards: int
+    pick: Literal["latest", "run_ids"]
+    arms: list[ArmMetrics]
+
+
+class TraceToolCall(BaseModel):
+    tool: str
+    args_digest: str | None
+    result_bytes: int | None
+    ok: bool | None
+    validation_reject: bool
+    retried: bool
+    error: str | None
+
+
+class TraceModelCall(BaseModel):
+    model: str
+    input_tokens: int | None
+    output_tokens: int | None
+    cache_write_tokens: int | None
+    cache_read_tokens: int | None
+    step_cost_usd: float | None
+    stop_reason: str | None
+    latency_s: float | None
+
+
+class TraceStep(BaseModel):
+    step_no: int
+    duration_ms: float | None
+    model_calls: list[TraceModelCall]
+    tool_calls: list[TraceToolCall]
+
+
+class RunTrace(BaseModel):
+    """card -> step -> model.call / tool.* , the tree §1 promises.
+
+    NULLs are returned as null. The backfill could not measure duration_ms or
+    latency_s (the evaluator records neither), and filling them by dividing wall_s
+    would produce numbers indistinguishable from measured ones.
+    """
+    run_id: UUID
+    card_id: str
+    arm: str
+    model: str
+    status: str
+    steps: list[TraceStep]
 
 
 class ReimportFailure(BaseModel):
