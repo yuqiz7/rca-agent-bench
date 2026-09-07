@@ -106,11 +106,11 @@ The agent never sees the card id, the primitive that ran, or the ground truth: i
 
 <details><summary><b>Engineering &amp; reliability</b></summary>
 
-- CI is 3 offline gates on every push: pytest including the leak assertions, card generation being idempotent, the detector staying silent on two fault-free windows. No gate touches the VM or the API.
+- CI is 4 offline gates on every push: pytest including the leak assertions, card generation being idempotent, the detector staying silent on two fault-free windows, and the evaluation service's API contract matching its committed OpenAPI snapshot. No gate touches the VM, a database, or the API.
 - A `None`-versus-zero audit walked 27 verdict paths, fixed 7 places that read a missing measurement as a zero, and replayed 41 cards to confirm none had ever passed on one.
 - Cards come from an unattended batch runner: one global lock so a single fault is live at a time, `nohup` wrapping, and abort on consecutive failures rather than on the first one.
 - 8 batches account for 11.9 hours of machine time; every model call is priced per card, $9 in metered API calls so far.
-- Repository scale: ~80 commits and ~9k lines of Python and shell.
+- Repository scale: ~80 commits and ~10k lines of Python and shell.
 
 </details>
 

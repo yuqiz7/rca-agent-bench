@@ -1,0 +1,24 @@
+# CI gate 4 only: what it takes to BUILD the app and read its contract.
+#
+# Four packages, and the two that are absent matter as much as the two present:
+#
+#   NOT anthropic  service/app/harness.py imports run_agent / single_shot_llm /
+#                  keyword_heuristic inside functions, so the app constructs with
+#                  no model client. A CI runner that cannot import it is what
+#                  keeps that true.
+#   NOT psycopg    service/app/db.py imports the driver inside connect(), and
+#                  main.py inside the one handler that needs psycopg.errors, so
+#                  the app constructs with no database driver either. Gate 4 reads
+#                  app.openapi() and asks the Pydantic models what fields they
+#                  carry; neither needs a database, and neither should oblige CI
+#                  to install a way of reaching one.
+#   NOT httpx      only fastapi.testclient wants it, and the only test that builds
+#                  a TestClient (tests/service/test_evidence_gate.py) skips on the
+#                  missing RCA_TEST_DB_URL before it gets that far.
+#
+# Pins live HERE and requirements-service-test.txt includes this file, so the two
+# environments cannot drift apart on a version.
+pytest==7.4.4
+PyYAML==6.0.1
+fastapi==0.141.1
+pydantic==2.13.5

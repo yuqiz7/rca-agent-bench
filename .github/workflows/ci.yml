@@ -1,8 +1,16 @@
 name: ci
 
-# Three gates, all of them offline. Nothing here may touch the demo VM, a live
+# Four gates, all of them offline. Nothing here may touch the demo VM, a live
 # Prometheus/Jaeger, or the Anthropic API: CI has to stay runnable on a checkout
 # alone, or it stops being a gate and becomes another thing that is broken.
+#
+# Gate 4 installs fastapi and pydantic -- it has to build the service's app object
+# to read its contract -- but it still touches NO network and NO database: the app
+# imports its Postgres driver inside db.connect() and its model client inside
+# harness.py, so constructing it reaches neither. The service's other tests need
+# things CI must not have: tests/service/ needs a live Postgres and `make smoke`
+# needs the whole compose stack, so both are LOCAL gates and stay out of here
+# (design §6; the command table is docs/workflow.md §9).
 on:
   push:
   pull_request:
@@ -42,3 +50,25 @@ jobs:
       # tools/refresh_clean_fixtures.py verifies that whenever it rebuilds them.
       - name: "gate 3: clean windows raise no alert"
         run: python -m pytest tests/test_clean_window_negative_control.py -q
+
+      # Deliberately AFTER gate 1, not before it. Gate 1 is "the repo's tests on a
+      # bare checkout", and installing the service's dependencies ahead of it would
+      # quietly change what that gate means -- and would run every contract test
+      # twice, once inside gate 1 and once as gate 4. With the install here, gate 1
+      # skips the fourteen tests that need fastapi (naming the reason) and gate 4
+      # is the only place they run.
+      - name: install service contract deps
+        run: python -m pip install --quiet -r requirements-service-ci.txt
+
+      # Gate 4. The API contract cannot change without someone saying so, in the
+      # same sense gate 2 means the card generator's output cannot: the check is
+      # not that the output is good, it is that the output is the one someone
+      # signed for. tests/fixtures/openapi.json is compared byte for byte, and
+      # changing the API means committing a regenerated snapshot alongside it
+      # (`make snapshot`). The same file also asserts that no response model
+      # carries a card's answer -- the third place a leak could get out, after
+      # tests/test_no_leak.py (task.json) and scripts/agent/leak_check.py (the
+      # bytes sent to the model), and the one that did not exist before the
+      # service did.
+      - name: "gate 4: API contract"
+        run: python -m pytest tests/test_api_contract.py -q

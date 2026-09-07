@@ -31,8 +31,6 @@ from uuid import UUID
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 
-import psycopg
-
 from . import cards_sync, config, db, harness, migrate, reimport, repo, summary as summary_mod
 from .logs import log
 from .models import (Answer, ApiError, Card, Grade, Health, Page, ReimportResult,
@@ -170,6 +168,13 @@ def create_run(body: RunCreate):
          breaker is exactly the sort of thing that is correct until someone adds a
          fourth arm.
     """
+    # Imported here rather than at module level, with db.connect() and the arm
+    # modules, so that constructing the app needs no database driver: CI gate 4
+    # builds it offline to read the OpenAPI contract (design §6). This function
+    # opens a connection two lines down, so the driver is certainly present by the
+    # time anything below runs.
+    import psycopg                                    # noqa: PLC0415
+
     with db.connect(autocommit=True) as conn:
         with conn.cursor() as cur:
             card = repo.get_card(cur, body.card_id)

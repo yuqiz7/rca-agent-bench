@@ -336,12 +336,32 @@ scripts/out/<batch-id>/<NN>_<card_id>/   ← 三探针判定（agent 永不可�
 在 SQLite 上测出来的绿恰好在最容易出错的队列并发处无效；testcontainers 要拉镜像，
 直接违反离线规则。所以：**离线的那一半进 CI，要数据库和要整套栈的那一半留本地。**
 
-| 跑什么 | 命令 | 需要 | 没有依赖时 |
-| --- | --- | --- | --- |
-| 契约（schema 单测 + OpenAPI 快照） | `make test-contract` | fastapi / pydantic | 跳过（步骤 6 后进 CI 第四道门） |
-| 仓储层 + SKIP LOCKED 并发 + 两种 422 | `make test-db` | Postgres，`RCA_TEST_DB_URL` | 整文件跳过，理由指向本节 |
-| 端到端 | `make smoke`（rules 臂，**$0.00**） | 整套 compose | —— |
-| 端到端（真花钱） | `make smoke-agent`（约 **$0.07**） | 同上 + API key | **只手工跑，不自动** |
+### 门的分布：哪些在 CI，哪些只在本地
+
+| # | 门 | 在哪跑 | 命令（CI 与本地逐字相同） | 需要 |
+| ---: | --- | --- | --- | --- |
+| 1 | pytest 全量 | **CI + 本地** | `python -m pytest tests/ -q` | pytest、PyYAML |
+| 2 | 生成器幂等 | **CI + 本地** | `python scripts/scenarios/generate.py --check` | PyYAML |
+| 3 | 干净窗零告警 | **CI + 本地** | `python -m pytest tests/test_clean_window_negative_control.py -q` | pytest |
+| 4 | **API 契约**（schema 单测 + OpenAPI 快照） | **CI + 本地** | `python -m pytest tests/test_api_contract.py -q` | ＋ `requirements-service-ci.txt`（fastapi、pydantic） |
+| — | 仓储层 + `SKIP LOCKED` 并发 + 两种 422 | **只本地** | `make test-db` | Postgres、`RCA_TEST_DB_URL`、psycopg、httpx |
+| — | 端到端 rules 臂（**$0.00**） | **只本地** | `make smoke` | 整套 compose |
+| — | 端到端 agent 臂（约 **$0.07**） | **只本地，只手工** | `make smoke-agent` | 同上 ＋ API key |
+| — | README 数字核对 | 本地（CI 未挂） | `python scripts/tools/readme_check.py --check` | PyYAML |
+
+`make gates` 把前四条按 CI 的顺序跑一遍，再加 `readme_check`。**它只是便利入口，不是门的定义** ——
+门的定义只有 `.github/workflows/ci.yml` 一份。
+
+**为什么第四道门的装包步骤排在门 1 之后**：门 1 的语义是「**一个空白 checkout 上，仓库自己的测试**」，
+把服务依赖装到它前面会悄悄改掉这个语义，而且会让契约测试**在门 1 和门 4 各跑一遍**。
+现在的顺序下，门 1 里那 14 个需要 fastapi 的测试按理由跳过，门 4 是它们唯一跑的地方。
+（`tests/test_api_contract.py` 里另有 8 个纯 `ast` 断言在门 1 就跑 —— 它们零依赖，
+「响应模型不含真值字段」这条在空白 checkout 上也必须成立，重复的这一点是刻意付的。）
+
+**为什么门 4 仍然算离线**：它要 `fastapi`/`pydantic` 才能把 app 构造出来，但**不要数据库驱动、
+不要模型客户端**：`service/app/db.py` 把 psycopg 的 import 放进 `connect()`，
+`service/app/harness.py` 把三臂的 import 放进函数，所以「构造 app」这件事既碰不到数据库也碰不到 API。
+`requirements-service-ci.txt` 里写明了缺席的三个包各自的理由。
 
 - 测试依赖装在**独立的 venv**（`requirements-service-test.txt`，`.venv-service/`），
   不动 `.venv` —— 后者是评测用的那个。里面**故意不装 `anthropic`**：

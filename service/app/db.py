@@ -10,14 +10,23 @@ not have helped with either.
 """
 import contextlib
 
-import psycopg
-
 from . import config
 
 
 @contextlib.contextmanager
 def connect(*, autocommit: bool = False):
-    """A psycopg connection to RCA_DB_URL, closed on the way out."""
+    """A psycopg connection to RCA_DB_URL, closed on the way out.
+
+    psycopg is imported HERE, not at module level, so that building the FastAPI
+    app requires no database driver at all. CI gate 4 is an offline contract test
+    (design §6): it constructs the app, reads app.openapi() and asks the Pydantic
+    models what fields they carry, and none of that should oblige the CI runner to
+    install a Postgres driver -- for the same reason harness.py imports the arm
+    modules lazily so the app builds with no anthropic client. A process that
+    actually talks to the database fails here, loudly, on the first connect.
+    """
+    import psycopg                                   # noqa: PLC0415
+
     conn = psycopg.connect(config.database_url(), autocommit=autocommit)
     try:
         yield conn

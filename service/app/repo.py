@@ -21,8 +21,15 @@ boundary landing between two runs created in the same microsecond drops one.
 """
 import base64
 
-from psycopg.rows import dict_row
-from psycopg.types.json import Jsonb
+try:
+    from psycopg.rows import dict_row
+    from psycopg.types.json import Jsonb
+except ImportError:                                   # pragma: no cover
+    # Same reason as db.connect(): the app must be constructible with no database
+    # driver installed, because CI gate 4 builds it to read the OpenAPI contract
+    # and nothing more. Every function below that uses these names also opens a
+    # connection, which is where a genuinely missing driver reports itself.
+    dict_row = Jsonb = None
 
 RUN_COLUMNS = (
     "run_id", "card_id", "arm", "model", "status", "idempotency_key",
