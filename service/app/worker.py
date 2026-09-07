@@ -48,22 +48,33 @@ def run_timeout_s() -> int:
     return int(os.environ.get("RCA_RUN_TIMEOUT_S") or 600)
 
 
-def sweep(conn) -> None:
+def sweep(conn, always_log: bool = False) -> None:
+    """Push `running` rows older than the timeout back to `queued`.
+
+    Silent when it finds nothing, except at boot. The steady-state sweep runs
+    every couple of seconds, so a line per no-op would be ~40k lines a day saying
+    that nothing happened -- and it would be the noise the requeue line has to be
+    found inside. The BOOT sweep is the one worth a line either way: it is the
+    answer to "did the container I just replaced leave a run stranded", and a
+    silent no-op makes that unanswerable from `docker compose logs` alone.
+    """
     requeued = repo.requeue_stale(conn, run_timeout_s())
-    if requeued:
+    if requeued or always_log:
         log("worker.requeued", run_ids=[str(r) for r in requeued],
-            note=repo.REQUEUE_NOTE, timeout_s=run_timeout_s())
+            note=repo.REQUEUE_NOTE if requeued else None, timeout_s=run_timeout_s())
 
 
 def main() -> int:
     signal.signal(signal.SIGTERM, _handle_signal)
     signal.signal(signal.SIGINT, _handle_signal)
     log("worker.start", poll_interval_s=POLL_INTERVAL_S, run_timeout_s=run_timeout_s())
+    first_sweep = True
 
     while not _stop:
         try:
             with db.connect(autocommit=True) as conn:
-                sweep(conn)
+                sweep(conn, always_log=first_sweep)
+                first_sweep = False
                 while not _stop:
                     run = repo.claim_next(conn)
                     if run is None:

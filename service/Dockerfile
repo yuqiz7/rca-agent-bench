@@ -28,4 +28,9 @@ COPY migrations ./migrations
 # The bind mounts land at /repo/{evidence,scenarios,artifacts}; /repo/service is
 # the package root, so `app.main:app` resolves from WORKDIR.
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --log-config puts uvicorn's own lines through app.logs.JsonFormatter and
+# leaves uvicorn.access without a handler; app/main.py's access_log
+# middleware prints the request line instead, with latency and run_id.
+# Every line on this container's stdout is then a JSON object (design §5).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
+     "--log-config", "app/log_config.json"]

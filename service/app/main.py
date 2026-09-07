@@ -72,6 +72,42 @@ app = FastAPI(
 install_error_handlers(app)
 
 
+@app.middleware("http")
+async def access_log(request, call_next):
+    """One JSON line per request, replacing uvicorn's own access log (§5, step 1
+    item 12).
+
+    uvicorn's access log is `INFO:     172.20.0.1:48738 - "GET /healthz HTTP/1.1"
+    200 OK` -- a second format on the same stdout, unparseable next to the
+    application's JSON and carrying no latency and no run_id. It is turned off in
+    app/log_config.json (uvicorn.access gets no handler) and this middleware
+    prints the same facts through log(), so every line the api container emits is
+    one json.loads away from a dict.
+
+    run_id comes from scope["path_params"], which the router fills in before the
+    endpoint runs: /runs/{run_id} and /runs/{run_id}/trace carry it, a request
+    that matched no route simply has none. It is the same key as the log lines the
+    worker writes and the same value as the trace attribute rca.run_id (§5), so a
+    slow trace read and the run it read join without a grep.
+
+    try/finally rather than logging after call_next: an exception on the way out
+    is exactly the request worth having a line for, and without the finally that
+    is the one request that would leave no trace at all.
+    """
+    started = time.perf_counter()
+    status = 500                     # what an exception below will have produced
+    try:
+        response = await call_next(request)
+        status = response.status_code
+        return response
+    finally:
+        run_id = (request.scope.get("path_params") or {}).get("run_id")
+        log("http.access", method=request.method, path=request.url.path,
+            query=request.url.query or None, status=status,
+            latency_ms=round((time.perf_counter() - started) * 1000, 2),
+            **({"run_id": str(run_id)} if run_id is not None else {}))
+
+
 @app.get("/healthz", response_model=Health, responses={503: {"model": Health}})
 def healthz():
     budget = config.daily_budget_usd()
