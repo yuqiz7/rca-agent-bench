@@ -1,0 +1,85 @@
+# docker-compose.service.yml -- the evaluation service (design §5).
+#
+# THREE COMPOSE FILES, NEVER MERGED. The testbed's own compose is the system
+# under evaluation; docker-compose.agent-obs.yml is the agent's trace viewer,
+# kept out of the testbed so it cannot appear in the evidence packs the agent is
+# later asked to diagnose; this one is the service. `name:` below pins a distinct
+# project so no `docker compose down` in one of them can reach into another's
+# containers, networks or volumes.
+#
+# up:     docker compose -f docker-compose.service.yml up -d --build
+# health: curl -s localhost:8000/healthz
+# down:   docker compose -f docker-compose.service.yml down
+name: rca-service
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: rca
+      POSTGRES_USER: rca
+      # Password by secret file, never by POSTGRES_PASSWORD: an environment
+      # variable is visible in `docker inspect` and `docker compose config`.
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg
+    secrets:
+      - pg
+    volumes:
+      - rca_pg:/var/lib/postgresql/data
+    # No `ports:` at all. Only api needs this database, and api reaches it over
+    # the compose network. Publishing 5432 would put a database on the VM's
+    # interfaces to save nothing.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rca -d rca"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    build: ./service
+    depends_on:
+      db:
+        condition: service_healthy
+    # Must match the host owner of ./artifacts/agent_runs -- the JSON evidence
+    # artefacts are written through that bind mount from step 3 on, and a
+    # root-written artefact in a repo the host user has to commit is a papercut
+    # every single time.
+    user: "${RCA_UID:-1001}:${RCA_GID:-1002}"
+    environment:
+      # From the VM shell (~/.bashrc), not from a file in the repo and not from a
+      # build arg: it must not enter the image (§5).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      RCA_DAILY_BUDGET_USD: "5.00"
+      # No password here on purpose; app/config.py splices in the secret file.
+      RCA_DB_URL: postgresql://rca@db/rca
+      RCA_PG_PASSWORD_FILE: /run/secrets/pg
+    secrets:
+      - pg
+    volumes:
+      - ./evidence:/repo/evidence:ro                        # frozen packs, read-only
+      - ./scenarios:/repo/scenarios:ro                       # ground truth, read-only, grading reads it
+      - ./artifacts/agent_runs:/repo/artifacts/agent_runs    # JSON evidence artefacts are written
+    ports:
+      # Loopback only (决策 037, item 1). Demos go through `ssh -L 8000:localhost:8000`.
+      # Every POST /runs is a billed model call, so a public port plus automatic
+      # billing has no upper bound on what one leaked token costs; the $5 daily
+      # budget is the last line of defence, not the first.
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+secrets:
+  pg:
+    file: ./secrets/pg_password
+
+volumes:
+  rca_pg: {}

@@ -22,3 +22,10 @@ scripts/state/*
 evidence/**/logs.jsonl
 evidence/**/metrics.json
 evidence/**/traces.json
+
+# Docker secret files for the evaluation service (docker-compose.service.yml).
+# The Postgres password lives here rather than in the compose file or in an
+# environment variable, so this directory is the one place it exists on disk and
+# it must never be the one place it exists in the history either. The Anthropic
+# key is not here at all -- it comes from the VM shell environment.
+secrets/
