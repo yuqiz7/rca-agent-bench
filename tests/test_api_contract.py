@@ -1,44 +1,65 @@
 #!/usr/bin/env python3
-"""The service's wire contract: no card's answer may leave through the API.
+"""Gate 4 (design §6): the API contract cannot change without someone saying so.
 
-PLACEHOLDER, DELIBERATELY. Design §6 makes the API contract CI's fourth gate, and
-that gate is two things: these schema assertions plus an OpenAPI snapshot compared
-byte for byte against tests/fixtures/openapi.json. The snapshot half lands in step
-5, together with the CI change that installs fastapi -- today .github/workflows/ci.yml
-installs only pytest and PyYAML, on purpose ("no gate may make a network call"),
-so a test that needed fastapi to be importable would turn gate 1 red rather than
-catch anything.
+OFFLINE, AND THAT IS THE REQUIREMENT. This file builds the FastAPI app in-process
+and asks it questions. It opens no database connection, makes no network call,
+needs no ANTHROPIC_API_KEY, and runs with the anthropic client NOT INSTALLED --
+service/app/harness.py imports run_agent, single_shot_llm and keyword_heuristic
+inside functions precisely so that importing the app does not drag in the model
+client. CI's first hard rule is that no gate may touch the network or the VM, and
+a contract test that needed a live service would not be a gate, it would be a
+second smoke test.
 
-Hence two layers. The first parses service/app/models.py with `ast` and runs
-everywhere, including a checkout with no service dependencies at all. The second
-asks the real Pydantic models the same question and skips where fastapi is absent.
-They check the same property from opposite sides: one that the source does not
-DECLARE a truth field, one that the built model does not EXPOSE one.
+CHANGING THE CONTRACT MEANS COMMITTING THE SNAPSHOT.
+tests/fixtures/openapi.json is compared byte for byte. If you intend to change a
+path, a field, a status code or a description, run
 
-Why this property and not some other: §1 says the service does not return ground
-truth, and grading happens server-side precisely so the answer never crosses the
-boundary. tests/test_no_leak.py holds that line at task.json and
-scripts/agent/leak_check.py holds it at the bytes sent to the model. This holds it
-at the HTTP response -- the third place a card's answer could get out, and the one
-that did not exist before the service did.
+    pytest tests/test_api_contract.py --update-snapshot
+
+and COMMIT THE REGENERATED FILE IN THE SAME COMMIT as the change. A diff of that
+file is the review artefact for "what did the API just do to its clients"; a red
+gate with no snapshot diff means the contract moved by accident. Same idea as
+gate 2 for the card generator: the check is not that the output is good, it is
+that the output is the output someone signed for.
+
+Skips cleanly where fastapi is absent (CI installs only pytest and PyYAML until
+step 6 adds gate 4), so this file never turns gate 1 red on a minimal checkout.
 """
 import ast
+import json
 import os
 
 import pytest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_PY = os.path.join(REPO, "service", "app", "models.py")
+SNAPSHOT = os.path.join(REPO, "tests", "fixtures", "openapi.json")
 
 # Same vocabulary as scripts/agent/leak_check.py FORBIDDEN_KEYS, minus the three
 # that legitimately describe a card on the wire: class / target / primitive are
-# what `GET /cards` is FOR (design §1 lists them by name as the returned fields).
-# What is left is the set that decides the answer.
+# what GET /cards is FOR (design §1 names them as the returned fields). What is
+# left is the set that decides the answer.
 FORBIDDEN_FIELDS = {"ground_truth", "params", "aliases", "note", "answer_key", "gt"}
 
-# The models a client can actually receive.
+# Every model a client can receive.
 RESPONSE_MODELS = ("Card", "Run", "RunTrace", "Grade", "Answer", "ArmMetrics", "Summary")
 
+
+def _app():
+    pytest.importorskip("fastapi", reason="service deps; CI installs them with gate 4")
+    from service.app.main import app                                  # noqa: PLC0415
+    return app
+
+
+def _snapshot_bytes(app):
+    # sort_keys so a dict-ordering change in fastapi cannot masquerade as a
+    # contract change; indent so the diff a reviewer reads is line-oriented.
+    return (json.dumps(app.openapi(), indent=1, sort_keys=True, ensure_ascii=False) + "\n").encode()
+
+
+# --------------------------------------------------------------------------- #
+# 1. source-level: what models.py DECLARES. Runs with nothing installed.
+# --------------------------------------------------------------------------- #
 
 def _declared_fields(class_name):
     tree = ast.parse(open(MODELS_PY, encoding="utf-8").read())
@@ -62,12 +83,95 @@ def test_card_is_exactly_the_snapshot_fields():
         "in_stock", "evidence_ok", "snapshot_at"}
 
 
+# --------------------------------------------------------------------------- #
+# 2. model-level: what pydantic actually builds.
+# --------------------------------------------------------------------------- #
+
 @pytest.mark.parametrize("model_name", RESPONSE_MODELS)
 def test_built_model_exposes_no_truth_field(model_name):
-    pytest.importorskip("fastapi", reason="service deps land in CI with gate 4, step 5")
-    import sys
-    sys.path.insert(0, os.path.join(REPO, "service"))
-    from app import models                                        # noqa: PLC0415
-    fields = set(getattr(models, model_name).model_fields)
-    aliases = {f.alias for f in getattr(models, model_name).model_fields.values() if f.alias}
-    assert not (fields | aliases) & FORBIDDEN_FIELDS
+    _app()
+    from service.app import models                                    # noqa: PLC0415
+    model = getattr(models, model_name)
+    names = set(model.model_fields) | {f.alias for f in model.model_fields.values() if f.alias}
+    assert not names & FORBIDDEN_FIELDS
+
+
+def test_run_create_rejects_an_unknown_arm():
+    _app()
+    from pydantic import ValidationError                              # noqa: PLC0415
+    from service.app.models import RunCreate                          # noqa: PLC0415
+    with pytest.raises(ValidationError):
+        RunCreate(card_id="crash-cart-01", arm="telepathy")
+    for arm in ("agent", "single_shot", "rules"):
+        assert RunCreate(card_id="crash-cart-01", arm=arm).arm == arm
+
+
+def test_run_create_requires_card_id_and_allows_a_null_model():
+    _app()
+    from pydantic import ValidationError                              # noqa: PLC0415
+    from service.app.models import RunCreate                          # noqa: PLC0415
+    with pytest.raises(ValidationError):
+        RunCreate(arm="rules")
+    body = RunCreate(card_id="crash-cart-01", arm="rules")
+    # None is not "unset": §2 says it means models.primary from config.yaml, and
+    # the service resolves it at submit time rather than storing a null model.
+    assert body.model is None and body.idempotency_key is None
+
+
+def test_error_envelope_shape():
+    _app()
+    from service.app.models import ErrorDetail, ErrorResponse         # noqa: PLC0415
+    body = ErrorResponse(error=ErrorDetail(code="card_not_found", message="m",
+                                           detail={"card_id": "x"}))
+    assert body.model_dump() == {"error": {"code": "card_not_found", "message": "m",
+                                           "detail": {"card_id": "x"}}}
+    # detail is optional; code and message are not.
+    assert ErrorResponse(error=ErrorDetail(code="c", message="m")).error.detail is None
+
+
+def test_evidence_codes_are_two_distinct_codes():
+    """修正 C: a leaking pack and an absent pack are different problems."""
+    _app()
+    from service.app.models import ERROR_CODES                        # noqa: PLC0415
+    assert "evidence_leak" in ERROR_CODES and "evidence_missing" in ERROR_CODES
+
+
+def test_page_of_runs_carries_items_and_cursor():
+    _app()
+    from service.app.models import Page, Run                          # noqa: PLC0415
+    page = Page[Run](items=[], next_cursor=None)
+    assert page.model_dump() == {"items": [], "next_cursor": None}
+
+
+# --------------------------------------------------------------------------- #
+# 3. the snapshot
+# --------------------------------------------------------------------------- #
+
+def test_openapi_matches_the_committed_snapshot(request):
+    app = _app()
+    current = _snapshot_bytes(app)
+    if request.config.getoption("--update-snapshot"):
+        os.makedirs(os.path.dirname(SNAPSHOT), exist_ok=True)
+        with open(SNAPSHOT, "wb") as fh:
+            fh.write(current)
+        pytest.skip(f"snapshot rewritten ({len(current)} bytes) -- commit it")
+    assert os.path.exists(SNAPSHOT), \
+        "no snapshot yet; run pytest tests/test_api_contract.py --update-snapshot"
+    with open(SNAPSHOT, "rb") as fh:
+        committed = fh.read()
+    assert current == committed, (
+        "the OpenAPI contract changed. If that was intended, rerun with "
+        "--update-snapshot and commit tests/fixtures/openapi.json in the same commit.")
+
+
+def test_the_endpoint_set_is_the_designed_one():
+    """§2's eight endpoints, plus the local-only admin one. A new path is a review."""
+    app = _app()
+    spec = app.openapi()
+    assert set(spec["paths"]) == {
+        "/runs", "/runs/{run_id}", "/runs/{run_id}/trace",
+        "/cards", "/cards/{card_id}", "/summary", "/healthz", "/admin/reimport"}
+    assert sum(len(v) for v in spec["paths"].values()) == 9      # /runs carries GET+POST
+    assert "ground_truth" not in {
+        prop for schema in spec["components"]["schemas"].values()
+        for prop in schema.get("properties", {})}

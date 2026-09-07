@@ -1,0 +1,1372 @@
+{
+ "components": {
+  "schemas": {
+   "Answer": {
+    "properties": {
+     "fault_type": {
+      "title": "Fault Type",
+      "type": "string"
+     },
+     "service": {
+      "title": "Service",
+      "type": "string"
+     }
+    },
+    "required": [
+     "service",
+     "fault_type"
+    ],
+    "title": "Answer",
+    "type": "object"
+   },
+   "ArmMetrics": {
+    "description": "compare_arms.metrics() output, field for field, plus what /summary adds.\n\nThe names are not re-chosen here: n / missing / top1 / svc / top1_pct /\nsvc_pct / steps / cost / total / p95 / per_hit are the keys that function\nreturns, and 决策 037 item 3 is explicit that the endpoint reuses it rather\nthan re-deriving the same table. `selected` and `arm` / `model` are the only\nadditions, and they describe WHICH runs were fed in, not what was computed.",
+    "properties": {
+     "arm": {
+      "title": "Arm",
+      "type": "string"
+     },
+     "cost": {
+      "title": "Cost",
+      "type": "number"
+     },
+     "missing": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Missing",
+      "type": "array"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model"
+     },
+     "n": {
+      "title": "N",
+      "type": "integer"
+     },
+     "p95": {
+      "title": "P95",
+      "type": "number"
+     },
+     "per_hit": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Per Hit"
+     },
+     "selected": {
+      "title": "Selected",
+      "type": "integer"
+     },
+     "steps": {
+      "title": "Steps",
+      "type": "number"
+     },
+     "svc": {
+      "title": "Svc",
+      "type": "integer"
+     },
+     "svc_pct": {
+      "title": "Svc Pct",
+      "type": "number"
+     },
+     "top1": {
+      "title": "Top1",
+      "type": "integer"
+     },
+     "top1_pct": {
+      "title": "Top1 Pct",
+      "type": "number"
+     },
+     "total": {
+      "title": "Total",
+      "type": "number"
+     }
+    },
+    "required": [
+     "arm",
+     "model",
+     "selected",
+     "n",
+     "top1",
+     "svc",
+     "top1_pct",
+     "svc_pct",
+     "steps",
+     "cost",
+     "total",
+     "p95",
+     "per_hit",
+     "missing"
+    ],
+    "title": "ArmMetrics",
+    "type": "object"
+   },
+   "Card": {
+    "description": "The snapshot fields, and ONLY the snapshot fields.\n\nThere is no ground_truth here and there is nowhere for one to appear: the\nmodel is closed over eight named fields, so even if a future query started\nselecting `*` from a table that had grown an answer column, this would refuse\nto carry it. §1 puts the reason plainly -- leak_check guards the line that a\ncard's answer must not be reachable, and an endpoint anyone with the port can\ncall is exactly where that line would break.",
+    "properties": {
+     "card_id": {
+      "title": "Card Id",
+      "type": "string"
+     },
+     "class": {
+      "title": "Class",
+      "type": "string"
+     },
+     "difficulty": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Difficulty"
+     },
+     "evidence_ok": {
+      "title": "Evidence Ok",
+      "type": "boolean"
+     },
+     "in_stock": {
+      "title": "In Stock",
+      "type": "boolean"
+     },
+     "primitive": {
+      "title": "Primitive",
+      "type": "string"
+     },
+     "snapshot_at": {
+      "format": "date-time",
+      "title": "Snapshot At",
+      "type": "string"
+     },
+     "target": {
+      "title": "Target",
+      "type": "string"
+     }
+    },
+    "required": [
+     "card_id",
+     "class",
+     "target",
+     "primitive",
+     "difficulty",
+     "in_stock",
+     "evidence_ok",
+     "snapshot_at"
+    ],
+    "title": "Card",
+    "type": "object"
+   },
+   "Grade": {
+    "properties": {
+     "service_ok": {
+      "title": "Service Ok",
+      "type": "boolean"
+     },
+     "top1_ok": {
+      "title": "Top1 Ok",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "top1_ok",
+     "service_ok"
+    ],
+    "title": "Grade",
+    "type": "object"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "title": "Detail",
+      "type": "array"
+     }
+    },
+    "title": "HTTPValidationError",
+    "type": "object"
+   },
+   "Health": {
+    "properties": {
+     "budget_remaining_usd": {
+      "title": "Budget Remaining Usd",
+      "type": "number"
+     },
+     "db": {
+      "enum": [
+       "ok",
+       "error"
+      ],
+      "title": "Db",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "ok",
+       "degraded"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "db",
+     "budget_remaining_usd"
+    ],
+    "title": "Health",
+    "type": "object"
+   },
+   "Page_Run_": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/Run"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "next_cursor": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next Cursor"
+     }
+    },
+    "required": [
+     "items",
+     "next_cursor"
+    ],
+    "title": "Page[Run]",
+    "type": "object"
+   },
+   "ReimportFailure": {
+    "properties": {
+     "artifact_path": {
+      "title": "Artifact Path",
+      "type": "string"
+     },
+     "card_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Card Id"
+     },
+     "error": {
+      "title": "Error",
+      "type": "string"
+     }
+    },
+    "required": [
+     "artifact_path",
+     "card_id",
+     "error"
+    ],
+    "title": "ReimportFailure",
+    "type": "object"
+   },
+   "ReimportResult": {
+    "properties": {
+     "failed": {
+      "items": {
+       "$ref": "#/components/schemas/ReimportFailure"
+      },
+      "title": "Failed",
+      "type": "array"
+     },
+     "imported": {
+      "title": "Imported",
+      "type": "integer"
+     },
+     "scanned": {
+      "title": "Scanned",
+      "type": "integer"
+     },
+     "skipped": {
+      "title": "Skipped",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "scanned",
+     "imported",
+     "skipped",
+     "failed"
+    ],
+    "title": "ReimportResult",
+    "type": "object"
+   },
+   "Run": {
+    "properties": {
+     "answer": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Answer"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "arm": {
+      "title": "Arm",
+      "type": "string"
+     },
+     "card_id": {
+      "title": "Card Id",
+      "type": "string"
+     },
+     "cost_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cost Usd"
+     },
+     "counters": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "integer"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Counters"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "grade": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Grade"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "model": {
+      "title": "Model",
+      "type": "string"
+     },
+     "run_id": {
+      "format": "uuid",
+      "title": "Run Id",
+      "type": "string"
+     },
+     "started_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At"
+     },
+     "status": {
+      "enum": [
+       "queued",
+       "running",
+       "succeeded",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "steps": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Steps"
+     },
+     "terminated": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Terminated"
+     },
+     "wall_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wall S"
+     }
+    },
+    "required": [
+     "run_id",
+     "card_id",
+     "arm",
+     "model",
+     "status",
+     "created_at",
+     "started_at",
+     "finished_at",
+     "answer",
+     "grade",
+     "terminated",
+     "steps",
+     "cost_usd",
+     "wall_s",
+     "counters",
+     "error"
+    ],
+    "title": "Run",
+    "type": "object"
+   },
+   "RunCreate": {
+    "properties": {
+     "arm": {
+      "enum": [
+       "agent",
+       "single_shot",
+       "rules"
+      ],
+      "title": "Arm",
+      "type": "string"
+     },
+     "card_id": {
+      "title": "Card Id",
+      "type": "string"
+     },
+     "idempotency_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Idempotency Key"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model"
+     }
+    },
+    "required": [
+     "card_id",
+     "arm"
+    ],
+    "title": "RunCreate",
+    "type": "object"
+   },
+   "RunRef": {
+    "properties": {
+     "poll": {
+      "title": "Poll",
+      "type": "string"
+     },
+     "run_id": {
+      "format": "uuid",
+      "title": "Run Id",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "queued",
+       "running",
+       "succeeded",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "status",
+     "poll"
+    ],
+    "title": "RunRef",
+    "type": "object"
+   },
+   "RunTrace": {
+    "description": "card -> step -> model.call / tool.* , the tree §1 promises.\n\nNULLs are returned as null. The backfill could not measure duration_ms or\nlatency_s (the evaluator records neither), and filling them by dividing wall_s\nwould produce numbers indistinguishable from measured ones.",
+    "properties": {
+     "arm": {
+      "title": "Arm",
+      "type": "string"
+     },
+     "card_id": {
+      "title": "Card Id",
+      "type": "string"
+     },
+     "model": {
+      "title": "Model",
+      "type": "string"
+     },
+     "run_id": {
+      "format": "uuid",
+      "title": "Run Id",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/components/schemas/TraceStep"
+      },
+      "title": "Steps",
+      "type": "array"
+     }
+    },
+    "required": [
+     "run_id",
+     "card_id",
+     "arm",
+     "model",
+     "status",
+     "steps"
+    ],
+    "title": "RunTrace",
+    "type": "object"
+   },
+   "Summary": {
+    "properties": {
+     "arms": {
+      "items": {
+       "$ref": "#/components/schemas/ArmMetrics"
+      },
+      "title": "Arms",
+      "type": "array"
+     },
+     "cardset": {
+      "title": "Cardset",
+      "type": "string"
+     },
+     "n_cards": {
+      "title": "N Cards",
+      "type": "integer"
+     },
+     "pick": {
+      "enum": [
+       "latest",
+       "run_ids"
+      ],
+      "title": "Pick",
+      "type": "string"
+     }
+    },
+    "required": [
+     "cardset",
+     "n_cards",
+     "pick",
+     "arms"
+    ],
+    "title": "Summary",
+    "type": "object"
+   },
+   "TraceModelCall": {
+    "properties": {
+     "cache_read_tokens": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cache Read Tokens"
+     },
+     "cache_write_tokens": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cache Write Tokens"
+     },
+     "input_tokens": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Input Tokens"
+     },
+     "latency_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latency S"
+     },
+     "model": {
+      "title": "Model",
+      "type": "string"
+     },
+     "output_tokens": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Output Tokens"
+     },
+     "step_cost_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Step Cost Usd"
+     },
+     "stop_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop Reason"
+     }
+    },
+    "required": [
+     "model",
+     "input_tokens",
+     "output_tokens",
+     "cache_write_tokens",
+     "cache_read_tokens",
+     "step_cost_usd",
+     "stop_reason",
+     "latency_s"
+    ],
+    "title": "TraceModelCall",
+    "type": "object"
+   },
+   "TraceStep": {
+    "properties": {
+     "duration_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Ms"
+     },
+     "model_calls": {
+      "items": {
+       "$ref": "#/components/schemas/TraceModelCall"
+      },
+      "title": "Model Calls",
+      "type": "array"
+     },
+     "step_no": {
+      "title": "Step No",
+      "type": "integer"
+     },
+     "tool_calls": {
+      "items": {
+       "$ref": "#/components/schemas/TraceToolCall"
+      },
+      "title": "Tool Calls",
+      "type": "array"
+     }
+    },
+    "required": [
+     "step_no",
+     "duration_ms",
+     "model_calls",
+     "tool_calls"
+    ],
+    "title": "TraceStep",
+    "type": "object"
+   },
+   "TraceToolCall": {
+    "properties": {
+     "args_digest": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Args Digest"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "ok": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ok"
+     },
+     "result_bytes": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result Bytes"
+     },
+     "retried": {
+      "title": "Retried",
+      "type": "boolean"
+     },
+     "tool": {
+      "title": "Tool",
+      "type": "string"
+     },
+     "validation_reject": {
+      "title": "Validation Reject",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "tool",
+     "args_digest",
+     "result_bytes",
+     "ok",
+     "validation_reject",
+     "retried",
+     "error"
+    ],
+    "title": "TraceToolCall",
+    "type": "object"
+   },
+   "ValidationError": {
+    "properties": {
+     "ctx": {
+      "title": "Context",
+      "type": "object"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "title": "Location",
+      "type": "array"
+     },
+     "msg": {
+      "title": "Message",
+      "type": "string"
+     },
+     "type": {
+      "title": "Error Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError",
+    "type": "object"
+   }
+  }
+ },
+ "info": {
+  "title": "rca-agent-bench evaluation service",
+  "version": "1.0.0"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/admin/reimport": {
+   "post": {
+    "description": "Backfill artifacts/agent_runs/ into Postgres. Local, idempotent, re-runnable.\n\n404 rather than 403 when disabled: see config.admin_enabled(). Runs\nsynchronously -- it is a few hundred file reads against a local mount, the\ncaller is a human on a loopback port, and putting it on the queue would make\nthe one endpoint that repairs the database depend on the worker that reads it.",
+    "operationId": "admin_reimport_admin_reimport_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReimportResult"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Admin Reimport"
+   }
+  },
+  "/cards": {
+   "get": {
+    "operationId": "list_cards_cards_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "cardset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Cardset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "in_stock",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "In Stock"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/Card"
+         },
+         "title": "Response List Cards Cards Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "List Cards"
+   }
+  },
+  "/cards/{card_id}": {
+   "get": {
+    "operationId": "get_card_cards__card_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "card_id",
+      "required": true,
+      "schema": {
+       "title": "Card Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Card"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Card"
+   }
+  },
+  "/healthz": {
+   "get": {
+    "operationId": "healthz_healthz_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
+       }
+      },
+      "description": "Service Unavailable"
+     }
+    },
+    "summary": "Healthz"
+   }
+  },
+  "/runs": {
+   "get": {
+    "operationId": "list_runs_runs_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "card",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Card"
+      }
+     },
+     {
+      "in": "query",
+      "name": "arm",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Arm"
+      }
+     },
+     {
+      "in": "query",
+      "name": "status",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Status"
+      }
+     },
+     {
+      "in": "query",
+      "name": "model",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Model"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "maximum": 200,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "cursor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Cursor"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Page_Run_"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "List Runs"
+   },
+   "post": {
+    "description": "Accept a run, or refuse it before it can cost anything.\n\nThe four gates run in this order because each is cheaper and more certain than\nthe next, and because §4 is explicit that the expensive checks must not be\nwhat protects the budget:\n\n  1. card_not_found (404) -- a card not in the snapshot, or not in stock.\n  2. evidence_leak / evidence_missing (422) -- leak_check.check_card on the\n     pack; a LeakError is the first, an absent or unreadable pack the second\n     (see the error-code table in models.py). run_card runs\n     this again internally before the first token; this outer one exists\n     because the service adds \"automatic, batched, unattended\" to the picture,\n     and in that setting a broken pack should never enter a system that will\n     retry it (§4).\n  3. the idempotency key -- looked up BEFORE the budget gate. A replay does\n     not spend anything: it hands back a run that already exists. Making it\n     pass the budget check would mean that the moment the daily budget runs\n     out, a retrying client stops being able to find out its own run_id --\n     the breaker would start withholding information instead of withholding\n     money. The gate belongs in front of work that will newly charge.\n  4. budget_exceeded (429) -- the daily breaker, on new runs only. The rules\n     arm passes through it too even though it costs nothing: one rule that is\n     always true beats two rules that are usually true, and an arm-dependent\n     breaker is exactly the sort of thing that is correct until someone adds a\n     fourth arm.",
+    "operationId": "create_run_runs_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RunCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RunRef"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Run"
+   }
+  },
+  "/runs/{run_id}": {
+   "get": {
+    "operationId": "get_run_runs__run_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Run"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Run"
+   }
+  },
+  "/runs/{run_id}/trace": {
+   "get": {
+    "operationId": "get_run_trace_runs__run_id__trace_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RunTrace"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Run Trace"
+   }
+  },
+  "/summary": {
+   "get": {
+    "description": "The four-metric table, aggregated by compare_arms.metrics() (决策 037).",
+    "operationId": "get_summary_summary_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "cardset",
+      "required": true,
+      "schema": {
+       "title": "Cardset",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "arms",
+      "required": true,
+      "schema": {
+       "title": "Arms",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "pick",
+      "required": false,
+      "schema": {
+       "default": "latest",
+       "title": "Pick",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "runs",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Runs"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Summary"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Summary"
+   }
+  }
+ }
+}

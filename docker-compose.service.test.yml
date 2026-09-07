@@ -1,0 +1,20 @@
+# Local-gate override: publish Postgres on loopback so the repository tests can
+# reach it. NOT part of the deployment.
+#
+# docker-compose.service.yml maps no host port for db, and that stays true of
+# every deployment: only api needs the database and it reaches it over the
+# compose network (§5). But design §6 requires the repository tests to run
+# against a REAL Postgres -- SQLite does not have SKIP LOCKED, jsonb or partial
+# indexes, and testcontainers would pull an image, which CI's offline rule
+# forbids. So the database has to be reachable from the host for exactly as long
+# as the tests run.
+#
+# 127.0.0.1 only, and 5433 rather than 5432 so it cannot be confused with the
+# testbed's astronomy-db (scripts/service_ports.env registers 5432 for that).
+#
+#   make test-db     brings this up, runs the tests, and does not leave it up
+#   manual:  docker compose -f docker-compose.service.yml -f docker-compose.service.test.yml up -d
+services:
+  db:
+    ports:
+      - "127.0.0.1:5433:5432"

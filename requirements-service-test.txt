@@ -1,0 +1,23 @@
+# What the service's own test files need, on top of a plain checkout.
+#
+# THREE ENVIRONMENTS, ON PURPOSE:
+#
+#   CI today            pytest + PyYAML only (.github/workflows/ci.yml). Gates 1-3
+#                       must run on a checkout with no network, so everything the
+#                       service adds to tests/ skips cleanly there.
+#   CI after step 6     this file minus psycopg/httpx: gate 4 is the OFFLINE half
+#                       (schema units + the OpenAPI snapshot) and nothing more.
+#   local               this whole file, plus RCA_TEST_DB_URL pointing at the
+#                       Postgres from docker-compose.service.yml, which turns on
+#                       the repository and 422 tests. Design §6: DB tests and smoke
+#                       are local gates, never CI ones.
+#
+# anthropic is deliberately ABSENT. service/app/harness.py imports the arm modules
+# inside functions, so the app builds without the model client -- and a test venv
+# that cannot import it is what keeps that true.
+pytest==7.4.4
+PyYAML==6.0.1
+fastapi==0.141.1
+pydantic==2.13.5
+psycopg[binary]==3.3.5
+httpx==0.28.1

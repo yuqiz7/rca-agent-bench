@@ -32,7 +32,7 @@ for _sub in ("agent", "harness", "scenarios", "baselines"):
         sys.path.append(_p)
 
 SCENARIOS_DIR = REPO / "scenarios"
-EVIDENCE_DIR = REPO / "evidence"
+EVIDENCE_DIR = pathlib.Path(os.environ.get("RCA_EVIDENCE_ROOT") or (REPO / "evidence"))
 RUNS_ROOT = REPO / "artifacts" / "agent_runs"
 CARDSETS_DIR = REPO / "scripts" / "baselines"
 
@@ -72,9 +72,30 @@ def leak_check():
     return _leak_check
 
 
-def check_card(card_id):
-    """The entry-side leak gate (§4). Raises leak_check.LeakError on a bad pack."""
-    return leak_check().check_card(card_id)
+def check_card(card_id, evidence_root=None):
+    """The entry-side leak gate (§4).
+
+    Raises leak_check.LeakError when the pack would leak the answer, and an
+    ordinary OSError / KeyError / JSONDecodeError when the pack is simply not
+    there or not readable. POST /runs distinguishes the two (evidence_leak vs
+    evidence_missing) via is_leak_error below -- see the error-code table in
+    models.py. EVIDENCE_DIR is read at call time so a test can point it at a
+    fixture pack without rebuilding the app.
+    """
+    return leak_check().check_card(card_id, evidence_root=str(evidence_root or EVIDENCE_DIR))
+
+
+def is_leak_error(exc: BaseException) -> bool:
+    """True only for a real leak. Anything else is a broken or absent pack.
+
+    Guarded, because this is called from an exception handler: if scripts/ is not
+    mounted then leak_check() itself raises, and an error while classifying an
+    error must not replace the error being classified.
+    """
+    try:
+        return isinstance(exc, leak_check().LeakError)
+    except Exception:                       # noqa: BLE001
+        return False
 
 
 def compare_arms():

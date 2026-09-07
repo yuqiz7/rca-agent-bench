@@ -151,7 +151,9 @@ def create_run(body: RunCreate):
     what protects the budget:
 
       1. card_not_found (404) -- a card not in the snapshot, or not in stock.
-      2. evidence_leak (422)  -- leak_check.check_card on the pack. run_card runs
+      2. evidence_leak / evidence_missing (422) -- leak_check.check_card on the
+         pack; a LeakError is the first, an absent or unreadable pack the second
+         (see the error-code table in models.py). run_card runs
          this again internally before the first token; this outer one exists
          because the service adds "automatic, batched, unattended" to the picture,
          and in that setting a broken pack should never enter a system that will
@@ -182,10 +184,13 @@ def create_run(body: RunCreate):
 
         try:
             harness.check_card(body.card_id)
-        except Exception as exc:                  # noqa: BLE001 -- LeakError, or a pack that will not open
-            log("runs.evidence_leak", card_id=body.card_id, error=str(exc))
-            raise ApiError(422, "evidence_leak",
-                           f"card {body.card_id!r} failed the entry leak check",
+        except Exception as exc:                  # noqa: BLE001
+            leaked = harness.is_leak_error(exc)
+            code = "evidence_leak" if leaked else "evidence_missing"
+            message = (f"card {body.card_id!r} failed the entry leak check" if leaked else
+                       f"evidence pack for {body.card_id!r} is missing or unreadable")
+            log("runs." + code, card_id=body.card_id, error=str(exc))
+            raise ApiError(422, code, message,
                            {"card_id": body.card_id, "detail": str(exc)[:400]}) from None
 
         digest = _request_digest(body)

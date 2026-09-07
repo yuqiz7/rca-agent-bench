@@ -205,6 +205,39 @@ class Health(BaseModel):
 # §2 error envelope -- one shape for every 4xx, on every endpoint
 # --------------------------------------------------------------------------- #
 
+# THE ERROR CODE TABLE. `code` is the stable machine-readable string §2 promises;
+# clients branch on it and never on the prose or the HTTP status. Settled here
+# rather than left to each raise site, because §2 and §4 of the design disagreed:
+# §2's example list says `evidence_missing`, §4's prose says `evidence_leak`. They
+# are now BOTH codes and they mean different things --
+#
+#   evidence_leak     the pack exists and would put the answer in front of the
+#                     model. leak_check.LeakError. A card that must never run.
+#   evidence_missing  the pack is absent, truncated or unreadable. A card that
+#                     cannot run yet.
+#
+# Collapsing them was wrong in a specific way: the first is a correctness
+# emergency and the second is an ops chore, and a client that cannot tell them
+# apart will retry both or neither.
+ERROR_CODES = (
+    "card_not_found",       # 404  no such card, or not in stock
+    "run_not_found",        # 404  no such run
+    "cardset_not_found",    # 404  no such cardset under scripts/baselines/
+    "not_found",            # 404  unrouted path, or /admin/* while disabled
+    "arm_unknown",          # 400  arm spec empty or unrecognised
+    "bad_cursor",           # 400  cursor was not issued by this API
+    "bad_pick",             # 400  pick is neither latest nor run_ids
+    "bad_request",          # 400  otherwise-malformed query
+    "validation_error",     # 422  body/query does not match the schema
+    "evidence_leak",        # 422  leak_check.LeakError -- the pack leaks the answer
+    "evidence_missing",     # 422  the pack is absent or unreadable
+    "idempotency_conflict", # 409  same key, different body (or in flight)
+    "budget_exceeded",      # 429  daily budget spent
+    "method_not_allowed",   # 405
+    "internal_error",       # 5xx
+)
+
+
 class ErrorDetail(BaseModel):
     code: str                         # stable, machine-readable; clients branch on this
     message: str                      # for humans; may be reworded at any time

@@ -1,0 +1,17 @@
+{
+ "card_id": "fixture-leak-pack",
+ "trigger": "Monitoring detected an anomaly in the system.",
+ "agent_visible_symptom": {
+  "window": {
+   "start": "2026-09-07T00:00:00Z",
+   "end": "2026-09-07T00:02:00Z"
+  },
+  "no_alert": false,
+  "alerts": [],
+  "ground_truth": {
+   "service": "cart",
+   "class": "crash"
+  }
+ },
+ "evidence_dir": "tests/fixtures/service/fixture-leak-pack"
+}

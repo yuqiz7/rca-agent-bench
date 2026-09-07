@@ -322,3 +322,36 @@ scripts/out/<batch-id>/<NN>_<card_id>/   ← 三探针判定（agent 永不可�
 | 跨批次指纹对照 | 未设计 | 指纹只保证周期内可比；跨批次需另做双基线（W2 议题，见决策 012） |
 | `crash` 之外各靶子的 `symptom` 阈值 N | 仅 `cart` 标定 N = 20 | 各靶子分别跑入库档 |
 | `FLAGD_PORT` / `FRONTEND_PROXY_PORT` | 登记表中为 `None` | 人工判定两服务的服务端口（各发布两个端口） |
+
+---
+
+## 9 评测服务的本地门（`docker-compose.service.yml`）
+
+**这一节是给 `RCA_TEST_DB_URL is not set -- local gate; see docs/workflow.md`
+这条 skip 理由的落点。** 完整口径见 `docs/design/service_v1.md` §6。
+
+**为什么分成两半**：CI 的第一条硬规则是三道门全部离线（`.github/workflows/ci.yml`
+文件头），而服务的仓储层测试要一个**真** Postgres —— schema 用了
+`FOR UPDATE SKIP LOCKED`、`jsonb`、partial unique index，SQLite 一个都不支持，
+在 SQLite 上测出来的绿恰好在最容易出错的队列并发处无效；testcontainers 要拉镜像，
+直接违反离线规则。所以：**离线的那一半进 CI，要数据库和要整套栈的那一半留本地。**
+
+| 跑什么 | 命令 | 需要 | 没有依赖时 |
+| --- | --- | --- | --- |
+| 契约（schema 单测 + OpenAPI 快照） | `make test-contract` | fastapi / pydantic | 跳过（步骤 6 后进 CI 第四道门） |
+| 仓储层 + SKIP LOCKED 并发 + 两种 422 | `make test-db` | Postgres，`RCA_TEST_DB_URL` | 整文件跳过，理由指向本节 |
+| 端到端 | `make smoke`（rules 臂，**$0.00**） | 整套 compose | —— |
+| 端到端（真花钱） | `make smoke-agent`（约 **$0.07**） | 同上 + API key | **只手工跑，不自动** |
+
+- 测试依赖装在**独立的 venv**（`requirements-service-test.txt`，`.venv-service/`），
+  不动 `.venv` —— 后者是评测用的那个。里面**故意不装 `anthropic`**：
+  `service/app/harness.py` 把三臂的 import 放在函数里，一个装不上模型客户端的
+  测试环境就是这条性质的守卫。
+- `make test-db` 会临时用 `docker-compose.service.test.yml` 把 Postgres
+  发布到 **`127.0.0.1:5433`**（只回环，且避开测试床登记的 5432），跑完把 db 收回
+  不发布端口的状态。**部署用的 `docker-compose.service.yml` 永远不映射数据库端口。**
+- DB 测试建一个一次性 schema（`svc_test_<pid>_<rand>`）、把真迁移应用进去、
+  跑完 `DROP SCHEMA CASCADE`，**不碰 `public` 里那几百行**。
+- **改了 API 契约就必须同时提交快照**：`make snapshot` 重刷
+  `tests/fixtures/openapi.json` 并连同改动一起 commit。红门而无快照 diff，
+  意味着契约是被无意改掉的。
